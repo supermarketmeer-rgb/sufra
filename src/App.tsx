@@ -14,25 +14,43 @@ import { KdsDashboard } from './components/kds/KdsDashboard';
 import { DriverDashboard } from './components/driver/DriverDashboard';
 import { CustomerMenu } from './components/customer/CustomerMenu';
 import { CodeExplorer } from './components/explorer/CodeExplorer';
+import { RegisterRestaurant } from './components/auth/RegisterRestaurant';
 
 const MainContent: React.FC = () => {
   const { currentRole } = useApp();
   const [showExplorer, setShowExplorer] = useState(false);
+  const [showRegister, setShowRegister] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname.toLowerCase();
+      const s = window.location.search.toLowerCase();
+      return p.includes('signup') || p.includes('register') || s.includes('signup') || s.includes('register') || s.includes('plan=free');
+    }
+    return false;
+  });
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-cairo">
       {/* Top Bar with Role Switcher & Code Studio */}
-      <Navbar onOpenExplorer={() => setShowExplorer(true)} />
+      <Navbar
+        onOpenExplorer={() => setShowExplorer(true)}
+        onOpenRegister={() => setShowRegister(true)}
+      />
 
       {/* Main Workspace Frame */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
-        {currentRole === 'super_admin' && <SuperAdminDashboard />}
-        {currentRole === 'restaurant_owner' && <OwnerDashboard />}
-        {currentRole === 'branch_manager' && <BranchDashboard />}
-        {currentRole === 'cashier' && <PosDashboard />}
-        {currentRole === 'kitchen' && <KdsDashboard />}
-        {currentRole === 'driver' && <DriverDashboard />}
-        {currentRole === 'customer' && <CustomerMenu />}
+        {showRegister ? (
+          <RegisterRestaurant onClose={() => setShowRegister(false)} />
+        ) : (
+          <>
+            {currentRole === 'super_admin' && <SuperAdminDashboard />}
+            {currentRole === 'restaurant_owner' && <OwnerDashboard />}
+            {currentRole === 'branch_manager' && <BranchDashboard />}
+            {currentRole === 'cashier' && <PosDashboard />}
+            {currentRole === 'kitchen' && <KdsDashboard />}
+            {currentRole === 'driver' && <DriverDashboard />}
+            {currentRole === 'customer' && <CustomerMenu />}
+          </>
+        )}
       </main>
 
       {/* Code & Architecture Explorer Modal */}

@@ -20,9 +20,10 @@ import {
 
 interface NavbarProps {
   onOpenExplorer: () => void;
+  onOpenRegister?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer, onOpenRegister }) => {
   const {
     currentRole,
     setCurrentRole,
@@ -199,6 +200,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer }) => {
               </div>
             )}
           </div>
+
+          {/* Create Free Restaurant Button */}
+          {onOpenRegister && (
+            <button
+              onClick={onOpenRegister}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs rounded-lg shadow-md shadow-amber-500/20 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+            >
+              <Sparkles className="w-3.5 h-3.5 fill-slate-950" />
+              <span>أنشئ مطعمك مجاناً</span>
+            </button>
+          )}
 
           {/* Theme Toggle Button (Light/Day vs Dark/Night) */}
           <button
