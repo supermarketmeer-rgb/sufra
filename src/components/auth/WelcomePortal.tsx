@@ -110,9 +110,8 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
 
         {/* Brand Logo & Subtitle */}
         <div className="space-y-1 mb-8">
-          <div className="text-4xl sm:text-5xl font-black text-stone-900 tracking-tight flex items-center justify-center gap-0.5">
-            <span>سُ</span>
-            <span>فرة</span>
+          <div className="text-4xl sm:text-5xl font-black text-stone-900 tracking-tight flex items-center justify-center">
+            <span>سُفرة</span>
           </div>
           <p className="text-stone-500 text-sm font-medium">نظام الطلب من الطاولة</p>
         </div>

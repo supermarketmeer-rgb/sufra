@@ -24,9 +24,13 @@ const MainContent: React.FC = () => {
     if (typeof window !== 'undefined') {
       const p = window.location.pathname.toLowerCase();
       const s = window.location.search.toLowerCase();
-      return p.includes('login') || p.includes('portal') || s.includes('portal') || s.includes('login') || s.includes('activate');
+      // If explicit role is specified (e.g. ?role=super_admin), don't show portal
+      if (s.includes('role=')) return false;
+      if (p.includes('signup') || s.includes('signup')) return false;
+      // Default to showing the Welcome Portal directly for mobile & new visitors!
+      return true;
     }
-    return false;
+    return true;
   });
   const [showRegister, setShowRegister] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
