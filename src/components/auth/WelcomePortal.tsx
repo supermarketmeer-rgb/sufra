@@ -1,21 +1,22 @@
 import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
 import { useApp } from '../../context/AppContext';
-import { RegisterRestaurant } from './RegisterRestaurant';
 import {
   Globe,
   Store,
-  Users,
   KeyRound,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
   Receipt,
   UtensilsCrossed,
   Bike,
   Building2,
-  ShieldCheck,
-  ArrowRight
+  ArrowLeft,
+  Sparkles,
+  Phone,
+  Lock,
+  User,
+  Mail
 } from 'lucide-react';
 
 interface WelcomePortalProps {
@@ -24,15 +25,30 @@ interface WelcomePortalProps {
 
 export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
   const {
-    currentRole,
     setCurrentRole,
     restaurants,
     activeRestaurant,
     setActiveRestaurant,
-    activateRestaurantPlan
+    activateRestaurantPlan,
+    createRestaurant
   } = useApp();
 
-  const [viewMode, setViewMode] = useState<'main' | 'signup' | 'staff' | 'activate'>('main');
+  const [viewMode, setViewMode] = useState<'main' | 'manager_login' | 'staff' | 'choose_signup' | 'signup_form' | 'activate'>('main');
+
+  // Manager login form state
+  const [managerUsername, setManagerUsername] = useState('');
+  const [managerPassword, setManagerPassword] = useState('');
+
+  // Signup method state
+  const [signupMethod, setSignupMethod] = useState<'email' | 'username'>('email');
+
+  // New restaurant registration state
+  const [restNameAr, setRestNameAr] = useState('');
+  const [userIdentifier, setUserIdentifier] = useState(''); // email or username
+  const [userPassword, setUserPassword] = useState('');
+  const [userPhone, setUserPhone] = useState('');
+  const [city, setCity] = useState('بغداد');
+  const [isRegistering, setIsRegistering] = useState(false);
 
   // Activation modal state
   const [activationCode, setActivationCode] = useState('');
@@ -41,7 +57,18 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
   );
   const [activationResult, setActivationResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const handleManagerLogin = () => {
+  // Handle Manager Login
+  const handleManagerLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const u = managerUsername.trim().toLowerCase();
+
+    // Direct super admin access if credentials indicate admin
+    if (u === 'superadmin' || u === 'admin' || u.includes('super')) {
+      setCurrentRole('super_admin');
+      if (onClose) onClose();
+      return;
+    }
+
     if (restaurants.length > 0) {
       if (!activeRestaurant) {
         setActiveRestaurant(restaurants[0]);
@@ -49,11 +76,23 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
       setCurrentRole('restaurant_owner');
       if (onClose) onClose();
     } else {
-      // If no restaurants exist yet, direct to free signup
-      setViewMode('signup');
+      setViewMode('choose_signup');
     }
   };
 
+  const handleGoogleLogin = () => {
+    if (restaurants.length > 0) {
+      if (!activeRestaurant) {
+        setActiveRestaurant(restaurants[0]);
+      }
+      setCurrentRole('restaurant_owner');
+      if (onClose) onClose();
+    } else {
+      setViewMode('choose_signup');
+    }
+  };
+
+  // Handle Activation Code Submit
   const handleActivateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!activationCode.trim()) return;
@@ -80,185 +119,480 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
     }
   };
 
-  // If in signup mode, render the full free restaurant registration form
-  if (viewMode === 'signup') {
-    return (
-      <RegisterRestaurant
-        onClose={() => setViewMode('main')}
-        onSuccess={() => {
-          if (onClose) onClose();
-        }}
-      />
-    );
-  }
+  // Handle Restaurant Registration Submit
+  const handleRegisterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restNameAr.trim()) {
+      alert('يرجى كتابة اسم المطعم أو المقهى');
+      return;
+    }
+    if (!userPhone.trim()) {
+      alert('يرجى إدخال رقم الهاتف أو الواتساب');
+      return;
+    }
+
+    setIsRegistering(true);
+
+    const cleanSlug = restNameAr
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_]+/g, '-')
+      .replace(/[^a-zA-Z0-9\u0621-\u064A-]/g, '')
+      .slice(0, 20) || `rest-${Date.now().toString().slice(-4)}`;
+
+    const newRest = createRestaurant({
+      name_ar: restNameAr.trim(),
+      name_en: restNameAr.trim(),
+      slug: cleanSlug,
+      phone: userPhone.trim(),
+      whatsapp_number: userPhone.trim(),
+      address: `${city}، العراق`,
+      plan_name: 'الباقة المجانية (Starter)',
+      description_ar: 'أشهى المأكولات والمشروبات بنظام سفرة الذكي',
+      theme_primary_color: '#9a3412',
+      delivery_fee_base: 3000,
+      tax_percentage: 0
+    });
+
+    try {
+      confetti({
+        particleCount: 100,
+        spread: 75,
+        origin: { y: 0.6 }
+      });
+    } catch {}
+
+    setIsRegistering(false);
+
+    setTimeout(() => {
+      setActiveRestaurant(newRest);
+      setCurrentRole('restaurant_owner');
+      if (onClose) onClose();
+    }, 1000);
+  };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center p-4 bg-[#f8f6f0] text-slate-800 font-cairo">
-      <div className="w-full max-w-sm sm:max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-[#ece7df] text-center relative animate-fade-in">
-        
-        {/* Top Globe Button (as in screenshot) */}
-        <div className="flex justify-start mb-6">
-          <button
-            type="button"
-            className="w-10 h-10 rounded-full border border-stone-300 text-stone-600 flex items-center justify-center hover:bg-stone-50 transition-colors cursor-pointer shadow-sm"
-            title="اللغة / الخيارات"
-            onClick={() => {}}
-          >
-            <Globe className="w-5 h-5" />
-          </button>
-        </div>
+    <div className="min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-6 bg-[#fbf9f4] text-stone-800 font-cairo select-none" dir="rtl">
 
-        {/* Brand Logo & Subtitle */}
-        <div className="space-y-1 mb-8">
-          <div className="text-4xl sm:text-5xl font-black text-stone-900 tracking-tight flex items-center justify-center">
-            <span>سُفرة</span>
-          </div>
-          <p className="text-stone-500 text-sm font-medium">نظام الطلب من الطاولة</p>
-        </div>
-
-        {/* View Mode: Main Screen (Matching Screenshot) */}
-        {viewMode === 'main' && (
-          <div className="space-y-4">
-            {/* Button 1: Manager Dashboard (لوحة المدير) */}
-            <button
-              onClick={handleManagerLogin}
-              className="w-full py-4 px-6 rounded-2xl bg-white border border-stone-400/80 hover:border-stone-800 text-stone-800 font-bold text-base sm:text-lg transition-all shadow-sm active:scale-[0.99] cursor-pointer"
-            >
-              لوحة المدير
-            </button>
-
-            {/* Button 2: Staff Login (دخول الطاقم) */}
-            <button
-              onClick={() => setViewMode('staff')}
-              className="w-full py-4 px-6 rounded-2xl bg-white border border-stone-400/80 hover:border-stone-800 text-stone-800 font-bold text-base sm:text-lg transition-all shadow-sm active:scale-[0.99] cursor-pointer"
-            >
-              دخول الطاقم
-            </button>
-
-            {/* Divider */}
-            <div className="pt-2 pb-1">
-              <hr className="border-stone-200" />
+      {/* SCREEN 1: Manager Login (لوحة المدير) - Matches Attachment 1 */}
+      {viewMode === 'manager_login' && (
+        <div className="w-full max-w-sm sm:max-w-md text-center animate-fade-in space-y-4">
+          <div className="space-y-1 mb-2">
+            <div className="text-3xl font-black text-stone-900 leading-none">
+              <span>سُفرة</span>
             </div>
+            <h1 className="text-3xl sm:text-4xl font-black text-stone-900 pt-1">
+              لوحة المدير
+            </h1>
+          </div>
 
-            {/* Subtext: New Restaurant? */}
-            <p className="text-stone-500 text-xs font-semibold">مطعم جديد؟</p>
+          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-[#e8e2d5] text-right">
+            <form onSubmit={handleManagerLoginSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                  اسم المستخدم أو البريد الإلكترونيّ
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={managerUsername}
+                  onChange={e => setManagerUsername(e.target.value)}
+                  placeholder=""
+                  className="w-full bg-white border border-[#c8c1b4] rounded-2xl px-4 py-3.5 text-sm text-stone-900 focus:outline-none focus:border-[#9a3412] transition-colors"
+                />
+              </div>
 
-            {/* Button 3: Create Free Restaurant (أنشئ مطعمك مجّاناً) */}
-            <button
-              onClick={() => setViewMode('signup')}
-              className="w-full py-4 px-6 rounded-2xl bg-[#9a3412] hover:bg-[#831843]/90 text-white font-black text-lg shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer"
-            >
-              أنشئ مطعمك مجّاناً
-            </button>
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                  كلمة السر
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={managerPassword}
+                  onChange={e => setManagerPassword(e.target.value)}
+                  placeholder=""
+                  className="w-full bg-white border border-[#c8c1b4] rounded-2xl px-4 py-3.5 text-sm text-stone-900 focus:outline-none focus:border-[#9a3412] transition-colors font-mono"
+                />
+              </div>
 
-            {/* Footer Link: Have activation code? Activate restaurant */}
-            <div className="pt-2">
+              <button
+                type="submit"
+                style={{ color: '#ffffff' }}
+                className="w-full py-4 px-6 rounded-2xl bg-[#9a3412] hover:bg-[#852d0f] text-white font-bold text-lg shadow-sm transition-all active:scale-[0.98] cursor-pointer mt-2"
+              >
+                دخول
+              </button>
+
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => alert('لإعادة تعيين كلمة السر، يرجى التواصل مع إدارة المنصة.')}
+                  className="text-stone-500 hover:text-stone-800 text-xs underline cursor-pointer"
+                >
+                  نسيت كلمة السر؟
+                </button>
+              </div>
+
+              {/* Or Divider */}
+              <div className="relative flex items-center justify-center my-2">
+                <hr className="w-full border-stone-200" />
+                <span className="absolute bg-white px-3 text-xs text-stone-400">أو</span>
+              </div>
+
+              {/* Google Login Button */}
               <button
                 type="button"
-                onClick={() => setViewMode('activate')}
-                className="text-stone-600 hover:text-stone-900 text-xs font-medium cursor-pointer"
+                onClick={handleGoogleLogin}
+                className="w-full py-3.5 px-6 rounded-2xl bg-white border border-[#c8c1b4] hover:border-stone-800 text-stone-800 font-bold text-sm sm:text-base transition-all shadow-sm active:scale-[0.99] cursor-pointer"
               >
-                عندك رمز تفعيل؟ <span className="underline font-bold text-[#9a3412]">فعّل مطعمك</span>
+                الدخول بحساب Google
               </button>
-            </div>
+            </form>
           </div>
-        )}
 
-        {/* View Mode: Staff Roles Selection */}
-        {viewMode === 'staff' && (
-          <div className="space-y-3 text-right">
-            <div className="flex items-center justify-between border-b border-stone-200 pb-2 mb-3">
-              <h3 className="font-bold text-stone-900 text-sm">اختر دورك في طاقم العمل:</h3>
-              <button
-                onClick={() => setViewMode('main')}
-                className="text-stone-400 hover:text-stone-600 text-xs font-semibold"
-              >
-                رجوع
-              </button>
+          <div className="pt-2">
+            <button
+              onClick={() => setViewMode('main')}
+              className="inline-flex items-center gap-1.5 text-stone-700 hover:text-stone-950 text-sm font-semibold cursor-pointer"
+            >
+              <span>العودة إلى بوابة سُفرة</span>
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* SCREEN 2: Staff Login (دخول الطاقم) - Matches Attachment 2 */}
+      {viewMode === 'staff' && (
+        <div className="w-full max-w-sm sm:max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-[#e8e2d5] text-center animate-fade-in relative">
+          {/* Top Globe Button */}
+          <div className="flex justify-end mb-4">
+            <button
+              type="button"
+              className="w-10 h-10 rounded-full border border-stone-300 text-stone-600 flex items-center justify-center hover:bg-stone-50 transition-colors shadow-sm cursor-pointer"
+            >
+              <Globe className="w-5 h-5 stroke-[1.5]" />
+            </button>
+          </div>
+
+          {/* Logo */}
+          <div className="space-y-1 mb-6">
+            <div className="text-4xl sm:text-5xl font-black text-stone-950 leading-none">
+              <span>سُفرة</span>
             </div>
+            <p className="text-stone-500 text-sm font-medium mt-1">نظام الطلب من الطاولة</p>
+          </div>
 
+          {/* Role Selection Header */}
+          <div className="flex items-center justify-between border-b border-stone-100 pb-2 mb-3 text-right">
+            <h3 className="font-bold text-stone-900 text-sm">اختر دورك في طاقم العمل:</h3>
+            <button
+              onClick={() => setViewMode('main')}
+              className="text-stone-400 hover:text-stone-600 text-xs font-semibold cursor-pointer"
+            >
+              رجوع
+            </button>
+          </div>
+
+          {/* Staff Cards matching Attachment 2 */}
+          <div className="space-y-3 text-right">
+            {/* 1: Cashier (POS) */}
             <button
               onClick={() => {
                 setCurrentRole('cashier');
                 if (onClose) onClose();
               }}
-              className="w-full p-3.5 rounded-xl border border-stone-200 hover:border-stone-400 bg-stone-50 hover:bg-white flex items-center justify-between transition-all"
+              className="w-full p-4 rounded-2xl border border-stone-200 hover:border-stone-400 bg-white flex items-center justify-between transition-all shadow-sm cursor-pointer"
             >
+              <ArrowLeft className="w-4 h-4 text-stone-400" />
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
-                  <Receipt className="w-4 h-4" />
+                <div className="text-right">
+                  <div className="font-bold text-sm text-stone-900">الكاشير ونقاط البيع (POS)</div>
+                  <div className="text-xs text-stone-500">إدخال الطلبات وإصدار الفواتير</div>
                 </div>
-                <div>
-                  <div className="font-bold text-xs text-stone-800">الكاشير ونقاط البيع (POS)</div>
-                  <div className="text-[10px] text-stone-500">إدخال الطلبات وإصدار الفواتير</div>
+                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+                  <Receipt className="w-5 h-5" />
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-stone-400 rotate-180" />
             </button>
 
+            {/* 2: Kitchen (KDS) */}
             <button
               onClick={() => {
                 setCurrentRole('kitchen');
                 if (onClose) onClose();
               }}
-              className="w-full p-3.5 rounded-xl border border-stone-200 hover:border-stone-400 bg-stone-50 hover:bg-white flex items-center justify-between transition-all"
+              className="w-full p-4 rounded-2xl border border-stone-200 hover:border-stone-400 bg-white flex items-center justify-between transition-all shadow-sm cursor-pointer"
             >
+              <ArrowLeft className="w-4 h-4 text-stone-400" />
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
-                  <UtensilsCrossed className="w-4 h-4" />
+                <div className="text-right">
+                  <div className="font-bold text-sm text-stone-900">شاشة المطبخ الذكية (KDS)</div>
+                  <div className="text-xs text-stone-500">متابعة تحضير الوجبات المباشرة</div>
                 </div>
-                <div>
-                  <div className="font-bold text-xs text-stone-800">شاشة المطبخ الذكية (KDS)</div>
-                  <div className="text-[10px] text-stone-500">متابعة تحضير الوجبات المباشرة</div>
+                <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
+                  <UtensilsCrossed className="w-5 h-5" />
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-stone-400 rotate-180" />
             </button>
 
+            {/* 3: Branch Manager */}
             <button
               onClick={() => {
                 setCurrentRole('branch_manager');
                 if (onClose) onClose();
               }}
-              className="w-full p-3.5 rounded-xl border border-stone-200 hover:border-stone-400 bg-stone-50 hover:bg-white flex items-center justify-between transition-all"
+              className="w-full p-4 rounded-2xl border border-stone-200 hover:border-stone-400 bg-white flex items-center justify-between transition-all shadow-sm cursor-pointer"
             >
+              <ArrowLeft className="w-4 h-4 text-stone-400" />
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
-                  <Building2 className="w-4 h-4" />
+                <div className="text-right">
+                  <div className="font-bold text-sm text-stone-900">مدير الفرع والصالة</div>
+                  <div className="text-xs text-stone-500">إدارة الطاولات والحجوزات</div>
                 </div>
-                <div>
-                  <div className="font-bold text-xs text-stone-800">مدير الفرع والصالة</div>
-                  <div className="text-[10px] text-stone-500">إدارة الطاولات والحجوزات</div>
+                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+                  <Building2 className="w-5 h-5" />
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-stone-400 rotate-180" />
             </button>
 
+            {/* 4: Driver */}
             <button
               onClick={() => {
                 setCurrentRole('driver');
                 if (onClose) onClose();
               }}
-              className="w-full p-3.5 rounded-xl border border-stone-200 hover:border-stone-400 bg-stone-50 hover:bg-white flex items-center justify-between transition-all"
+              className="w-full p-4 rounded-2xl border border-stone-200 hover:border-stone-400 bg-white flex items-center justify-between transition-all shadow-sm cursor-pointer"
             >
+              <ArrowLeft className="w-4 h-4 text-stone-400" />
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-700 flex items-center justify-center font-bold">
-                  <Bike className="w-4 h-4" />
+                <div className="text-right">
+                  <div className="font-bold text-sm text-stone-900">مندوب التوصيل الميداني (GPS)</div>
+                  <div className="text-xs text-stone-500">استلام وتسليم طلبات الدليفري</div>
                 </div>
-                <div>
-                  <div className="font-bold text-xs text-stone-800">مندوب التوصيل الميداني (GPS)</div>
-                  <div className="text-[10px] text-stone-500">استلام وتسليم طلبات الدليفري</div>
+                <div className="w-10 h-10 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center font-bold">
+                  <Bike className="w-5 h-5" />
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-stone-400 rotate-180" />
             </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* View Mode: Activate Subscription Code Modal */}
-        {viewMode === 'activate' && (
+      {/* SCREEN 3: Choose Signup Method (أنشئ مطعمك مجّاناً) - Matches Attachment 3 */}
+      {viewMode === 'choose_signup' && (
+        <div className="w-full max-w-sm sm:max-w-md text-center animate-fade-in space-y-5">
+          <div className="space-y-1 mb-2">
+            <h1 className="text-3xl sm:text-4xl font-black text-stone-900">
+              أنشئ مطعمك مجّاناً
+            </h1>
+            <p className="text-stone-500 text-sm font-medium mt-1">اختر طريقة إنشاء الحساب</p>
+          </div>
+
+          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-[#e8e2d5] space-y-4">
+            {/* Option 1: Email (Selected / Recommended) */}
+            <div
+              onClick={() => {
+                setSignupMethod('email');
+                setViewMode('signup_form');
+              }}
+              className="p-5 rounded-2xl border-2 border-[#9a3412] bg-[#fdf7f3] text-right cursor-pointer transition-all hover:shadow-sm"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span
+                  style={{ color: '#ffffff' }}
+                  className="bg-stone-800 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full"
+                >
+                  مُوصى به
+                </span>
+                <span className="font-bold text-base text-stone-900">بالبريد الإلكترونيّ</span>
+              </div>
+              <p className="text-stone-600 text-xs leading-relaxed pt-1">
+                بالبريد أو بحساب Google — يولّد اسم مستخدم ويسرّع الاشتراك.
+              </p>
+            </div>
+
+            {/* Option 2: Username only */}
+            <div
+              onClick={() => {
+                setSignupMethod('username');
+                setViewMode('signup_form');
+              }}
+              className="p-5 rounded-2xl border border-stone-300 hover:border-stone-500 bg-white text-right cursor-pointer transition-all hover:shadow-sm"
+            >
+              <div className="flex items-center justify-end mb-1">
+                <span className="font-bold text-base text-stone-900">باسم مستخدم فقط</span>
+              </div>
+              <p className="text-stone-500 text-xs leading-relaxed pt-1">
+                بلا بريد — تربطه عند الحاجة للاشتراك.
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <button
+              onClick={() => setViewMode('main')}
+              className="inline-flex items-center gap-1.5 text-stone-700 hover:text-stone-950 text-sm font-semibold cursor-pointer"
+            >
+              <span>العودة إلى بوابة سُفرة</span>
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* SCREEN 3-B: Actual Registration Form based on selected method */}
+      {viewMode === 'signup_form' && (
+        <div className="w-full max-w-sm sm:max-w-md text-center animate-fade-in space-y-4">
+          <div className="space-y-1 mb-2">
+            <h1 className="text-2xl sm:text-3xl font-black text-stone-900">
+              {signupMethod === 'email' ? 'إنشاء الحساب بالبريد الإلكتروني' : 'إنشاء الحساب باسم مستخدم'}
+            </h1>
+            <p className="text-stone-500 text-xs">
+              {signupMethod === 'email' ? 'سجل عبر بريدك وابدأ فوراً بالباقة المجانية' : 'ابدأ فوراً باسم مستخدم دون الحاجة لبريد'}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-[#e8e2d5] text-right">
+            <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  اسم المطعم أو المقهى <span className="text-[#9a3412]">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={restNameAr}
+                    onChange={e => setRestNameAr(e.target.value)}
+                    placeholder="مثال: شاورما السلطان"
+                    className="w-full bg-white border border-[#c8c1b4] rounded-2xl px-4 py-3 text-sm text-stone-900 focus:outline-none focus:border-[#9a3412]"
+                  />
+                  <Store className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  {signupMethod === 'email' ? 'البريد الإلكتروني' : 'اسم المستخدم'} <span className="text-[#9a3412]">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={signupMethod === 'email' ? 'email' : 'text'}
+                    required
+                    value={userIdentifier}
+                    onChange={e => setUserIdentifier(e.target.value)}
+                    placeholder={signupMethod === 'email' ? 'owner@restaurant.com' : 'chef_ali'}
+                    className="w-full bg-white border border-[#c8c1b4] rounded-2xl px-4 py-3 text-sm text-stone-900 focus:outline-none focus:border-[#9a3412]"
+                  />
+                  {signupMethod === 'email' ? (
+                    <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
+                  ) : (
+                    <User className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  كلمة المرور <span className="text-[#9a3412]">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    required
+                    value={userPassword}
+                    onChange={e => setUserPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-white border border-[#c8c1b4] rounded-2xl px-4 py-3 text-sm text-stone-900 focus:outline-none focus:border-[#9a3412] font-mono"
+                  />
+                  <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  رقم الواتساب / الهاتف <span className="text-[#9a3412]">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    required
+                    value={userPhone}
+                    onChange={e => setUserPhone(e.target.value)}
+                    placeholder="07700000000"
+                    dir="ltr"
+                    className="w-full bg-white border border-[#c8c1b4] rounded-2xl px-4 py-3 text-sm text-stone-900 focus:outline-none focus:border-[#9a3412] text-right"
+                  />
+                  <Phone className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">المدينة</label>
+                <select
+                  value={city}
+                  onChange={e => setCity(e.target.value)}
+                  className="w-full bg-white border border-[#c8c1b4] rounded-2xl px-4 py-3 text-sm text-stone-900 focus:outline-none focus:border-[#9a3412]"
+                >
+                  <option value="بغداد">بغداد</option>
+                  <option value="أربيل">أربيل</option>
+                  <option value="البصرة">البصرة</option>
+                  <option value="النجف">النجف</option>
+                  <option value="كربلاء">كربلاء</option>
+                  <option value="السليمانية">السليمانية</option>
+                  <option value="الموصل">الموصل</option>
+                  <option value="الحلة">الحلة</option>
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isRegistering}
+                style={{ color: '#ffffff' }}
+                className="w-full py-4 px-6 rounded-2xl bg-[#9a3412] hover:bg-[#852d0f] text-white font-bold text-base shadow-sm transition-all active:scale-[0.98] cursor-pointer mt-3 disabled:opacity-50"
+              >
+                {isRegistering ? 'جاري إنشاء مطعمك...' : 'إنشاء المطعم وتفعيل الخطة المجانية فوراً'}
+              </button>
+            </form>
+          </div>
+
+          <div className="pt-2">
+            <button
+              onClick={() => setViewMode('choose_signup')}
+              className="inline-flex items-center gap-1.5 text-stone-700 hover:text-stone-950 text-sm font-semibold cursor-pointer"
+            >
+              <span>العودة لاختيار طريقة التسجيل</span>
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* SCREEN 4: Activate Code (تفعيل كود الاشتراك) - Matches Attachment 4 */}
+      {viewMode === 'activate' && (
+        <div className="w-full max-w-sm sm:max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-[#e8e2d5] text-center animate-fade-in relative">
+          {/* Top Globe Button */}
+          <div className="flex justify-end mb-4">
+            <button
+              type="button"
+              className="w-10 h-10 rounded-full border border-stone-300 text-stone-600 flex items-center justify-center hover:bg-stone-50 transition-colors shadow-sm cursor-pointer"
+            >
+              <Globe className="w-5 h-5 stroke-[1.5]" />
+            </button>
+          </div>
+
+          {/* Logo */}
+          <div className="space-y-1 mb-6">
+            <div className="text-4xl sm:text-5xl font-black text-stone-950 leading-none">
+              <span>سُفرة</span>
+            </div>
+            <p className="text-stone-500 text-sm font-medium mt-1">نظام الطلب من الطاولة</p>
+          </div>
+
           <form onSubmit={handleActivateSubmit} className="space-y-4 text-right">
-            <div className="flex items-center justify-between border-b border-stone-200 pb-2 mb-2">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-2 mb-1">
               <h3 className="font-bold text-stone-900 text-sm flex items-center gap-1.5">
                 <KeyRound className="w-4 h-4 text-[#9a3412]" />
                 <span>تفعيل كود الاشتراك والترقية:</span>
@@ -266,7 +600,7 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
               <button
                 type="button"
                 onClick={() => setViewMode('main')}
-                className="text-stone-400 hover:text-stone-600 text-xs font-semibold"
+                className="text-stone-400 hover:text-stone-600 text-xs font-semibold cursor-pointer"
               >
                 رجوع
               </button>
@@ -283,7 +617,7 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
                 <select
                   value={selectedRestId}
                   onChange={e => setSelectedRestId(Number(e.target.value))}
-                  className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2.5 text-xs text-stone-800 focus:outline-none focus:border-[#9a3412]"
+                  className="w-full bg-white border border-stone-300 rounded-xl px-3 py-2.5 text-xs text-stone-800 focus:outline-none focus:border-[#9a3412]"
                 >
                   {restaurants.map(r => (
                     <option key={r.id} value={r.id}>
@@ -302,10 +636,10 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
                 placeholder="مثال: SUFRA-PRO-2026 أو VIP-2026"
                 value={activationCode}
                 onChange={e => setActivationCode(e.target.value.toUpperCase())}
-                className="w-full bg-stone-50 border border-stone-300 rounded-xl px-4 py-3 text-sm font-mono tracking-widest text-center text-stone-900 placeholder-stone-400 focus:outline-none focus:border-[#9a3412] uppercase"
+                className="w-full bg-white border border-blue-200 rounded-2xl px-4 py-3.5 text-sm font-mono tracking-wider text-center text-stone-900 placeholder-stone-400 focus:outline-none focus:border-[#9a3412] uppercase shadow-sm"
               />
-              <p className="text-[10px] text-stone-400 mt-1 text-center">
-                أكواد تجريبية جاهزة: <span className="font-mono font-bold text-stone-600">SUFRA-PRO-2026</span> أو <span className="font-mono font-bold text-stone-600">VIP-2026</span>
+              <p className="text-[10px] text-stone-500 mt-1.5 text-center">
+                أكواد تجريبية جاهزة: <span className="font-mono font-bold text-stone-700">SUFRA-PRO-2026</span> أو <span className="font-mono font-bold text-stone-700">VIP-2026</span>
               </p>
             </div>
 
@@ -328,13 +662,84 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
 
             <button
               type="submit"
-              className="w-full py-3.5 px-4 rounded-xl bg-[#9a3412] hover:bg-[#831843] text-white font-bold text-sm shadow-md transition-all cursor-pointer"
+              style={{ color: '#ffffff' }}
+              className="w-full py-4 px-6 rounded-2xl bg-[#9a3412] hover:bg-[#852d0f] text-white font-bold text-base shadow-sm transition-all active:scale-[0.98] cursor-pointer mt-1"
             >
               تفعيل الترقية الآن
             </button>
           </form>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* ROOT MAIN SCREEN: Matches EXACT User Attachment `media_1790427297468.png` */}
+      {viewMode === 'main' && (
+        <div className="w-full max-w-xs sm:max-w-sm text-center relative animate-fade-in flex flex-col items-center">
+          {/* Top Globe Button - Aligned to Top-Left exactly as in user attachment */}
+          <div className="w-full flex justify-start mb-6">
+            <button
+              type="button"
+              className="w-11 h-11 rounded-full border border-[#d6cfc2] text-stone-700 flex items-center justify-center hover:bg-stone-100 transition-colors shadow-none cursor-pointer"
+            >
+              <Globe className="w-5 h-5 stroke-[1.5]" />
+            </button>
+          </div>
+
+          {/* Logo & Subtitle */}
+          <div className="space-y-1 mb-8 w-full">
+            <div className="text-4xl sm:text-5xl font-black text-stone-900 leading-none">
+              <span>سُفرة</span>
+            </div>
+            <p className="text-[#78716c] text-sm font-medium mt-2">نظام الطلب من الطاولة</p>
+          </div>
+
+          {/* Buttons Stack - Floating directly on warm cream background with exact borders */}
+          <div className="w-full space-y-3.5">
+            <button
+              onClick={() => setViewMode('manager_login')}
+              className="w-full py-4 px-6 rounded-2xl bg-white border border-[#c4bcb0] hover:border-stone-800 text-[#2c241e] font-bold text-lg transition-all active:scale-[0.99] cursor-pointer shadow-none"
+            >
+              لوحة المدير
+            </button>
+
+            <button
+              onClick={() => setViewMode('staff')}
+              className="w-full py-4 px-6 rounded-2xl bg-white border border-[#c4bcb0] hover:border-stone-800 text-[#2c241e] font-bold text-lg transition-all active:scale-[0.99] cursor-pointer shadow-none"
+            >
+              دخول الطاقم
+            </button>
+
+            {/* Divider */}
+            <div className="py-2 w-full">
+              <hr className="border-t border-[#e2dbcd]" />
+            </div>
+
+            {/* New restaurant prompt */}
+            <p className="text-[#78716c] text-sm font-normal">مطعمٌ جديد؟</p>
+
+            <button
+              onClick={() => setViewMode('choose_signup')}
+              style={{ color: '#ffffff' }}
+              className="w-full py-4 px-6 rounded-2xl bg-[#a3421e] hover:bg-[#8d3717] text-white font-bold text-lg shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+            >
+              أنشئ مطعمك مجّاناً
+            </button>
+
+            {/* Bottom link for activation */}
+            <div className="pt-2">
+              <p className="text-[#78716c] text-sm font-normal">
+                عندك رمز تفعيل؟{' '}
+                <button
+                  type="button"
+                  onClick={() => setViewMode('activate')}
+                  className="underline text-stone-800 hover:text-[#a3421e] font-normal cursor-pointer"
+                >
+                  فعّل مطعمك
+                </button>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -64,7 +64,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer, onOpenRegister, 
               س
             </div>
             <div>
-              <div className="text-base font-bold tracking-tight text-white flex items-center gap-1.5 leading-tight">
+              <div className="text-base font-bold text-white flex items-center gap-1.5 leading-tight">
                 سُفرة SaaS
                 <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
                   Cloud Enterprise

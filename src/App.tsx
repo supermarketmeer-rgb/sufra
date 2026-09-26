@@ -41,6 +41,22 @@ const MainContent: React.FC = () => {
     return false;
   });
 
+  if (showPortal) {
+    return (
+      <div className="min-h-screen bg-[#fbf9f4] text-stone-800 flex flex-col font-cairo" dir="rtl">
+        <WelcomePortal onClose={() => setShowPortal(false)} />
+        <div className="pb-6 text-center">
+          <button
+            onClick={() => setShowPortal(false)}
+            className="text-xs text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
+          >
+            تخطي إلى لوحة النظام التجريبية / Super Admin
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-cairo">
       {/* Top Bar with Role Switcher & Code Studio */}
@@ -52,9 +68,7 @@ const MainContent: React.FC = () => {
 
       {/* Main Workspace Frame */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
-        {showPortal ? (
-          <WelcomePortal onClose={() => setShowPortal(false)} />
-        ) : showRegister ? (
+        {showRegister ? (
           <RegisterRestaurant onClose={() => setShowRegister(false)} />
         ) : (
           <>
