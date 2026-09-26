@@ -244,7 +244,8 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="w-full py-3.5 px-6 rounded-2xl bg-white border border-[#c8c1b4] hover:border-stone-800 text-stone-800 font-bold text-sm sm:text-base transition-all shadow-sm active:scale-[0.99] cursor-pointer"
+                style={{ color: '#2c241e' }}
+                className="w-full py-3.5 px-6 rounded-2xl bg-white border border-[#c8c1b4] hover:border-stone-800 text-[#2c241e] font-bold text-sm sm:text-base transition-all shadow-sm active:scale-[0.99] cursor-pointer"
               >
                 الدخول بحساب Google
               </button>
@@ -696,6 +697,7 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
           <div className="w-full space-y-3.5">
             <button
               onClick={() => setViewMode('manager_login')}
+              style={{ color: '#2c241e' }}
               className="w-full py-4 px-6 rounded-2xl bg-white border border-[#c4bcb0] hover:border-stone-800 text-[#2c241e] font-bold text-lg transition-all active:scale-[0.99] cursor-pointer shadow-none"
             >
               لوحة المدير
@@ -703,6 +705,7 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
 
             <button
               onClick={() => setViewMode('staff')}
+              style={{ color: '#2c241e' }}
               className="w-full py-4 px-6 rounded-2xl bg-white border border-[#c4bcb0] hover:border-stone-800 text-[#2c241e] font-bold text-lg transition-all active:scale-[0.99] cursor-pointer shadow-none"
             >
               دخول الطاقم

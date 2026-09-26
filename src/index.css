@@ -113,14 +113,18 @@ body.light-mode .hover\:bg-slate-800\/30:hover {
 }
 
 /* Typography in Light Mode */
-body.light-mode .text-white:not(button):not(button *):not([class*="bg-"]) {
+body.light-mode .text-white:not(button):not(button *):not([class*="bg-amber"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-[#"]) {
   color: #0f172a !important;
 }
 
-/* Always ensure buttons and badges with solid backgrounds keep crisp white text */
-button[class*="bg-"],
-button.text-white,
-button .text-white,
+/* Ensure buttons with dark/colored backgrounds keep white text */
+button[class*="bg-amber"],
+button[class*="bg-rose"],
+button[class*="bg-emerald"],
+button[class*="bg-blue"],
+button[class*="bg-[#"],
+button[class*="bg-stone-8"],
+button[class*="bg-stone-9"],
 .badge-white-text {
   color: #ffffff !important;
 }
