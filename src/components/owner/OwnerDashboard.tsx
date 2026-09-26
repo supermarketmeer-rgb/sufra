@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { useApp } from '../../context/AppContext';
-import { Product, ProductSize, ProductAddon } from '../../types';
+import { Product, ProductSize, ProductAddon, Category } from '../../types';
 import {
   UtensilsCrossed,
   QrCode,
@@ -33,6 +33,7 @@ export const OwnerDashboard: React.FC = () => {
     addBranch,
     categories,
     addCategory,
+    updateCategory,
     deleteCategory,
     products,
     addProduct,
@@ -51,7 +52,9 @@ export const OwnerDashboard: React.FC = () => {
   // Menu filters & modals
   const [selectedCatId, setSelectedCatId] = useState<number | 'all'>('all');
   const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [newCatNameAr, setNewCatNameAr] = useState('');
   const [newCatNameEn, setNewCatNameEn] = useState('');
   const [showAddBranchModal, setShowAddBranchModal] = useState(false);
@@ -121,31 +124,67 @@ export const OwnerDashboard: React.FC = () => {
     window.print();
   };
 
-  const handleCreateProduct = (e: React.FormEvent) => {
+  const handleOpenEditProduct = (prod: Product) => {
+    setEditingProduct(prod);
+    setProdNameAr(prod.name_ar);
+    setProdNameEn(prod.name_en || '');
+    setProdCategory(prod.category_id);
+    setProdPrice(prod.base_price);
+    setProdDiscount(prod.discount_price);
+    setProdPrepTime(prod.prep_time_minutes || 15);
+    setProdCalories(prod.calories || 500);
+    setProdDescAr(prod.description_ar || '');
+    setProdImageUrl(prod.image_url || '/src/assets/images/dish_mixed_grills_1790265810518.jpg');
+    setShowAddProductModal(true);
+  };
+
+  const handleOpenEditCategory = (cat: Category) => {
+    setEditingCategory(cat);
+    setNewCatNameAr(cat.name_ar);
+    setNewCatNameEn(cat.name_en || '');
+    setShowAddCategoryModal(true);
+  };
+
+  const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
     if (!prodNameAr || !prodPrice) return;
 
-    addProduct({
-      name_ar: prodNameAr,
-      name_en: prodNameEn || prodNameAr,
-      category_id: prodCategory,
-      base_price: Number(prodPrice),
-      discount_price: prodDiscount ? Number(prodDiscount) : undefined,
-      prep_time_minutes: Number(prodPrepTime),
-      calories: Number(prodCalories),
-      description_ar: prodDescAr,
-      image_url: prodImageUrl,
-      sizes: [
-        { id: Date.now(), product_id: 0, name_ar: 'عادي (Regular)', name_en: 'Regular', extra_price: 0, is_default: true },
-        { id: Date.now() + 1, product_id: 0, name_ar: 'كبير (Large)', name_en: 'Large', extra_price: 3000 },
-      ],
-      addons: [
-        { id: Date.now() + 2, product_id: 0, name_ar: 'جبنة إضافية', name_en: 'Extra Cheese', price: 1500 },
-        { id: Date.now() + 3, product_id: 0, name_ar: 'صوص حار مميز', name_en: 'Spicy Dip', price: 1000 },
-      ]
-    });
+    if (editingProduct) {
+      updateProduct(editingProduct.id, {
+        name_ar: prodNameAr,
+        name_en: prodNameEn || prodNameAr,
+        category_id: prodCategory,
+        base_price: Number(prodPrice),
+        discount_price: prodDiscount ? Number(prodDiscount) : undefined,
+        prep_time_minutes: Number(prodPrepTime),
+        calories: Number(prodCalories),
+        description_ar: prodDescAr,
+        image_url: prodImageUrl
+      });
+    } else {
+      addProduct({
+        name_ar: prodNameAr,
+        name_en: prodNameEn || prodNameAr,
+        category_id: prodCategory,
+        base_price: Number(prodPrice),
+        discount_price: prodDiscount ? Number(prodDiscount) : undefined,
+        prep_time_minutes: Number(prodPrepTime),
+        calories: Number(prodCalories),
+        description_ar: prodDescAr,
+        image_url: prodImageUrl,
+        sizes: [
+          { id: Date.now(), product_id: 0, name_ar: 'عادي (Regular)', name_en: 'Regular', extra_price: 0, is_default: true },
+          { id: Date.now() + 1, product_id: 0, name_ar: 'كبير (Large)', name_en: 'Large', extra_price: 3000 },
+        ],
+        addons: [
+          { id: Date.now() + 2, product_id: 0, name_ar: 'جبنة إضافية', name_en: 'Extra Cheese', price: 1500 },
+          { id: Date.now() + 3, product_id: 0, name_ar: 'صوص حار مميز', name_en: 'Spicy Dip', price: 1000 },
+        ]
+      });
+    }
 
     setShowAddProductModal(false);
+    setEditingProduct(null);
     setProdNameAr('');
     setProdNameEn('');
     setProdDescAr('');
@@ -284,7 +323,12 @@ export const OwnerDashboard: React.FC = () => {
                 </button>
               ))}
               <button
-                onClick={() => setShowAddCategoryModal(true)}
+                onClick={() => {
+                  setEditingCategory(null);
+                  setNewCatNameAr('');
+                  setNewCatNameEn('');
+                  setShowAddCategoryModal(true);
+                }}
                 className="px-3 py-1.5 rounded-xl text-xs font-medium border border-dashed border-slate-700 hover:border-amber-400 text-slate-400 hover:text-amber-400 flex items-center gap-1 transition-colors whitespace-nowrap"
                 title="إضافة قسم أو تصنيف جديد"
               >
@@ -293,13 +337,53 @@ export const OwnerDashboard: React.FC = () => {
               </button>
             </div>
 
-            <button
-              onClick={() => setShowAddProductModal(true)}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold rounded-xl shadow-md transition-colors whitespace-nowrap"
-            >
-              <Plus className="w-4 h-4" />
-              <span>إضافة طبق / وجبة جديدة</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {selectedCatId !== 'all' && (
+                <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1">
+                  <button
+                    onClick={() => {
+                      const target = categories.find(c => c.id === selectedCatId);
+                      if (target) handleOpenEditCategory(target);
+                    }}
+                    className="px-2.5 py-1 text-slate-300 hover:text-amber-400 text-xs font-medium rounded-lg hover:bg-slate-800 flex items-center gap-1 transition-colors"
+                    title="تعديل اسم القسم"
+                  >
+                    <Edit2 className="w-3 h-3 text-amber-400" />
+                    <span>تعديل القسم</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const target = categories.find(c => c.id === selectedCatId);
+                      if (target && window.confirm(`هل أنت متأكد من حذف قسم "${target.name_ar}" وجميع تفاصيله؟`)) {
+                        deleteCategory(target.id);
+                        setSelectedCatId('all');
+                      }
+                    }}
+                    className="px-2.5 py-1 text-slate-300 hover:text-rose-400 text-xs font-medium rounded-lg hover:bg-slate-800 flex items-center gap-1 transition-colors"
+                    title="حذف هذا القسم"
+                  >
+                    <Trash2 className="w-3 h-3 text-rose-400" />
+                    <span>حذف القسم</span>
+                  </button>
+                </div>
+              )}
+
+              <button
+                onClick={() => {
+                  setEditingProduct(null);
+                  setProdNameAr('');
+                  setProdNameEn('');
+                  setProdDescAr('');
+                  setProdPrice(12000);
+                  setProdDiscount(undefined);
+                  setShowAddProductModal(true);
+                }}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold rounded-xl shadow-md transition-colors whitespace-nowrap"
+              >
+                <Plus className="w-4 h-4" />
+                <span>إضافة طبق / وجبة جديدة</span>
+              </button>
+            </div>
           </div>
 
           {/* Product Cards Grid */}
@@ -362,7 +446,18 @@ export const OwnerDashboard: React.FC = () => {
                   </span>
                   <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => deleteProduct(prod.id)}
+                      onClick={() => handleOpenEditProduct(prod)}
+                      className="p-1.5 text-slate-400 hover:text-amber-400 rounded-lg hover:bg-slate-800 transition-colors"
+                      title="تعديل بيانات الصنف"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`هل أنت متأكد من حذف صنف "${prod.name_ar}" من المنيو؟`)) {
+                          deleteProduct(prod.id);
+                        }
+                      }}
                       className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition-colors"
                       title="حذف الصنف"
                     >
@@ -780,28 +875,44 @@ export const OwnerDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Add Category Modal */}
+      {/* Add / Edit Category Modal */}
       {showAddCategoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <Layers className="w-4 h-4 text-amber-400" />
-                <span>إضافة قسم / تصنيف جديد للمنيو</span>
+                <span>{editingCategory ? 'تعديل اسم وبيانات القسم' : 'إضافة قسم / تصنيف جديد للمنيو'}</span>
               </h3>
-              <button onClick={() => setShowAddCategoryModal(false)} className="text-slate-400 hover:text-white">✕</button>
+              <button
+                onClick={() => {
+                  setShowAddCategoryModal(false);
+                  setEditingCategory(null);
+                }}
+                className="text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
             </div>
 
             <form
               onSubmit={e => {
                 e.preventDefault();
                 if (!newCatNameAr.trim()) return;
-                addCategory({
-                  name_ar: newCatNameAr.trim(),
-                  name_en: newCatNameEn.trim() || newCatNameAr.trim()
-                });
+                if (editingCategory) {
+                  updateCategory(editingCategory.id, {
+                    name_ar: newCatNameAr.trim(),
+                    name_en: newCatNameEn.trim() || newCatNameAr.trim()
+                  });
+                } else {
+                  addCategory({
+                    name_ar: newCatNameAr.trim(),
+                    name_en: newCatNameEn.trim() || newCatNameAr.trim()
+                  });
+                }
                 setNewCatNameAr('');
                 setNewCatNameEn('');
+                setEditingCategory(null);
                 setShowAddCategoryModal(false);
               }}
               className="space-y-3 text-xs"
@@ -832,7 +943,10 @@ export const OwnerDashboard: React.FC = () => {
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setShowAddCategoryModal(false)}
+                  onClick={() => {
+                    setShowAddCategoryModal(false);
+                    setEditingCategory(null);
+                  }}
                   className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700"
                 >
                   إلغاء
@@ -841,7 +955,7 @@ export const OwnerDashboard: React.FC = () => {
                   type="submit"
                   className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl shadow-md transition-colors"
                 >
-                  حفظ القسم
+                  {editingCategory ? 'حفظ التعديلات' : 'حفظ القسم'}
                 </button>
               </div>
             </form>
@@ -849,16 +963,26 @@ export const OwnerDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Add Product Modal */}
+      {/* Add / Edit Product Modal */}
       {showAddProductModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-white">إضافة صنف وجبة جديد إلى المنيو</h3>
-              <button onClick={() => setShowAddProductModal(false)} className="text-slate-400 hover:text-white">✕</button>
+              <h3 className="text-base font-bold text-white">
+                {editingProduct ? `تعديل الصنف: ${editingProduct.name_ar}` : 'إضافة صنف وجبة جديد إلى المنيو'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowAddProductModal(false);
+                  setEditingProduct(null);
+                }}
+                className="text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
             </div>
 
-            <form onSubmit={handleCreateProduct} className="space-y-3 text-xs">
+            <form onSubmit={handleSaveProduct} className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-400 mb-1">اسم الصنف بالعربية *</label>
@@ -954,16 +1078,19 @@ export const OwnerDashboard: React.FC = () => {
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setShowAddProductModal(false)}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl"
+                  onClick={() => {
+                    setShowAddProductModal(false);
+                    setEditingProduct(null);
+                  }}
+                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl shadow-md transition-colors"
                 >
-                  حفظ الصنف ونشره في المنيو
+                  {editingProduct ? 'حفظ التعديلات' : 'حفظ الصنف ونشره في المنيو'}
                 </button>
               </div>
             </form>

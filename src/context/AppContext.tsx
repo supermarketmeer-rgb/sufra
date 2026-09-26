@@ -57,6 +57,7 @@ interface AppContextType {
   updateProduct: (productId: number, updates: Partial<Product>) => void;
   deleteProduct: (productId: number) => void;
   addCategory: (categoryData: Partial<Category>) => void;
+  updateCategory: (categoryId: number, updates: Partial<Category>) => void;
   deleteCategory: (categoryId: number) => void;
   addBranch: (branchData: Partial<Branch>) => void;
   addReservation: (res: Partial<Reservation>) => void;
@@ -253,6 +254,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCategories(prev => [...prev, newCat]);
   };
 
+  const updateCategory = (categoryId: number, updates: Partial<Category>) => {
+    setCategories(prev => prev.map(c => c.id === categoryId ? { ...c, ...updates } : c));
+  };
+
   const deleteCategory = (categoryId: number) => {
     setCategories(prev => prev.filter(c => c.id !== categoryId));
   };
@@ -403,6 +408,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateProduct,
         deleteProduct,
         addCategory,
+        updateCategory,
         deleteCategory,
         addBranch,
         addReservation,
