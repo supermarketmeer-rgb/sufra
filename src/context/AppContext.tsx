@@ -72,6 +72,9 @@ interface AppContextType {
   createOrder: (orderData: Partial<Order> & { items: OrderItem[] }) => Order;
   updateOrderStatus: (orderId: number, newStatus: OrderStatus) => void;
   updateTableStatus: (tableId: number, status: 'available' | 'occupied' | 'reserved') => void;
+  addTable: (tableData: Partial<DiningTable>) => { success: boolean; message: string; table?: DiningTable };
+  updateTable: (tableId: number, updates: Partial<DiningTable>) => void;
+  deleteTable: (tableId: number) => { success: boolean; message: string };
   addProduct: (productData: Partial<Product>) => void;
   updateProduct: (productId: number, updates: Partial<Product>) => void;
   deleteProduct: (productId: number) => void;
@@ -331,7 +334,123 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateTableStatus = (tableId: number, status: 'available' | 'occupied' | 'reserved') => {
-    setTables(prev => prev.map(t => t.id === tableId ? { ...t, status } : t));
+    setTables(prev => {
+      const next = prev.map(t => (t.id === tableId ? { ...t, status } : t));
+      saveToStorage('sufrah_v2_tables', next);
+      return next;
+    });
+  };
+
+  const getRestaurantMaxTables = (restaurantId: number): number => {
+    const rest = restaurants.find(r => r.id === restaurantId);
+    if (!rest) return 10;
+    const plan = plans.find(p => p.name_ar === rest.plan_name || rest.plan_name.includes(p.name_en));
+    if (plan) return plan.max_tables;
+    if (rest.plan_name.includes('Starter') || rest.plan_name.includes('مجانية')) return 10;
+    if (rest.plan_name.includes('Pro') || rest.plan_name.includes('احترافية')) return 60;
+    if (rest.plan_name.includes('Enterprise') || rest.plan_name.includes('مؤسسية')) return 1000;
+    return 10;
+  };
+
+  const addTable = (tableData: Partial<DiningTable>): { success: boolean; message: string; table?: DiningTable } => {
+    if (!activeRestaurant) return { success: false, message: 'لا يوجد مطعم نشط' };
+
+    const restBranches = branches.filter(b => b.restaurant_id === activeRestaurant.id);
+    const targetBranchId = tableData.branch_id || (restBranches[0]?.id || 1);
+    const restBranchIds = restBranches.map(b => b.id);
+
+    const currentTables = tables.filter(t => restBranchIds.includes(t.branch_id));
+    const maxAllowed = getRestaurantMaxTables(activeRestaurant.id);
+
+    if (currentTables.length >= maxAllowed) {
+      return {
+        success: false,
+        message: `لقد وصلت للحد الأقصى لعدد الطاولات المسموح به (${maxAllowed} طاولات) في باقتك الحالية (${activeRestaurant.plan_name}). يرجى ترقية الباقة لزيادة عدد الطاولات.`
+      };
+    }
+
+    const nextId = tables.length > 0 ? Math.max(...tables.map(t => t.id)) + 1 : 1;
+    const cleanNum = tableData.table_number?.trim() || `T-${String(currentTables.length + 1).padStart(2, '0')}`;
+
+    if (currentTables.some(t => t.table_number.toLowerCase() === cleanNum.toLowerCase())) {
+      return {
+        success: false,
+        message: `رقم الطاولة (${cleanNum}) مسجل مسبقاً، يرجى كتابة رقم مختلف.`
+      };
+    }
+
+    const newTable: DiningTable = {
+      id: nextId,
+      branch_id: targetBranchId,
+      table_number: cleanNum,
+      capacity: Number(tableData.capacity) || 4,
+      status: tableData.status || 'available',
+      qr_token: `qr_${activeRestaurant.slug}_${cleanNum.toLowerCase().replace(/[^a-z0-9]/g, '')}`
+    };
+
+    const next = [...tables, newTable];
+    setTables(next);
+    saveToStorage('sufrah_v2_tables', next);
+
+    const log: ActivityLog = {
+      id: Date.now(),
+      user_name: activeRestaurant.name_ar,
+      role: 'restaurant_owner',
+      action: 'Table Created',
+      description: `تمت إضافة طاولة جديدة (${cleanNum}) بسعة ${newTable.capacity} أشخاص (الطاولة ${currentTables.length + 1} من ${maxAllowed})`,
+      timestamp: 'الآن'
+    };
+    setActivityLogs(prev => [log, ...prev]);
+
+    return {
+      success: true,
+      message: `تمت إضافة الطاولة (${cleanNum}) بنجاح!`,
+      table: newTable
+    };
+  };
+
+  const updateTable = (tableId: number, updates: Partial<DiningTable>) => {
+    setTables(prev => {
+      const next = prev.map(t => (t.id === tableId ? { ...t, ...updates } : t));
+      saveToStorage('sufrah_v2_tables', next);
+      return next;
+    });
+
+    const target = tables.find(t => t.id === tableId);
+    if (target && activeRestaurant) {
+      const log: ActivityLog = {
+        id: Date.now(),
+        user_name: activeRestaurant.name_ar,
+        role: 'restaurant_owner',
+        action: 'Table Updated',
+        description: `تم تعديل بيانات الطاولة (${target.table_number})`,
+        timestamp: 'الآن'
+      };
+      setActivityLogs(prev => [log, ...prev]);
+    }
+  };
+
+  const deleteTable = (tableId: number): { success: boolean; message: string } => {
+    const target = tables.find(t => t.id === tableId);
+    if (!target) return { success: false, message: 'الطاولة غير موجودة' };
+
+    setTables(prev => {
+      const next = prev.filter(t => t.id !== tableId);
+      saveToStorage('sufrah_v2_tables', next);
+      return next;
+    });
+
+    const log: ActivityLog = {
+      id: Date.now(),
+      user_name: activeRestaurant?.name_ar || 'مالك المطعم',
+      role: 'restaurant_owner',
+      action: 'Table Deleted',
+      description: `تم حذف الطاولة (${target.table_number})`,
+      timestamp: 'الآن'
+    };
+    setActivityLogs(prev => [log, ...prev]);
+
+    return { success: true, message: `تم حذف الطاولة (${target.table_number}) بنجاح.` };
   };
 
   const addProduct = (productData: Partial<Product>) => {
@@ -646,6 +765,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createOrder,
         updateOrderStatus,
         updateTableStatus,
+        addTable,
+        updateTable,
+        deleteTable,
         addProduct,
         updateProduct,
         deleteProduct,
