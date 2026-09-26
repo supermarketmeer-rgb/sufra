@@ -56,6 +56,8 @@ interface AppContextType {
   addProduct: (productData: Partial<Product>) => void;
   updateProduct: (productId: number, updates: Partial<Product>) => void;
   deleteProduct: (productId: number) => void;
+  addCategory: (categoryData: Partial<Category>) => void;
+  deleteCategory: (categoryId: number) => void;
   addBranch: (branchData: Partial<Branch>) => void;
   addReservation: (res: Partial<Reservation>) => void;
   updateReservationStatus: (resId: number, status: 'pending' | 'confirmed' | 'cancelled') => void;
@@ -237,6 +239,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setProducts(prev => prev.filter(p => p.id !== productId));
   };
 
+  const addCategory = (categoryData: Partial<Category>) => {
+    const nextId = categories.length > 0 ? Math.max(...categories.map(c => c.id)) + 1 : 1;
+    const newCat: Category = {
+      id: nextId,
+      restaurant_id: activeRestaurant.id,
+      name_ar: categoryData.name_ar || 'قسم جديد',
+      name_en: categoryData.name_en || 'New Category',
+      slug: (categoryData.slug || categoryData.name_ar || 'category').toLowerCase().trim().replace(/[\s_]+/g, '-'),
+      icon_name: categoryData.icon_name || 'utensils',
+      sort_order: categories.length + 1
+    };
+    setCategories(prev => [...prev, newCat]);
+  };
+
+  const deleteCategory = (categoryId: number) => {
+    setCategories(prev => prev.filter(c => c.id !== categoryId));
+  };
+
   const addBranch = (branchData: Partial<Branch>) => {
     const nextId = branches.length > 0 ? Math.max(...branches.map(b => b.id)) + 1 : 1;
     const newBranch: Branch = {
@@ -382,6 +402,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addProduct,
         updateProduct,
         deleteProduct,
+        addCategory,
+        deleteCategory,
         addBranch,
         addReservation,
         updateReservationStatus,

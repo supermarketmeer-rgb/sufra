@@ -98,8 +98,9 @@ export const SuperAdminDashboard: React.FC = () => {
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono-numbers text-white">$14,850</span>
-            <span className="text-xs text-emerald-400 font-medium">+18.4%</span>
+            <span className="text-2xl font-bold font-mono-numbers text-white">18,500,000</span>
+            <span className="text-xs text-slate-400">د.ع</span>
+            <span className="text-xs text-emerald-400 font-medium mr-1">+18.4%</span>
           </div>
           <p className="text-[11px] text-slate-500 mt-1">اشتراكات SaaS المستحقة شهرياً</p>
         </div>
@@ -311,8 +312,14 @@ export const SuperAdminDashboard: React.FC = () => {
                 <p className="text-xs text-slate-400 mt-1">{plan.name_en}</p>
 
                 <div className="mt-5 flex items-baseline gap-1">
-                  <span className="text-3xl font-black font-mono-numbers text-white">${plan.price_monthly}</span>
-                  <span className="text-xs text-slate-400">/ شهرياً (${plan.price_yearly} سنوياً)</span>
+                  <span className="text-2xl font-black font-mono-numbers text-white">
+                    {plan.price_monthly === 0 ? 'مجاناً' : `${plan.price_monthly.toLocaleString()} د.ع`}
+                  </span>
+                  {plan.price_monthly > 0 && (
+                    <span className="text-xs text-slate-400">
+                      / شهرياً ({plan.price_yearly.toLocaleString()} د.ع سنوياً)
+                    </span>
+                  )}
                 </div>
 
                 <div className="mt-6 pt-5 border-t border-slate-800/80 space-y-2.5 text-xs text-slate-300">

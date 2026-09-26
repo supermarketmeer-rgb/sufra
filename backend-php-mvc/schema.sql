@@ -33,7 +33,7 @@ CREATE TABLE `plans` (
   `slug` VARCHAR(50) NOT NULL UNIQUE,
   `price_monthly` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `price_yearly` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-  `currency` VARCHAR(10) DEFAULT 'USD',
+  `currency` VARCHAR(10) DEFAULT 'IQD',
   `max_branches` INT NOT NULL DEFAULT 1,
   `max_tables` INT NOT NULL DEFAULT 10,
   `max_products` INT NOT NULL DEFAULT 50,
@@ -614,13 +614,13 @@ INSERT INTO `roles` (`id`, `name`, `display_name_ar`, `display_name_en`, `descri
 (7, 'customer', 'زبون / عميل', 'Customer', 'Browses digital QR menu, places orders, reservations, reviews');
 
 INSERT INTO `plans` (`id`, `name_ar`, `name_en`, `slug`, `price_monthly`, `price_yearly`, `currency`, `max_branches`, `max_tables`, `max_products`, `has_pos`, `has_kds`, `has_delivery_gps`, `has_ai_analytics`, `has_custom_domain`) VALUES
-(1, 'الباقة المجانية (الأساسية)', 'Free Starter Plan', 'free', 0.00, 0.00, 'USD', 1, 10, 50, 0, 0, 0, 0, 0),
-(2, 'الباقة الاحترافية (Pro)', 'Professional Plan', 'pro', 49.00, 490.00, 'USD', 3, 50, 300, 1, 1, 0, 1, 0),
-(3, 'الباقة المؤسسية (Enterprise)', 'Enterprise Multi-Branch', 'enterprise', 119.00, 1190.00, 'USD', 99, 500, 2000, 1, 1, 1, 1, 1);
+(1, 'الباقة المجانية (الأساسية)', 'Free Starter Plan', 'free', 0.00, 0.00, 'IQD', 1, 10, 50, 0, 0, 0, 0, 0),
+(2, 'الباقة الاحترافية (Pro)', 'Professional Plan', 'pro', 65000.00, 650000.00, 'IQD', 3, 50, 300, 1, 1, 0, 1, 0),
+(3, 'الباقة المؤسسية (Enterprise)', 'Enterprise Multi-Branch', 'enterprise', 150000.00, 1500000.00, 'IQD', 99, 500, 2000, 1, 1, 1, 1, 1);
 
 INSERT INTO `system_settings` (`key`, `value`, `group`, `is_public`) VALUES
 ('platform_name', 'Sufrah SaaS Restaurant Cloud', 'general', 1),
-('default_currency', 'USD', 'billing', 1),
-('supported_currencies', '["USD", "IQD", "SAR", "AED"]', 'billing', 1),
+('default_currency', 'IQD', 'billing', 1),
+('supported_currencies', '["IQD", "USD"]', 'billing', 1),
 ('smtp_host', 'smtp.sendgrid.net', 'email', 0),
 ('jwt_secret_key', 'sufrah_enterprise_jwt_ultra_secret_key_2026', 'security', 0);

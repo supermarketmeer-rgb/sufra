@@ -499,7 +499,7 @@ export const PosDashboard: React.FC = () => {
                 {completedOrderReceipt.order.items.map((it: OrderItem, idx: number) => (
                   <div key={idx} className="py-1 flex justify-between">
                     <span>{it.quantity}x {it.product_name}</span>
-                    <span className="font-bold">{it.subtotal.toLocaleString()}</span>
+                    <span className="font-bold">{it.subtotal.toLocaleString()} د.ع</span>
                   </div>
                 ))}
               </div>

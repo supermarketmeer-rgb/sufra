@@ -577,7 +577,7 @@ export const CustomerMenu: React.FC = () => {
                         </span>
                         {prod.discount_price && (
                           <span className="text-[10px] text-slate-500 line-through mr-1.5">
-                            {prod.base_price.toLocaleString()}
+                            {prod.base_price.toLocaleString()} د.ع
                           </span>
                         )}
                       </div>

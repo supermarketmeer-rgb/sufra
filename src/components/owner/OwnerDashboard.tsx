@@ -32,6 +32,8 @@ export const OwnerDashboard: React.FC = () => {
     branches,
     addBranch,
     categories,
+    addCategory,
+    deleteCategory,
     products,
     addProduct,
     updateProduct,
@@ -46,9 +48,12 @@ export const OwnerDashboard: React.FC = () => {
   const [ownerWhatsApp, setOwnerWhatsApp] = useState<string>(activeRestaurant.whatsapp_number || '+9647701234567');
   const [savedWhatsAppSuccess, setSavedWhatsAppSuccess] = useState(false);
 
-  // Menu filters
+  // Menu filters & modals
   const [selectedCatId, setSelectedCatId] = useState<number | 'all'>('all');
   const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [newCatNameAr, setNewCatNameAr] = useState('');
+  const [newCatNameEn, setNewCatNameEn] = useState('');
   const [showAddBranchModal, setShowAddBranchModal] = useState(false);
 
   // New product form
@@ -278,6 +283,14 @@ export const OwnerDashboard: React.FC = () => {
                   {cat.name_ar}
                 </button>
               ))}
+              <button
+                onClick={() => setShowAddCategoryModal(true)}
+                className="px-3 py-1.5 rounded-xl text-xs font-medium border border-dashed border-slate-700 hover:border-amber-400 text-slate-400 hover:text-amber-400 flex items-center gap-1 transition-colors whitespace-nowrap"
+                title="إضافة قسم أو تصنيف جديد"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>قسم جديد</span>
+              </button>
             </div>
 
             <button
@@ -764,6 +777,75 @@ export const OwnerDashboard: React.FC = () => {
           <p className="text-xs text-slate-400">
             يمكنك تصدير كافة العمليات اليومية أو الشهرية مع تفاصيل الضرائب والخصومات لطابعات الدفاتر والمحاسبين.
           </p>
+        </div>
+      )}
+
+      {/* Add Category Modal */}
+      {showAddCategoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Layers className="w-4 h-4 text-amber-400" />
+                <span>إضافة قسم / تصنيف جديد للمنيو</span>
+              </h3>
+              <button onClick={() => setShowAddCategoryModal(false)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                if (!newCatNameAr.trim()) return;
+                addCategory({
+                  name_ar: newCatNameAr.trim(),
+                  name_en: newCatNameEn.trim() || newCatNameAr.trim()
+                });
+                setNewCatNameAr('');
+                setNewCatNameEn('');
+                setShowAddCategoryModal(false);
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div>
+                <label className="block text-slate-400 mb-1">اسم القسم بالعربية *</label>
+                <input
+                  type="text"
+                  required
+                  value={newCatNameAr}
+                  onChange={e => setNewCatNameAr(e.target.value)}
+                  placeholder="مثال: مشروبات ساخنة، مقبلات باردة، شاورما..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1">اسم القسم بالإنجليزية (اختياري)</label>
+                <input
+                  type="text"
+                  value={newCatNameEn}
+                  onChange={e => setNewCatNameEn(e.target.value)}
+                  placeholder="Hot Drinks, Cold Appetizers..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCategoryModal(false)}
+                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl shadow-md transition-colors"
+                >
+                  حفظ القسم
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
