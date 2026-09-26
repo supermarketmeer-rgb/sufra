@@ -80,6 +80,7 @@ interface AppContextType {
   toggleTheme: () => void;
   updateRestaurantWhatsApp: (whatsapp: string) => void;
   updatePlan: (planId: number, updates: Partial<Plan>) => void;
+  activateRestaurantPlan: (code: string, restaurantId?: number) => { success: boolean; message: string; planName?: string };
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -545,6 +546,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPlans(prev => prev.map(p => p.id === planId ? { ...p, ...updates } : p));
   };
 
+  const activateRestaurantPlan = (code: string, restaurantId?: number): { success: boolean; message: string; planName?: string } => {
+    const cleanCode = code.trim().toUpperCase();
+    const targetRest = restaurantId
+      ? restaurants.find(r => r.id === restaurantId)
+      : (activeRestaurant || restaurants[0]);
+
+    if (!targetRest) {
+      return { success: false, message: 'يرجى تسجيل مطعم أولاً لتطبيق رمز التفعيل عليه' };
+    }
+
+    let upgradedPlan = '';
+    if (cleanCode === 'SUFRA-PRO-2026' || cleanCode === 'SUFRA-PRO' || cleanCode === 'PRO2026') {
+      upgradedPlan = 'الباقة الاحترافية (Pro)';
+    } else if (cleanCode === 'SUFRA-ENTERPRISE' || cleanCode === 'VIP-2026' || cleanCode === 'ENTERPRISE') {
+      upgradedPlan = 'الباقة المؤسسية (Enterprise)';
+    } else if (cleanCode.startsWith('PRO-') || cleanCode.includes('PRO')) {
+      upgradedPlan = 'الباقة الاحترافية (Pro)';
+    } else if (cleanCode.startsWith('VIP-') || cleanCode.includes('VIP')) {
+      upgradedPlan = 'الباقة المؤسسية (Enterprise)';
+    } else {
+      return { success: false, message: 'رمز التفعيل غير صحيح أو منتهي الصلاحية' };
+    }
+
+    const updatedRest = { ...targetRest, plan_name: upgradedPlan };
+    setRestaurants(prev => prev.map(r => r.id === targetRest.id ? updatedRest : r));
+    if (activeRestaurant && activeRestaurant.id === targetRest.id) {
+      setActiveRestaurant(updatedRest);
+    }
+
+    const log: ActivityLog = {
+      id: Date.now(),
+      user_name: targetRest.name_ar,
+      role: 'restaurant_owner',
+      action: 'Plan Upgraded',
+      description: `تمت ترقية باقة المطعم إلى (${upgradedPlan}) بنجاح عبر كود التفعيل: ${cleanCode}`,
+      timestamp: 'الآن'
+    };
+    setActivityLogs(prev => [log, ...prev]);
+
+    return {
+      success: true,
+      planName: upgradedPlan,
+      message: `مبروك! تم تفعيل ${upgradedPlan} لمطعم (${targetRest.name_ar}) بنجاح!`
+    };
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -585,6 +632,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleTheme,
         updateRestaurantWhatsApp,
         updatePlan,
+        activateRestaurantPlan,
       }}
     >
       {children}

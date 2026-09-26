@@ -15,15 +15,17 @@ import {
   Sparkles,
   ExternalLink,
   Sun,
-  Moon
+  Moon,
+  LogIn
 } from 'lucide-react';
 
 interface NavbarProps {
   onOpenExplorer: () => void;
   onOpenRegister?: () => void;
+  onOpenPortal?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer, onOpenRegister }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer, onOpenRegister, onOpenPortal }) => {
   const {
     currentRole,
     setCurrentRole,
@@ -200,6 +202,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer, onOpenRegister }
               </div>
             )}
           </div>
+
+          {/* Welcome Portal Button (Matching user screenshot) */}
+          {onOpenPortal && (
+            <button
+              onClick={onOpenPortal}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-lg border border-slate-700 transition-all cursor-pointer whitespace-nowrap"
+              title="فتح شاشة الدخول وبوابة المنصة"
+            >
+              <LogIn className="w-3.5 h-3.5 text-amber-400" />
+              <span>شاشة الدخول</span>
+            </button>
+          )}
 
           {/* Create Free Restaurant Button */}
           {onOpenRegister && (
