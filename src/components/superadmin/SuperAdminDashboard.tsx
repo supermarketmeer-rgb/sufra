@@ -26,7 +26,8 @@ export const SuperAdminDashboard: React.FC = () => {
     orders,
     activityLogs,
     setActiveRestaurant,
-    setCurrentRole
+    setCurrentRole,
+    updatePlan
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'restaurants' | 'plans' | 'billing' | 'logs'>('restaurants');
@@ -41,6 +42,36 @@ export const SuperAdminDashboard: React.FC = () => {
   const [newRestPhone, setNewRestPhone] = useState('');
   const [newRestEmail, setNewRestEmail] = useState('');
   const [newRestPlan, setNewRestPlan] = useState('الباقة الاحترافية (Pro)');
+
+  // Plan editing state
+  const [editingPlan, setEditingPlan] = useState<any | null>(null);
+  const [planPriceMonthly, setPlanPriceMonthly] = useState<number>(0);
+  const [planPriceYearly, setPlanPriceYearly] = useState<number>(0);
+  const [planMaxBranches, setPlanMaxBranches] = useState<number>(1);
+  const [planMaxTables, setPlanMaxTables] = useState<number>(10);
+  const [planMaxProducts, setPlanMaxProducts] = useState<number>(50);
+
+  const handleOpenEditPlan = (plan: any) => {
+    setEditingPlan(plan);
+    setPlanPriceMonthly(plan.price_monthly);
+    setPlanPriceYearly(plan.price_yearly);
+    setPlanMaxBranches(plan.max_branches);
+    setPlanMaxTables(plan.max_tables);
+    setPlanMaxProducts(plan.max_products);
+  };
+
+  const handleSavePlan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPlan) return;
+    updatePlan(editingPlan.id, {
+      price_monthly: planPriceMonthly,
+      price_yearly: planPriceYearly,
+      max_branches: planMaxBranches,
+      max_tables: planMaxTables,
+      max_products: planMaxProducts
+    });
+    setEditingPlan(null);
+  };
 
   const totalRevenue = orders.reduce((sum, o) => sum + o.total_amount, 0);
   const totalMRR = restaurants.reduce((sum, r) => {
@@ -398,8 +429,11 @@ export const SuperAdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <button className="mt-6 w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs rounded-xl transition-colors">
-                تعديل خصائص الباقة
+              <button
+                onClick={() => handleOpenEditPlan(plan)}
+                className="mt-6 w-full py-2.5 bg-slate-800 hover:bg-slate-700 hover:text-amber-400 text-white font-semibold text-xs rounded-xl transition-colors cursor-pointer border border-slate-700/60"
+              >
+                تعديل أسعار وخصائص الباقة
               </button>
             </div>
           ))}
@@ -602,6 +636,102 @@ export const SuperAdminDashboard: React.FC = () => {
                   className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl"
                 >
                   إنشاء المطعم وتوليد الروابط
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit SaaS Plan */}
+      {editingPlan && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-white">تعديل {editingPlan.name_ar}</h3>
+                <p className="text-xs text-slate-400 mt-0.5">تحديث أسعار الاشتراك والحدود التشغيلية</p>
+              </div>
+              <button
+                onClick={() => setEditingPlan(null)}
+                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePlan} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1">السعر الشهري (د.ع):</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1000"
+                    value={planPriceMonthly}
+                    onChange={e => setPlanPriceMonthly(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 mb-1">السعر السنوي (د.ع):</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1000"
+                    value={planPriceYearly}
+                    onChange={e => setPlanPriceYearly(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1">أقصى فروع:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={planMaxBranches}
+                    onChange={e => setPlanMaxBranches(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 mb-1">أقصى طاولات:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={planMaxTables}
+                    onChange={e => setPlanMaxTables(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 mb-1">أقصى أصناف:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={planMaxProducts}
+                    onChange={e => setPlanMaxProducts(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingPlan(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl shadow-md transition-colors"
+                >
+                  حفظ التعديلات
                 </button>
               </div>
             </form>

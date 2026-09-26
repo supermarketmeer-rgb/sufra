@@ -79,6 +79,7 @@ interface AppContextType {
   theme: 'dark' | 'light';
   toggleTheme: () => void;
   updateRestaurantWhatsApp: (whatsapp: string) => void;
+  updatePlan: (planId: number, updates: Partial<Plan>) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -160,11 +161,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [reviews, setReviews] = useState<Review[]>(() =>
     loadFromStorage('sufrah_v2_reviews', INITIAL_REVIEWS)
   );
-  const [plans] = useState<Plan[]>(SAAS_PLANS);
+  const [plans, setPlans] = useState<Plan[]>(() =>
+    loadFromStorage('sufrah_v2_plans', SAAS_PLANS)
+  );
   const [coupons] = useState<Coupon[]>(INITIAL_COUPONS);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() =>
     loadFromStorage('sufrah_v2_activity_logs', INITIAL_ACTIVITY_LOGS)
   );
+
+  useEffect(() => {
+    localStorage.setItem('sufrah_v2_plans', JSON.stringify(plans));
+  }, [plans]);
 
   // Sync state to localStorage
   useEffect(() => {
@@ -534,6 +541,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRestaurants(prev => prev.map(r => r.id === activeRestaurant.id ? { ...r, whatsapp_number: whatsapp } : r));
   };
 
+  const updatePlan = (planId: number, updates: Partial<Plan>) => {
+    setPlans(prev => prev.map(p => p.id === planId ? { ...p, ...updates } : p));
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -573,6 +584,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         theme,
         toggleTheme,
         updateRestaurantWhatsApp,
+        updatePlan,
       }}
     >
       {children}
