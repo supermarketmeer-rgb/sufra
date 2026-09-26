@@ -74,23 +74,42 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer }) => {
           {/* Restaurant Switcher */}
           {currentRole !== 'super_admin' && (
             <div className="relative ml-2">
-              <button
-                onClick={() => setShowRestMenu(!showRestMenu)}
-                className="flex items-center gap-2 px-2.5 py-1.5 bg-slate-800/80 hover:bg-slate-800 text-xs font-medium rounded-lg border border-slate-700/60 transition-colors"
-              >
-                <img
-                  src={activeRestaurant.logo_url}
-                  alt={activeRestaurant.name_ar}
-                  className="w-4 h-4 rounded-full object-cover"
-                />
-                <span className="truncate max-w-[130px] text-slate-200">{activeRestaurant.name_ar}</span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              </button>
+              {activeRestaurant ? (
+                <button
+                  onClick={() => setShowRestMenu(!showRestMenu)}
+                  className="flex items-center gap-2 px-2.5 py-1.5 bg-slate-800/80 hover:bg-slate-800 text-xs font-medium rounded-lg border border-slate-700/60 transition-colors"
+                >
+                  <img
+                    src={activeRestaurant.logo_url}
+                    alt={activeRestaurant.name_ar}
+                    className="w-4 h-4 rounded-full object-cover"
+                  />
+                  <span className="truncate max-w-[130px] text-slate-200">{activeRestaurant.name_ar}</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setCurrentRole('super_admin')}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-semibold rounded-lg border border-amber-500/30 transition-colors"
+                >
+                  <Store className="w-3.5 h-3.5" />
+                  <span>+ تسجيل مطعم</span>
+                </button>
+              )}
 
-              {showRestMenu && (
+              {showRestMenu && activeRestaurant && (
                 <div className="absolute top-full mt-1.5 right-0 w-64 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1.5 z-50">
-                  <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 border-b border-slate-800">
-                    اختر المطعم للتحكم
+                  <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 border-b border-slate-800 flex items-center justify-between">
+                    <span>اختر المطعم للتحكم</span>
+                    <button
+                      onClick={() => {
+                        setShowRestMenu(false);
+                        setCurrentRole('super_admin');
+                      }}
+                      className="text-amber-400 hover:underline text-[10px]"
+                    >
+                      + مطعم جديد
+                    </button>
                   </div>
                   {restaurants.map(rest => (
                     <button

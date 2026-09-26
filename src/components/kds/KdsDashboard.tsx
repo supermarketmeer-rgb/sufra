@@ -19,7 +19,8 @@ export const KdsDashboard: React.FC = () => {
     activeBranch,
     orders,
     updateOrderStatus,
-    playNotificationSound
+    playNotificationSound,
+    setCurrentRole
   } = useApp();
 
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -36,7 +37,7 @@ export const KdsDashboard: React.FC = () => {
 
   // Filter kitchen active orders (new, in_review, preparing)
   const kitchenOrders = orders.filter(o =>
-    o.restaurant_id === activeRestaurant.id &&
+    o.restaurant_id === activeRestaurant?.id &&
     (o.status === 'new' || o.status === 'in_review' || o.status === 'preparing') &&
     (filterType === 'all' || o.order_type === filterType)
   );
@@ -71,6 +72,26 @@ export const KdsDashboard: React.FC = () => {
     };
   };
 
+  if (!activeRestaurant) {
+    return (
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-10 text-center max-w-xl mx-auto my-12 shadow-2xl">
+        <div className="w-16 h-16 rounded-2xl bg-rose-500/10 text-rose-400 mx-auto flex items-center justify-center mb-4">
+          <UtensilsCrossed className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">شاشة المطبخ الذكية (KDS)</h2>
+        <p className="text-slate-400 text-sm leading-relaxed mb-6">
+          يرجى تسجيل وتفعيل مطعم لاستقبال طلبات وتذاكر المطبخ في الوقت الفعلي.
+        </p>
+        <button
+          onClick={() => setCurrentRole('super_admin')}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold rounded-xl text-sm shadow-lg shadow-amber-500/20 cursor-pointer transition-all"
+        >
+          <span>الانتقال لتسجيل مطعم جديد (لوحة الإدارة)</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* KDS Header Bar */}
@@ -83,7 +104,7 @@ export const KdsDashboard: React.FC = () => {
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-white">شاشة المطبخ الذكية (Kitchen Display System - KDS)</h2>
               <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
-                {activeBranch.name_ar}
+                {activeBranch?.name_ar || 'الفرع الرئيسي'}
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">

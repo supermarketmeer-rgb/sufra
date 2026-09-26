@@ -169,7 +169,7 @@ export const DriverDashboard: React.FC = () => {
                     <MapPin className="w-5 h-5" />
                   </div>
                   <span className="text-[10px] font-bold text-white bg-slate-900/90 px-1.5 py-0.5 rounded mt-1 border border-slate-800">
-                    {activeRestaurant.name_ar}
+                    {activeRestaurant?.name_ar || 'المطعم'}
                   </span>
                 </div>
 

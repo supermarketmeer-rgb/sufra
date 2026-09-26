@@ -13,8 +13,7 @@ import {
   Plan,
   Coupon,
   ActivityLog,
-  OrderItem,
-  OrderType
+  OrderItem
 } from '../types';
 import {
   INITIAL_RESTAURANTS,
@@ -30,13 +29,24 @@ import {
   INITIAL_ACTIVITY_LOGS
 } from '../data/initialData';
 
+const loadFromStorage = <T,>(key: string, fallback: T): T => {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved) return JSON.parse(saved);
+  } catch (e) {
+    console.error(`Failed to load ${key} from localStorage`, e);
+  }
+  return fallback;
+};
+
 interface AppContextType {
   currentRole: UserRole;
   setCurrentRole: (role: UserRole) => void;
-  activeRestaurant: Restaurant;
-  setActiveRestaurant: (restaurant: Restaurant) => void;
-  activeBranch: Branch;
-  setActiveBranch: (branch: Branch) => void;
+  activeRestaurant: Restaurant | null;
+  setActiveRestaurant: (restaurant: Restaurant | null) => void;
+  activeBranch: Branch | null;
+  setActiveBranch: (branch: Branch | null) => void;
   restaurants: Restaurant[];
   branches: Branch[];
   tables: DiningTable[];
@@ -74,6 +84,10 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [restaurants, setRestaurants] = useState<Restaurant[]>(() =>
+    loadFromStorage('sufrah_v2_restaurants', INITIAL_RESTAURANTS)
+  );
+
   const [currentRole, setCurrentRole] = useState<UserRole>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -86,8 +100,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (roleParam === 'driver') return 'driver';
       if (roleParam === 'customer') return 'customer';
     }
-    return 'customer';
+    const initialRests = loadFromStorage<Restaurant[]>('sufrah_v2_restaurants', INITIAL_RESTAURANTS);
+    return initialRests.length === 0 ? 'super_admin' : 'customer';
   });
+
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('sufrah_theme') as 'dark' | 'light') || 'dark';
   });
@@ -105,21 +121,89 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   };
 
-  const [restaurants, setRestaurants] = useState<Restaurant[]>(INITIAL_RESTAURANTS);
-  const [activeRestaurant, setActiveRestaurant] = useState<Restaurant>(INITIAL_RESTAURANTS[0]);
-  const [branches, setBranches] = useState<Branch[]>(INITIAL_BRANCHES);
-  const [activeBranch, setActiveBranch] = useState<Branch>(INITIAL_BRANCHES[0]);
-  const [tables, setTables] = useState<DiningTable[]>(INITIAL_TABLES);
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
-  const [reservations, setReservations] = useState<Reservation[]>(INITIAL_RESERVATIONS);
-  const [reviews, setReviews] = useState<Review[]>(INITIAL_REVIEWS);
+  const [branches, setBranches] = useState<Branch[]>(() =>
+    loadFromStorage('sufrah_v2_branches', INITIAL_BRANCHES)
+  );
+
+  const [activeRestaurant, setActiveRestaurant] = useState<Restaurant | null>(() => {
+    const list = loadFromStorage<Restaurant[]>('sufrah_v2_restaurants', INITIAL_RESTAURANTS);
+    if (typeof window !== 'undefined') {
+      const savedActiveId = localStorage.getItem('sufrah_v2_active_restaurant_id');
+      if (savedActiveId && list.length > 0) {
+        const found = list.find(r => r.id === Number(savedActiveId));
+        if (found) return found;
+      }
+    }
+    return list.length > 0 ? list[0] : null;
+  });
+
+  const [activeBranch, setActiveBranch] = useState<Branch | null>(() => {
+    const list = loadFromStorage<Branch[]>('sufrah_v2_branches', INITIAL_BRANCHES);
+    return list.length > 0 ? list[0] : null;
+  });
+
+  const [tables, setTables] = useState<DiningTable[]>(() =>
+    loadFromStorage('sufrah_v2_tables', INITIAL_TABLES)
+  );
+  const [categories, setCategories] = useState<Category[]>(() =>
+    loadFromStorage('sufrah_v2_categories', INITIAL_CATEGORIES)
+  );
+  const [products, setProducts] = useState<Product[]>(() =>
+    loadFromStorage('sufrah_v2_products', INITIAL_PRODUCTS)
+  );
+  const [orders, setOrders] = useState<Order[]>(() =>
+    loadFromStorage('sufrah_v2_orders', INITIAL_ORDERS)
+  );
+  const [reservations, setReservations] = useState<Reservation[]>(() =>
+    loadFromStorage('sufrah_v2_reservations', INITIAL_RESERVATIONS)
+  );
+  const [reviews, setReviews] = useState<Review[]>(() =>
+    loadFromStorage('sufrah_v2_reviews', INITIAL_REVIEWS)
+  );
   const [plans] = useState<Plan[]>(SAAS_PLANS);
   const [coupons] = useState<Coupon[]>(INITIAL_COUPONS);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(INITIAL_ACTIVITY_LOGS);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() =>
+    loadFromStorage('sufrah_v2_activity_logs', INITIAL_ACTIVITY_LOGS)
+  );
 
-  // Synthesize notification chime using Web Audio API (completely hermetic, no network dependency)
+  // Sync state to localStorage
+  useEffect(() => {
+    localStorage.setItem('sufrah_v2_restaurants', JSON.stringify(restaurants));
+  }, [restaurants]);
+
+  useEffect(() => {
+    localStorage.setItem('sufrah_v2_branches', JSON.stringify(branches));
+  }, [branches]);
+
+  useEffect(() => {
+    localStorage.setItem('sufrah_v2_tables', JSON.stringify(tables));
+  }, [tables]);
+
+  useEffect(() => {
+    localStorage.setItem('sufrah_v2_categories', JSON.stringify(categories));
+  }, [categories]);
+
+  useEffect(() => {
+    localStorage.setItem('sufrah_v2_products', JSON.stringify(products));
+  }, [products]);
+
+  useEffect(() => {
+    localStorage.setItem('sufrah_v2_orders', JSON.stringify(orders));
+  }, [orders]);
+
+  useEffect(() => {
+    localStorage.setItem('sufrah_v2_reservations', JSON.stringify(reservations));
+  }, [reservations]);
+
+  useEffect(() => {
+    localStorage.setItem('sufrah_v2_reviews', JSON.stringify(reviews));
+  }, [reviews]);
+
+  useEffect(() => {
+    localStorage.setItem('sufrah_v2_activity_logs', JSON.stringify(activityLogs));
+  }, [activityLogs]);
+
+  // Web Audio Chime
   const playNotificationSound = () => {
     try {
       const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
@@ -139,23 +223,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const handleSetActiveRestaurant = (restaurant: Restaurant | null) => {
+    setActiveRestaurant(restaurant);
+    if (restaurant) {
+      localStorage.setItem('sufrah_v2_active_restaurant_id', String(restaurant.id));
+      const restBranch = branches.find(b => b.restaurant_id === restaurant.id);
+      if (restBranch) {
+        setActiveBranch(restBranch);
+      }
+    } else {
+      localStorage.removeItem('sufrah_v2_active_restaurant_id');
+    }
+  };
+
   const createOrder = (orderData: Partial<Order> & { items: OrderItem[] }): Order => {
     const nextId = orders.length > 0 ? Math.max(...orders.map(o => o.id)) + 1 : 1;
     const orderNum = `ORD-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}-${Math.floor(100 + Math.random() * 900)}`;
 
     const subtotal = orderData.items.reduce((sum, item) => sum + item.subtotal, 0);
-    const taxRate = activeRestaurant.tax_percentage || 0;
+    const taxRate = activeRestaurant?.tax_percentage || 0;
     const taxAmount = (subtotal * taxRate) / 100;
-    const deliveryFee = orderData.order_type === 'delivery' ? (orderData.delivery_fee || activeRestaurant.delivery_fee_base) : 0;
+    const deliveryFee = orderData.order_type === 'delivery' ? (orderData.delivery_fee || activeRestaurant?.delivery_fee_base || 0) : 0;
     const discountAmount = orderData.discount_amount || 0;
     const totalAmount = Math.max(0, subtotal + taxAmount + deliveryFee - discountAmount);
 
     const newOrder: Order = {
       id: nextId,
       order_number: orderNum,
-      restaurant_id: activeRestaurant.id,
-      branch_id: activeBranch.id,
-      branch_name: activeBranch.name_ar,
+      restaurant_id: activeRestaurant ? activeRestaurant.id : 1,
+      branch_id: activeBranch ? activeBranch.id : 1,
+      branch_name: activeBranch ? activeBranch.name_ar : 'الفرع الرئيسي',
       table_id: orderData.table_id,
       table_number: orderData.table_number,
       order_type: orderData.order_type || 'dine_in',
@@ -178,12 +275,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setOrders(prev => [newOrder, ...prev]);
 
-    // If dine-in and table specified, mark table occupied
     if (orderData.table_id) {
       updateTableStatus(orderData.table_id, 'occupied');
     }
 
-    // Add activity log
     const log: ActivityLog = {
       id: Date.now(),
       user_name: orderData.customer_name || 'Customer',
@@ -222,18 +317,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addProduct = (productData: Partial<Product>) => {
+    if (!activeRestaurant) return;
     const nextId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+    const defaultCatId = categories.length > 0 ? categories[0].id : 1;
     const newProd: Product = {
       id: nextId,
       restaurant_id: activeRestaurant.id,
-      category_id: productData.category_id || categories[0].id,
+      category_id: productData.category_id || defaultCatId,
       name_ar: productData.name_ar || 'صنف جديد',
       name_en: productData.name_en || 'New Dish',
       description_ar: productData.description_ar || '',
       description_en: productData.description_en || '',
       base_price: productData.base_price || 10000,
       discount_price: productData.discount_price,
-      image_url: productData.image_url || '/src/assets/images/dish_gourmet_burger_1790265822964.jpg',
+      image_url: productData.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80',
       calories: productData.calories || 450,
       prep_time_minutes: productData.prep_time_minutes || 15,
       ingredients_ar: productData.ingredients_ar || '',
@@ -254,6 +351,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addCategory = (categoryData: Partial<Category>) => {
+    if (!activeRestaurant) return;
     const nextId = categories.length > 0 ? Math.max(...categories.map(c => c.id)) + 1 : 1;
     const newCat: Category = {
       id: nextId,
@@ -276,6 +374,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addBranch = (branchData: Partial<Branch>) => {
+    if (!activeRestaurant) return;
     const nextId = branches.length > 0 ? Math.max(...branches.map(b => b.id)) + 1 : 1;
     const newBranch: Branch = {
       id: nextId,
@@ -295,12 +394,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addReservation = (res: Partial<Reservation>) => {
+    if (!activeRestaurant) return;
     const nextId = reservations.length > 0 ? Math.max(...reservations.map(r => r.id)) + 1 : 1;
     const newRes: Reservation = {
       id: nextId,
       restaurant_id: activeRestaurant.id,
-      branch_id: activeBranch.id,
-      branch_name: activeBranch.name_ar,
+      branch_id: activeBranch ? activeBranch.id : 1,
+      branch_name: activeBranch ? activeBranch.name_ar : 'الفرع الرئيسي',
       customer_name: res.customer_name || 'ضيف جديد',
       customer_phone: res.customer_phone || '',
       guest_count: res.guest_count || 2,
@@ -319,6 +419,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addReview = (review: Partial<Review>) => {
+    if (!activeRestaurant) return;
     const nextId = reviews.length > 0 ? Math.max(...reviews.map(r => r.id)) + 1 : 1;
     const newRev: Review = {
       id: nextId,
@@ -334,31 +435,72 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const createRestaurant = (data: Partial<Restaurant>): Restaurant => {
     const nextId = restaurants.length > 0 ? Math.max(...restaurants.map(r => r.id)) + 1 : 1;
-    const slug = data.slug || `restaurant-${nextId}`;
+    const slug = (data.slug || `restaurant-${nextId}`).toLowerCase().trim().replace(/[\s_]+/g, '-');
     const newRest: Restaurant = {
       id: nextId,
       name_ar: data.name_ar || 'مطعم جديد',
       name_en: data.name_en || 'New Restaurant',
       slug,
       custom_domain: data.custom_domain,
-      logo_url: data.logo_url || '/src/assets/images/dish_mixed_grills_1790265810518.jpg',
-      cover_url: data.cover_url || '/src/assets/images/dish_gourmet_burger_1790265822964.jpg',
+      logo_url: data.logo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&q=80',
+      cover_url: data.cover_url || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80',
       description_ar: data.description_ar || 'مطعم ومقهى عصري',
       phone: data.phone || '+964 770 000 0000',
       email: data.email || `info@${slug}.com`,
-      address: data.address || 'بغداد، العراق',
-      currency: data.currency || 'IQD',
+      address: data.address || 'العراق',
+      currency: 'IQD',
       tax_percentage: data.tax_percentage || 10,
       status: 'active',
       created_at: new Date().toISOString().slice(0, 10),
       theme_primary_color: data.theme_primary_color || '#f59e0b',
       plan_name: data.plan_name || 'الباقة الاحترافية (Pro)',
       delivery_fee_base: data.delivery_fee_base || 3000,
-      whatsapp_number: data.whatsapp_number
+      whatsapp_number: data.whatsapp_number || data.phone || '+9647700000000'
     };
 
+    // Auto create main branch
+    const branchId = branches.length > 0 ? Math.max(...branches.map(b => b.id)) + 1 : 1;
+    const mainBranch: Branch = {
+      id: branchId,
+      restaurant_id: newRest.id,
+      name_ar: 'الفرع الرئيسي',
+      name_en: 'Main Branch',
+      phone: newRest.phone,
+      address: newRest.address,
+      latitude: 33.315,
+      longitude: 44.354,
+      opening_time: '10:00',
+      closing_time: '00:00',
+      manager_name: 'إدارة المطعم',
+      is_active: true
+    };
+
+    // Auto create default dining tables for QR scanning and in-hall dining
+    const tableBaseId = tables.length > 0 ? Math.max(...tables.map(t => t.id)) + 1 : 1;
+    const initialBranchTables: DiningTable[] = [
+      { id: tableBaseId, branch_id: mainBranch.id, table_number: 'T-01', capacity: 4, status: 'available', qr_token: `qr_${newRest.slug}_t01` },
+      { id: tableBaseId + 1, branch_id: mainBranch.id, table_number: 'T-02', capacity: 2, status: 'available', qr_token: `qr_${newRest.slug}_t02` },
+      { id: tableBaseId + 2, branch_id: mainBranch.id, table_number: 'T-03', capacity: 6, status: 'available', qr_token: `qr_${newRest.slug}_t03` },
+      { id: tableBaseId + 3, branch_id: mainBranch.id, table_number: 'T-04', capacity: 4, status: 'available', qr_token: `qr_${newRest.slug}_t04` },
+    ];
+
     setRestaurants(prev => [...prev, newRest]);
+    setBranches(prev => [...prev, mainBranch]);
+    setTables(prev => [...prev, ...initialBranchTables]);
     setActiveRestaurant(newRest);
+    setActiveBranch(mainBranch);
+    localStorage.setItem('sufrah_v2_active_restaurant_id', String(newRest.id));
+
+    const log: ActivityLog = {
+      id: Date.now(),
+      user_name: 'مدير المنصة (Super Admin)',
+      role: 'super_admin',
+      action: 'Create Restaurant',
+      description: `تم تسجيل مطعم جديد: ${newRest.name_ar} مع الفرع الرئيسي والطاولات بنجاح`,
+      timestamp: 'الآن'
+    };
+    setActivityLogs(prev => [log, ...prev]);
+
     return newRest;
   };
 
@@ -387,10 +529,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateRestaurantWhatsApp = (whatsapp: string) => {
-    setActiveRestaurant(prev => ({
-      ...prev,
-      whatsapp_number: whatsapp
-    }));
+    if (!activeRestaurant) return;
+    setActiveRestaurant(prev => (prev ? { ...prev, whatsapp_number: whatsapp } : null));
     setRestaurants(prev => prev.map(r => r.id === activeRestaurant.id ? { ...r, whatsapp_number: whatsapp } : r));
   };
 
@@ -400,7 +540,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentRole,
         setCurrentRole,
         activeRestaurant,
-        setActiveRestaurant,
+        setActiveRestaurant: handleSetActiveRestaurant,
         activeBranch,
         setActiveBranch,
         restaurants,

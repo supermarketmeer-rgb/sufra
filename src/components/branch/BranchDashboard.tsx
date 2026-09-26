@@ -9,7 +9,8 @@ import {
   Phone,
   Sparkles,
   Layers,
-  Utensils
+  Utensils,
+  Building2
 } from 'lucide-react';
 
 export const BranchDashboard: React.FC = () => {
@@ -19,14 +20,15 @@ export const BranchDashboard: React.FC = () => {
     updateTableStatus,
     reservations,
     updateReservationStatus,
-    orders
+    orders,
+    setCurrentRole
   } = useApp();
 
   const [tableFilter, setTableFilter] = useState<'all' | 'available' | 'occupied' | 'reserved'>('all');
   const [activeTab, setActiveTab] = useState<'tables' | 'reservations'>('tables');
 
-  const branchTables = tables.filter(t => t.branch_id === activeBranch.id);
-  const branchReservations = reservations.filter(r => r.branch_id === activeBranch.id);
+  const branchTables = tables.filter(t => t.branch_id === activeBranch?.id);
+  const branchReservations = reservations.filter(r => r.branch_id === activeBranch?.id);
 
   const filteredTables = tableFilter === 'all'
     ? branchTables
@@ -36,6 +38,26 @@ export const BranchDashboard: React.FC = () => {
   const availableCount = branchTables.filter(t => t.status === 'available').length;
   const reservedCount = branchTables.filter(t => t.status === 'reserved').length;
   const pendingReservationsCount = branchReservations.filter(r => r.status === 'pending').length;
+
+  if (!activeBranch) {
+    return (
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-10 text-center max-w-xl mx-auto my-12 shadow-2xl">
+        <div className="w-16 h-16 rounded-2xl bg-blue-500/10 text-blue-400 mx-auto flex items-center justify-center mb-4">
+          <Building2 className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">إدارة الفروع والصالة</h2>
+        <p className="text-slate-400 text-sm leading-relaxed mb-6">
+          يرجى تسجيل وتفعيل مطعم لإدارة الفروع وتخطيط الطاولات وحجوزات الزبائن.
+        </p>
+        <button
+          onClick={() => setCurrentRole('super_admin')}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold rounded-xl text-sm shadow-lg shadow-amber-500/20 cursor-pointer transition-all"
+        >
+          <span>الانتقال لتسجيل مطعم جديد (لوحة الإدارة)</span>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

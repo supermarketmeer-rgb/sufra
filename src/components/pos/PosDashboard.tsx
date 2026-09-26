@@ -28,7 +28,8 @@ export const PosDashboard: React.FC = () => {
     tables,
     createOrder,
     coupons,
-    applyCoupon
+    applyCoupon,
+    setCurrentRole
   } = useApp();
 
   const [selectedCatId, setSelectedCatId] = useState<number | 'all'>('all');
@@ -93,7 +94,7 @@ export const PosDashboard: React.FC = () => {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
-  const taxRate = activeRestaurant.tax_percentage || 0;
+  const taxRate = activeRestaurant?.tax_percentage || 0;
   const taxAmount = (subtotal * taxRate) / 100;
   const totalAmount = Math.max(0, subtotal + taxAmount - discountAmount);
 
@@ -110,9 +111,9 @@ export const PosDashboard: React.FC = () => {
     if (cart.length === 0) return;
 
     const order = createOrder({
-      restaurant_id: activeRestaurant.id,
-      branch_id: activeBranch.id,
-      branch_name: activeBranch.name_ar,
+      restaurant_id: activeRestaurant?.id || 1,
+      branch_id: activeBranch?.id || 1,
+      branch_name: activeBranch?.name_ar || 'الفرع الرئيسي',
       table_id: selectedOrderType === 'dine_in' ? selectedTable?.id : undefined,
       table_number: selectedOrderType === 'dine_in' ? selectedTable?.table_number : undefined,
       order_type: selectedOrderType,
@@ -135,6 +136,26 @@ export const PosDashboard: React.FC = () => {
     setCouponCode('');
     setCashTendered(0);
   };
+
+  if (!activeRestaurant) {
+    return (
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-10 text-center max-w-xl mx-auto my-12 shadow-2xl">
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-400 mx-auto flex items-center justify-center mb-4">
+          <Receipt className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">شاشة نقاط البيع والكاشير (POS)</h2>
+        <p className="text-slate-400 text-sm leading-relaxed mb-6">
+          يرجى تسجيل مطعم وتحديده أولاً لاستخدام شاشة الكاشير ومعالجة الطلبات وإصدار الفواتير الحرارية.
+        </p>
+        <button
+          onClick={() => setCurrentRole('super_admin')}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold rounded-xl text-sm shadow-lg shadow-amber-500/20 cursor-pointer transition-all"
+        >
+          <span>الانتقال لتسجيل مطعم جديد (لوحة الإدارة)</span>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[calc(100vh-120px)]">
@@ -468,9 +489,9 @@ export const PosDashboard: React.FC = () => {
             {/* Printable Thermal Paper Slip */}
             <div className="printable-receipt bg-white text-slate-950 p-4 rounded-xl font-mono text-[11px] leading-tight space-y-2 border border-slate-200 shadow-md">
               <div className="text-center border-b border-dashed border-slate-300 pb-2">
-                <div className="font-black text-sm">{activeRestaurant.name_ar}</div>
-                <div className="text-[10px] text-slate-600">{activeBranch.name_ar}</div>
-                <div className="text-[10px] text-slate-500">{activeBranch.phone}</div>
+                <div className="font-black text-sm">{activeRestaurant?.name_ar || 'سُفرة'}</div>
+                <div className="text-[10px] text-slate-600">{activeBranch?.name_ar || 'الفرع الرئيسي'}</div>
+                <div className="text-[10px] text-slate-500">{activeBranch?.phone || ''}</div>
               </div>
 
               <div className="space-y-0.5 border-b border-dashed border-slate-300 pb-2 text-[10px]">

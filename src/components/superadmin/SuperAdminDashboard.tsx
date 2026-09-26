@@ -43,6 +43,10 @@ export const SuperAdminDashboard: React.FC = () => {
   const [newRestPlan, setNewRestPlan] = useState('الباقة الاحترافية (Pro)');
 
   const totalRevenue = orders.reduce((sum, o) => sum + o.total_amount, 0);
+  const totalMRR = restaurants.reduce((sum, r) => {
+    const plan = plans.find(p => p.name_ar === r.plan_name || p.slug === r.plan_name);
+    return sum + (plan ? plan.price_monthly : 0);
+  }, 0);
 
   const filteredRestaurants = restaurants.filter(
     r => r.name_ar.includes(searchTerm) || r.name_en.toLowerCase().includes(searchTerm.toLowerCase()) || r.slug.includes(searchTerm)
@@ -85,7 +89,7 @@ export const SuperAdminDashboard: React.FC = () => {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-2xl font-bold font-mono-numbers text-white">{restaurants.length}</span>
-            <span className="text-xs text-emerald-400 font-medium">+12 هذا الشهر</span>
+            <span className="text-xs text-emerald-400 font-medium">جاهز للإضافة</span>
           </div>
           <p className="text-[11px] text-slate-500 mt-1">مطاعم ومقاهي مشتركة بالمنصة</p>
         </div>
@@ -98,9 +102,9 @@ export const SuperAdminDashboard: React.FC = () => {
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono-numbers text-white">18,500,000</span>
+            <span className="text-2xl font-bold font-mono-numbers text-white">{totalMRR.toLocaleString()}</span>
             <span className="text-xs text-slate-400">د.ع</span>
-            <span className="text-xs text-emerald-400 font-medium mr-1">+18.4%</span>
+            <span className="text-xs text-emerald-400 font-medium mr-1">نشط</span>
           </div>
           <p className="text-[11px] text-slate-500 mt-1">اشتراكات SaaS المستحقة شهرياً</p>
         </div>
@@ -113,24 +117,24 @@ export const SuperAdminDashboard: React.FC = () => {
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono-numbers text-white">{(orders.length + 8420).toLocaleString()}</span>
-            <span className="text-xs text-blue-400 font-medium">99.8% نجاح</span>
+            <span className="text-2xl font-bold font-mono-numbers text-white">{orders.length.toLocaleString()}</span>
+            <span className="text-xs text-blue-400 font-medium">مباشر</span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-1">طلب رقمي عبر QR ومنصات التوصيل</p>
+          <p className="text-[11px] text-slate-500 mt-1">طلب رقمي عبر QR والمنصة</p>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">إجمالي قيمة التداولات</span>
+            <span className="text-xs font-semibold text-slate-400">إجمالي قيمة المبيعات</span>
             <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
               <CreditCard className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono-numbers text-white">{(totalRevenue + 94250000).toLocaleString()}</span>
+            <span className="text-2xl font-bold font-mono-numbers text-white">{totalRevenue.toLocaleString()}</span>
             <span className="text-xs text-slate-400">د.ع</span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-1">ZainCash, AsiaHawala, QiCard, Cash</p>
+          <p className="text-[11px] text-slate-500 mt-1">ZainCash, AsiaHawala, QiCard, كاش</p>
         </div>
       </div>
 
@@ -215,6 +219,28 @@ export const SuperAdminDashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
+                  {filteredRestaurants.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-slate-400">
+                        <div className="flex flex-col items-center justify-center gap-3">
+                          <div className="w-12 h-12 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-amber-400">
+                            <Building2 className="w-6 h-6" />
+                          </div>
+                          <p className="text-sm font-semibold text-slate-200">لا توجد مطاعم مسجلة حتى الآن</p>
+                          <p className="text-xs text-slate-500 max-w-sm">
+                            المنصة جاهزة تماماً ومفرغة من البيانات الوهمية. ابدأ بتسجيل أول مطعم لإنشاء المنيو الإلكتروني والفرع الرئيسي تلقائياً.
+                          </p>
+                          <button
+                            onClick={() => setShowAddModal(true)}
+                            className="mt-2 flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>إضافة المطعم الأول الآن</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                   {filteredRestaurants.map(rest => (
                     <tr key={rest.id} className="hover:bg-slate-800/40 transition-colors">
                       <td className="py-3.5 px-4">
@@ -389,48 +415,41 @@ export const SuperAdminDashboard: React.FC = () => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-right text-xs">
-              <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
-                <tr>
-                  <th className="py-3 px-4">رقم الفاتورة</th>
-                  <th className="py-3 px-4">المطعم</th>
-                  <th className="py-3 px-4">الباقة المشتركة</th>
-                  <th className="py-3 px-4">المبلغ</th>
-                  <th className="py-3 px-4">طريقة الدفع</th>
-                  <th className="py-3 px-4">التاريخ</th>
-                  <th className="py-3 px-4">الحالة</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                <tr className="hover:bg-slate-800/30">
-                  <td className="py-3 px-4 font-mono text-amber-400">INV-2026-901</td>
-                  <td className="py-3 px-4 font-bold text-white">مطعم ومقهى السفرة الملكية</td>
-                  <td className="py-3 px-4">الباقة المؤسسية (Enterprise)</td>
-                  <td className="py-3 px-4 font-bold font-mono">$1,190.00 (سنوي)</td>
-                  <td className="py-3 px-4">ZainCash Enterprise</td>
-                  <td className="py-3 px-4 text-slate-400">2026-09-01</td>
-                  <td className="py-3 px-4 text-emerald-400 font-semibold">مكتمل ومدفوع</td>
-                </tr>
-                <tr className="hover:bg-slate-800/30">
-                  <td className="py-3 px-4 font-mono text-amber-400">INV-2026-902</td>
-                  <td className="py-3 px-4 font-bold text-white">جورميه برغر هاوس</td>
-                  <td className="py-3 px-4">الباقة الاحترافية (Pro)</td>
-                  <td className="py-3 px-4 font-bold font-mono">$49.00 (شهري)</td>
-                  <td className="py-3 px-4">QiCard Visa</td>
-                  <td className="py-3 px-4 text-slate-400">2026-09-15</td>
-                  <td className="py-3 px-4 text-emerald-400 font-semibold">مكتمل ومدفوع</td>
-                </tr>
-                <tr className="hover:bg-slate-800/30">
-                  <td className="py-3 px-4 font-mono text-amber-400">INV-2026-903</td>
-                  <td className="py-3 px-4 font-bold text-white">بيتزا نابولي الإيطالية</td>
-                  <td className="py-3 px-4">الباقة الاحترافية (Pro)</td>
-                  <td className="py-3 px-4 font-bold font-mono">$490.00 (سنوي)</td>
-                  <td className="py-3 px-4">AsiaHawala Wallet</td>
-                  <td className="py-3 px-4 text-slate-400">2026-09-18</td>
-                  <td className="py-3 px-4 text-emerald-400 font-semibold">مكتمل ومدفوع</td>
-                </tr>
-              </tbody>
-            </table>
+            {restaurants.length === 0 ? (
+              <div className="text-center py-12 text-slate-500 text-xs">
+                لا توجد فواتير اشتراكات مسجلة حالياً. ستظهر الفواتير تلقائياً عند تسجيل المطاعم الجديدة.
+              </div>
+            ) : (
+              <table className="w-full text-right text-xs">
+                <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
+                  <tr>
+                    <th className="py-3 px-4">رقم الفاتورة</th>
+                    <th className="py-3 px-4">المطعم</th>
+                    <th className="py-3 px-4">الباقة المشتركة</th>
+                    <th className="py-3 px-4">المبلغ</th>
+                    <th className="py-3 px-4">طريقة الدفع</th>
+                    <th className="py-3 px-4">التاريخ</th>
+                    <th className="py-3 px-4">الحالة</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {restaurants.map((rest, idx) => {
+                    const plan = plans.find(p => p.name_ar === rest.plan_name || p.slug === rest.plan_name) || plans[0];
+                    return (
+                      <tr key={rest.id} className="hover:bg-slate-800/30">
+                        <td className="py-3 px-4 font-mono text-amber-400">INV-2026-{100 + idx}</td>
+                        <td className="py-3 px-4 font-bold text-white">{rest.name_ar}</td>
+                        <td className="py-3 px-4">{rest.plan_name}</td>
+                        <td className="py-3 px-4 font-bold font-mono">{plan.price_monthly.toLocaleString()} د.ع (شهري)</td>
+                        <td className="py-3 px-4">ZainCash / QiCard</td>
+                        <td className="py-3 px-4 text-slate-400">{rest.created_at}</td>
+                        <td className="py-3 px-4 text-emerald-400 font-semibold">مكتمل ومفعل</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}

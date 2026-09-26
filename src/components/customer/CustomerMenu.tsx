@@ -24,7 +24,9 @@ import {
   ChevronDown,
   MessageCircle,
   Send,
-  Share2
+  Share2,
+  Store,
+  UtensilsCrossed
 } from 'lucide-react';
 
 export const CustomerMenu: React.FC = () => {
@@ -39,7 +41,8 @@ export const CustomerMenu: React.FC = () => {
     addReview,
     reviews,
     coupons,
-    applyCoupon
+    applyCoupon,
+    setCurrentRole
   } = useApp();
 
   // Navigation mode
@@ -155,9 +158,9 @@ export const CustomerMenu: React.FC = () => {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
-  const taxRate = activeRestaurant.tax_percentage || 0;
+  const taxRate = activeRestaurant?.tax_percentage || 0;
   const taxAmount = (subtotal * taxRate) / 100;
-  const deliveryFee = orderType === 'delivery' ? activeRestaurant.delivery_fee_base : 0;
+  const deliveryFee = orderType === 'delivery' ? (activeRestaurant?.delivery_fee_base || 0) : 0;
   const totalAmount = Math.max(0, subtotal + taxAmount + deliveryFee - discountVal);
 
   const handleApplyCouponCode = () => {
@@ -172,8 +175,8 @@ export const CustomerMenu: React.FC = () => {
 
   // Build formatted WhatsApp message for direct ordering
   const buildWhatsAppOrderMessage = (orderNum: string, currentCart: OrderItem[], currentTotal: number) => {
-    const restName = activeRestaurant.name_ar;
-    const branchName = activeBranch.name_ar;
+    const restName = activeRestaurant?.name_ar || 'المطعم';
+    const branchName = activeBranch?.name_ar || 'الفرع الرئيسي';
     let msg = `*طلب جديد عبر واتساب - ${restName}* 🍽️\n`;
     msg += `*الفرع:* ${branchName}\n`;
     
@@ -232,9 +235,9 @@ export const CustomerMenu: React.FC = () => {
     const tableObj = tables.find(t => t.table_number === selectedTableNum);
 
     const newOrder = createOrder({
-      restaurant_id: activeRestaurant.id,
-      branch_id: activeBranch.id,
-      branch_name: activeBranch.name_ar,
+      restaurant_id: activeRestaurant?.id || 1,
+      branch_id: activeBranch?.id || 1,
+      branch_name: activeBranch?.name_ar || 'الفرع الرئيسي',
       table_id: orderType === 'dine_in' ? tableObj?.id : undefined,
       table_number: orderType === 'dine_in' ? selectedTableNum : undefined,
       order_type: orderType,
@@ -252,7 +255,7 @@ export const CustomerMenu: React.FC = () => {
       confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
     } catch {}
 
-    const rawNumber = activeRestaurant.whatsapp_number || '+9647701234567';
+    const rawNumber = activeRestaurant?.whatsapp_number || '+9647701234567';
     const cleanPhone = rawNumber.replace(/[^0-9]/g, '');
     const message = buildWhatsAppOrderMessage(newOrder.order_number, cart, totalAmount);
     const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
@@ -270,9 +273,9 @@ export const CustomerMenu: React.FC = () => {
   // Recommend specific dish to a friend via WhatsApp
   const handleRecommendDishViaWhatsApp = (prod: Product, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    const restName = activeRestaurant.name_ar;
+    const restName = activeRestaurant?.name_ar || 'المطعم';
     const price = (prod.discount_price || prod.base_price).toLocaleString();
-    const text = `أوصيك بتجربة هذا الصنف اللذيذ من منيو *${restName}* 😋🍴\n\n*${prod.name_ar}* (${price} د.ع)\n${prod.description_ar}\n\nتفضل بفتح المنيو والطلب مباشرة عبر الرابط:\nhttps://${activeRestaurant.slug}.sufrah.menu?table=${selectedTableNum}&dish=${prod.id}`;
+    const text = `أوصيك بتجربة هذا الصنف اللذيذ من منيو *${restName}* 😋🍴\n\n*${prod.name_ar}* (${price} د.ع)\n${prod.description_ar}\n\nتفضل بفتح المنيو والطلب مباشرة عبر الرابط:\nhttps://${activeRestaurant?.slug || 'menu'}.sufrah.menu?table=${selectedTableNum}&dish=${prod.id}`;
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
@@ -284,9 +287,9 @@ export const CustomerMenu: React.FC = () => {
     const tableObj = tables.find(t => t.table_number === selectedTableNum);
 
     const newOrder = createOrder({
-      restaurant_id: activeRestaurant.id,
-      branch_id: activeBranch.id,
-      branch_name: activeBranch.name_ar,
+      restaurant_id: activeRestaurant?.id || 1,
+      branch_id: activeBranch?.id || 1,
+      branch_name: activeBranch?.name_ar || 'الفرع الرئيسي',
       table_id: orderType === 'dine_in' ? tableObj?.id : undefined,
       table_number: orderType === 'dine_in' ? selectedTableNum : undefined,
       order_type: orderType,
@@ -353,6 +356,28 @@ export const CustomerMenu: React.FC = () => {
     return matchesCat && matchesSearch;
   });
 
+  if (!activeRestaurant) {
+    return (
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-10 text-center max-w-xl mx-auto my-12 shadow-2xl">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-slate-950 mx-auto flex items-center justify-center mb-4 font-black text-2xl shadow-lg shadow-amber-500/20">
+          س
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">مرحباً بك في سُفرة SaaS</h2>
+        <p className="text-slate-400 text-sm leading-relaxed mb-6">
+          التطبيق مهيأ حالياً ونظيف لاستقبال المطاعم الجديدة بدون أي بيانات افتراضية.
+          قم بتسجيل أول مطعم لتفعيل منيو الـ QR الإلكتروني والبدء في تلقي الطلبات.
+        </p>
+        <button
+          onClick={() => setCurrentRole('super_admin')}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold rounded-xl text-sm shadow-lg shadow-amber-500/20 cursor-pointer transition-all"
+        >
+          <Store className="w-4 h-4" />
+          <span>تسجيل مطعم جديد (لوحة الإدارة)</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto pb-24 space-y-6">
       {/* Scanned QR Table & Direct WhatsApp Notification Banner */}
@@ -409,7 +434,7 @@ export const CustomerMenu: React.FC = () => {
                   <Star className="w-3.5 h-3.5 fill-amber-400" />
                   <span>4.9 (184 تقييم)</span>
                 </span>
-                <span>· {activeBranch.name_ar}</span>
+                <span>· {activeBranch?.name_ar || 'الفرع الرئيسي'}</span>
               </div>
             </div>
           </div>
@@ -539,6 +564,21 @@ export const CustomerMenu: React.FC = () => {
 
           {/* Product Items List */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {filteredProducts.length === 0 && (
+              <div className="col-span-full bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center">
+                <UtensilsCrossed className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                <h3 className="text-white font-bold text-sm mb-1">لا توجد وجبات في المنيو حالياً</h3>
+                <p className="text-slate-400 text-xs max-w-md mx-auto">
+                  لم يقم المطعم بإضافة وجبات بعد. يمكنك إضافة الأقسام والأصناف والأسعار بالدينار العراقي من لوحة المالك.
+                </p>
+                <button
+                  onClick={() => setCurrentRole('restaurant_owner')}
+                  className="mt-4 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-semibold rounded-xl border border-amber-500/30 transition-colors"
+                >
+                  الانتقال للوحة المالك لإضافة الأصناف
+                </button>
+              </div>
+            )}
             {filteredProducts.map(prod => {
               const price = prod.discount_price || prod.base_price;
               return (

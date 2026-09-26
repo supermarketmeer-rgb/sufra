@@ -23,7 +23,8 @@ import {
   Eye,
   Sliders,
   AlertCircle,
-  MessageCircle
+  MessageCircle,
+  Store
 } from 'lucide-react';
 
 export const OwnerDashboard: React.FC = () => {
@@ -46,7 +47,7 @@ export const OwnerDashboard: React.FC = () => {
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'branches' | 'qr' | 'ai' | 'reports'>('menu');
-  const [ownerWhatsApp, setOwnerWhatsApp] = useState<string>(activeRestaurant.whatsapp_number || '+9647701234567');
+  const [ownerWhatsApp, setOwnerWhatsApp] = useState<string>(activeRestaurant?.whatsapp_number || '+9647701234567');
   const [savedWhatsAppSuccess, setSavedWhatsAppSuccess] = useState(false);
 
   // Menu filters & modals
@@ -85,6 +86,7 @@ export const OwnerDashboard: React.FC = () => {
 
   // Calculate dynamic QR target link
   const getQrUrl = () => {
+    if (!activeRestaurant) return 'https://sufrah.menu';
     const baseUrl = `https://${activeRestaurant.slug}.sufrah.menu`;
     if (qrType === 'restaurant') return baseUrl;
     if (qrType === 'branch') return `${baseUrl}/branch/${selectedBranchId}`;
@@ -92,7 +94,7 @@ export const OwnerDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    if (qrCanvasRef.current) {
+    if (qrCanvasRef.current && activeRestaurant) {
       QRCode.toCanvas(
         qrCanvasRef.current,
         getQrUrl(),
@@ -109,10 +111,10 @@ export const OwnerDashboard: React.FC = () => {
         }
       );
     }
-  }, [qrType, selectedBranchId, selectedTableNumber, qrColor, activeRestaurant.slug, activeTab]);
+  }, [qrType, selectedBranchId, selectedTableNumber, qrColor, activeRestaurant?.slug, activeTab]);
 
   const handleDownloadQr = () => {
-    if (!qrCanvasRef.current) return;
+    if (!qrCanvasRef.current || !activeRestaurant) return;
     const url = qrCanvasRef.current.toDataURL('image/png');
     const a = document.createElement('a');
     a.href = url;
@@ -207,6 +209,27 @@ export const OwnerDashboard: React.FC = () => {
     setBranchAddress('');
     setBranchManager('');
   };
+
+  if (!activeRestaurant) {
+    return (
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-10 text-center max-w-xl mx-auto my-12 shadow-2xl">
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-400 mx-auto flex items-center justify-center mb-4">
+          <Store className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">لا يوجد مطعم مسجل أو محدد حالياً</h2>
+        <p className="text-slate-400 text-sm leading-relaxed mb-6">
+          التطبيق مهيأ ونظيف لاستقبال المطاعم الجديدة بدون أي بيانات وهمية. تفضل بتسجيل مطعمك الأول للبدء في إدارة المنيو والفروع.
+        </p>
+        <button
+          onClick={() => setCurrentRole('super_admin')}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold rounded-xl text-sm shadow-lg shadow-amber-500/20 cursor-pointer transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          <span>الانتقال لتسجيل مطعم جديد (لوحة الإدارة)</span>
+        </button>
+      </div>
+    );
+  }
 
   const filteredProducts = selectedCatId === 'all'
     ? products
