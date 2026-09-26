@@ -74,7 +74,20 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentRole, setCurrentRole] = useState<UserRole>('customer');
+  const [currentRole, setCurrentRole] = useState<UserRole>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const roleParam = params.get('role')?.toLowerCase();
+      if (roleParam === 'super_admin' || roleParam === 'admin' || roleParam === 'superadmin') return 'super_admin';
+      if (roleParam === 'owner' || roleParam === 'restaurant_owner') return 'restaurant_owner';
+      if (roleParam === 'branch_manager' || roleParam === 'manager') return 'branch_manager';
+      if (roleParam === 'cashier' || roleParam === 'pos') return 'cashier';
+      if (roleParam === 'kitchen' || roleParam === 'kds') return 'kitchen';
+      if (roleParam === 'driver') return 'driver';
+      if (roleParam === 'customer') return 'customer';
+    }
+    return 'customer';
+  });
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('sufrah_theme') as 'dark' | 'light') || 'dark';
   });
