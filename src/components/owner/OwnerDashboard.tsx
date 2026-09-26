@@ -152,6 +152,51 @@ export const OwnerDashboard: React.FC = () => {
   const [prodDescAr, setProdDescAr] = useState('');
   const [prodImageUrl, setProdImageUrl] = useState('/src/assets/images/dish_mixed_grills_1790265810518.jpg');
 
+  // Product Sizes & Addons & Availability
+  const [productModalTab, setProductModalTab] = useState<'info' | 'sizes' | 'addons'>('info');
+  const [prodSizes, setProdSizes] = useState<ProductSize[]>([]);
+  const [prodAddons, setProdAddons] = useState<ProductAddon[]>([]);
+  const [prodIsAvailable, setProdIsAvailable] = useState<boolean>(true);
+
+  const handleAddSize = () => {
+    const newSize: ProductSize = {
+      id: Date.now(),
+      product_id: editingProduct?.id || 0,
+      name_ar: `حجم جديد ${prodSizes.length + 1}`,
+      name_en: `Size ${prodSizes.length + 1}`,
+      extra_price: prodSizes.length === 0 ? 0 : 2500,
+      is_default: prodSizes.length === 0
+    };
+    setProdSizes(prev => [...prev, newSize]);
+  };
+
+  const handleUpdateSize = (id: number, field: keyof ProductSize, val: any) => {
+    setProdSizes(prev => prev.map(s => s.id === id ? { ...s, [field]: val } : s));
+  };
+
+  const handleDeleteSize = (id: number) => {
+    setProdSizes(prev => prev.filter(s => s.id !== id));
+  };
+
+  const handleAddAddon = () => {
+    const newAddon: ProductAddon = {
+      id: Date.now(),
+      product_id: editingProduct?.id || 0,
+      name_ar: `إضافة جديدة ${prodAddons.length + 1}`,
+      name_en: `Addon ${prodAddons.length + 1}`,
+      price: 1000
+    };
+    setProdAddons(prev => [...prev, newAddon]);
+  };
+
+  const handleUpdateAddon = (id: number, field: keyof ProductAddon, val: any) => {
+    setProdAddons(prev => prev.map(a => a.id === id ? { ...a, [field]: val } : a));
+  };
+
+  const handleDeleteAddon = (id: number) => {
+    setProdAddons(prev => prev.filter(a => a.id !== id));
+  };
+
   const handleProductImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -219,7 +264,7 @@ export const OwnerDashboard: React.FC = () => {
     window.print();
   };
 
-  const handleOpenEditProduct = (prod: Product) => {
+  const handleOpenEditProduct = (prod: Product, tab: 'info' | 'sizes' | 'addons' = 'info') => {
     setEditingProduct(prod);
     setProdNameAr(prod.name_ar);
     setProdNameEn(prod.name_en || '');
@@ -230,6 +275,10 @@ export const OwnerDashboard: React.FC = () => {
     setProdCalories(prod.calories || 500);
     setProdDescAr(prod.description_ar || '');
     setProdImageUrl(prod.image_url || '/src/assets/images/dish_mixed_grills_1790265810518.jpg');
+    setProdSizes(prod.sizes ? JSON.parse(JSON.stringify(prod.sizes)) : []);
+    setProdAddons(prod.addons ? JSON.parse(JSON.stringify(prod.addons)) : []);
+    setProdIsAvailable(prod.is_available !== false);
+    setProductModalTab(tab);
     setShowAddProductModal(true);
   };
 
@@ -254,7 +303,10 @@ export const OwnerDashboard: React.FC = () => {
         prep_time_minutes: Number(prodPrepTime),
         calories: Number(prodCalories),
         description_ar: prodDescAr,
-        image_url: prodImageUrl
+        image_url: prodImageUrl,
+        is_available: prodIsAvailable,
+        sizes: prodSizes,
+        addons: prodAddons
       });
     } else {
       addProduct({
@@ -267,14 +319,9 @@ export const OwnerDashboard: React.FC = () => {
         calories: Number(prodCalories),
         description_ar: prodDescAr,
         image_url: prodImageUrl,
-        sizes: [
-          { id: Date.now(), product_id: 0, name_ar: 'عادي (Regular)', name_en: 'Regular', extra_price: 0, is_default: true },
-          { id: Date.now() + 1, product_id: 0, name_ar: 'كبير (Large)', name_en: 'Large', extra_price: 3000 },
-        ],
-        addons: [
-          { id: Date.now() + 2, product_id: 0, name_ar: 'جبنة إضافية', name_en: 'Extra Cheese', price: 1500 },
-          { id: Date.now() + 3, product_id: 0, name_ar: 'صوص حار مميز', name_en: 'Spicy Dip', price: 1000 },
-        ]
+        is_available: prodIsAvailable,
+        sizes: prodSizes,
+        addons: prodAddons
       });
     }
 
@@ -592,10 +639,21 @@ export const OwnerDashboard: React.FC = () => {
                   setProdDescAr('');
                   setProdPrice(12000);
                   setProdDiscount(undefined);
+                  setProdPrepTime(15);
+                  setProdCalories(550);
                   setProdImageUrl('/src/assets/images/dish_mixed_grills_1790265810518.jpg');
+                  setProdSizes([
+                    { id: Date.now(), product_id: 0, name_ar: 'عادي (Regular)', name_en: 'Regular', extra_price: 0, is_default: true },
+                    { id: Date.now() + 1, product_id: 0, name_ar: 'كبير (Large)', name_en: 'Large', extra_price: 3000 }
+                  ]);
+                  setProdAddons([
+                    { id: Date.now() + 2, product_id: 0, name_ar: 'جبنة إضافية', name_en: 'Extra Cheese', price: 1500 }
+                  ]);
+                  setProdIsAvailable(true);
+                  setProductModalTab('info');
                   setShowAddProductModal(true);
                 }}
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold rounded-xl shadow-md transition-colors whitespace-nowrap"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold rounded-xl shadow-md transition-colors whitespace-nowrap cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>إضافة طبق / وجبة جديدة</span>
@@ -650,21 +708,51 @@ export const OwnerDashboard: React.FC = () => {
                   </p>
 
                   <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-                    <span>{prod.sizes?.length || 0} أحجام متوفرة</span>
-                    <span>{prod.addons?.length || 0} إضافات</span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditProduct(prod, 'sizes')}
+                      className="hover:text-amber-400 transition-colors flex items-center gap-1 underline underline-offset-2 cursor-pointer"
+                      title="إدارة وتعديل أحجام الوجبة"
+                    >
+                      <Layers className="w-3 h-3 text-amber-400/80" />
+                      <span>{prod.sizes?.length || 0} أحجام متوفرة</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditProduct(prod, 'addons')}
+                      className="hover:text-amber-400 transition-colors flex items-center gap-1 underline underline-offset-2 cursor-pointer"
+                      title="إدارة وتعديل إضافات الوجبة"
+                    >
+                      <PlusCircle className="w-3 h-3 text-amber-400/80" />
+                      <span>{prod.addons?.length || 0} إضافات</span>
+                    </button>
                     {prod.calories && <span>{prod.calories} سعرة</span>}
                   </div>
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
-                  <span className="text-xs font-medium text-emerald-400 flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                    متاح للطلب
-                  </span>
+                  {/* Availability Instant Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateProduct(prod.id, { is_available: prod.is_available === false ? true : false });
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border shadow-sm ${
+                      prod.is_available !== false
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                        : 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20'
+                    }`}
+                    title="انقر للتبديل الفوري بين متوفر وغير متوفر"
+                  >
+                    <span className={`w-2 h-2 rounded-full ${prod.is_available !== false ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`}></span>
+                    <span>{prod.is_available !== false ? 'متاح للطلب' : 'غير متوفر حالياً'}</span>
+                  </button>
+
                   <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => handleOpenEditProduct(prod)}
-                      className="p-1.5 text-slate-400 hover:text-amber-400 rounded-lg hover:bg-slate-800 transition-colors"
+                      onClick={() => handleOpenEditProduct(prod, 'info')}
+                      className="p-1.5 text-slate-400 hover:text-amber-400 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
                       title="تعديل بيانات الصنف"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
@@ -1704,146 +1792,222 @@ export const OwnerDashboard: React.FC = () => {
                   setShowAddProductModal(false);
                   setEditingProduct(null);
                 }}
-                className="text-slate-400 hover:text-white w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center transition-colors"
+                className="text-slate-400 hover:text-white w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center transition-colors cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
+            {/* Modal Sub-Tabs & Availability Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3 mb-3 text-xs">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setProductModalTab('info')}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    productModalTab === 'info'
+                      ? 'bg-amber-500 text-slate-950 shadow-md'
+                      : 'text-slate-400 hover:text-white bg-slate-800/60'
+                  }`}
+                >
+                  <UtensilsCrossed className="w-3.5 h-3.5" />
+                  <span>البيانات الأساسية والصورة</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setProductModalTab('sizes')}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    productModalTab === 'sizes'
+                      ? 'bg-amber-500 text-slate-950 shadow-md'
+                      : 'text-slate-400 hover:text-white bg-slate-800/60'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>الأحجام ({prodSizes.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setProductModalTab('addons')}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    productModalTab === 'addons'
+                      ? 'bg-amber-500 text-slate-950 shadow-md'
+                      : 'text-slate-400 hover:text-white bg-slate-800/60'
+                  }`}
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>الإضافات ({prodAddons.length})</span>
+                </button>
+              </div>
+
+              {/* Instant Availability Toggle in Modal */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-slate-400 font-medium">حالة التوفر:</span>
+                <button
+                  type="button"
+                  onClick={() => setProdIsAvailable(!prodIsAvailable)}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                    prodIsAvailable
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${prodIsAvailable ? 'bg-emerald-400' : 'bg-rose-400'}`}></span>
+                  <span>{prodIsAvailable ? 'متاح للطلب' : 'غير متوفر حالياً'}</span>
+                </button>
+              </div>
+            </div>
+
             <form onSubmit={handleSaveProduct} className="text-xs">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                {/* Column 1: Details */}
-                <div className="md:col-span-7 space-y-2.5">
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-slate-400 mb-1 font-medium">اسم الصنف بالعربية *</label>
-                      <input
-                        type="text"
-                        required
-                        value={prodNameAr}
-                        onChange={e => setProdNameAr(e.target.value)}
-                        placeholder="مثال: شاورما لحم عربي"
-                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-amber-500/50"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 mb-1 font-medium">الاسم بالإنجليزية</label>
-                      <input
-                        type="text"
-                        value={prodNameEn}
-                        onChange={e => setProdNameEn(e.target.value)}
-                        placeholder="Beef Shawarma"
-                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-amber-500/50"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-slate-400 mb-1 font-medium">القسم / التصنيف *</label>
-                      <select
-                        value={prodCategory}
-                        onChange={e => setProdCategory(Number(e.target.value))}
-                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-amber-500/50"
-                      >
-                        {categories.map(c => (
-                          <option key={c.id} value={c.id}>{c.name_ar}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 mb-1 font-medium">السعر الأساسي (د.ع) *</label>
-                      <input
-                        type="number"
-                        required
-                        value={prodPrice}
-                        onChange={e => setProdPrice(Number(e.target.value))}
-                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-white font-mono outline-none focus:border-amber-500/50"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-slate-400 mb-1 font-medium">سعر الخصم (د.ع)</label>
-                      <input
-                        type="number"
-                        value={prodDiscount || ''}
-                        onChange={e => setProdDiscount(e.target.value ? Number(e.target.value) : undefined)}
-                        placeholder="اختياري"
-                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2 text-white font-mono outline-none focus:border-amber-500/50"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 mb-1 font-medium">التحضير (دقيقة)</label>
-                      <input
-                        type="number"
-                        value={prodPrepTime}
-                        onChange={e => setProdPrepTime(Number(e.target.value))}
-                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2 text-white font-mono outline-none focus:border-amber-500/50"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 mb-1 font-medium">السعرات (Cal)</label>
-                      <input
-                        type="number"
-                        value={prodCalories}
-                        onChange={e => setProdCalories(Number(e.target.value))}
-                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2 text-white font-mono outline-none focus:border-amber-500/50"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1 font-medium">الوصف والمكونات</label>
-                    <textarea
-                      rows={2}
-                      value={prodDescAr}
-                      onChange={e => setProdDescAr(e.target.value)}
-                      placeholder="وصف ومكونات الطبق..."
-                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-amber-500/50 resize-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Column 2: Transparent Image Box */}
-                <div className="md:col-span-5 bg-transparent border border-slate-800/80 rounded-2xl p-3 flex flex-col justify-between gap-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-300 font-semibold text-xs flex items-center gap-1.5">
-                      <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
-                      <span>صورة الطبق / الوجبة</span>
-                    </span>
-                    {prodImageUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setProdImageUrl('')}
-                        className="text-[10px] text-rose-400 hover:text-rose-300"
-                      >
-                        إلغاء الصورة
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Image Preview Box */}
-                  <div className="relative w-full h-36 rounded-xl overflow-hidden border border-slate-800 bg-slate-950/40 flex items-center justify-center group">
-                    {prodImageUrl ? (
-                      <img
-                        src={prodImageUrl}
-                        alt="معاينة الوجبة"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center text-slate-500 gap-1 text-center p-2">
-                        <ImageIcon className="w-8 h-8 opacity-40 text-slate-400" />
-                        <span className="text-[11px]">لا توجد صورة محددة</span>
+              {/* Tab 1: Info & Image */}
+              {productModalTab === 'info' && (
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                  {/* Column 1: Details */}
+                  <div className="md:col-span-7 space-y-2.5">
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-slate-400 mb-1 font-medium">اسم الصنف بالعربية *</label>
+                        <input
+                          type="text"
+                          required
+                          value={prodNameAr}
+                          onChange={e => setProdNameAr(e.target.value)}
+                          placeholder="مثال: شاورما لحم عربي"
+                          className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-amber-500/50"
+                        />
                       </div>
-                    )}
-                    <label className="absolute inset-0 bg-slate-950/70 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[11px] cursor-pointer transition-opacity">
-                      <Camera className="w-5 h-5 mb-1 text-amber-400" />
-                      <span>تغيير الصورة</span>
+                      <div>
+                        <label className="block text-slate-400 mb-1 font-medium">الاسم بالإنجليزية</label>
+                        <input
+                          type="text"
+                          value={prodNameEn}
+                          onChange={e => setProdNameEn(e.target.value)}
+                          placeholder="Beef Shawarma"
+                          className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-amber-500/50"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-slate-400 mb-1 font-medium">القسم / التصنيف *</label>
+                        <select
+                          value={prodCategory}
+                          onChange={e => setProdCategory(Number(e.target.value))}
+                          className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-amber-500/50"
+                        >
+                          {categories.map(c => (
+                            <option key={c.id} value={c.id}>{c.name_ar}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1 font-medium">السعر الأساسي (د.ع) *</label>
+                        <input
+                          type="number"
+                          required
+                          value={prodPrice}
+                          onChange={e => setProdPrice(Number(e.target.value))}
+                          className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-white font-mono outline-none focus:border-amber-500/50"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-slate-400 mb-1 font-medium">سعر الخصم (د.ع)</label>
+                        <input
+                          type="number"
+                          value={prodDiscount || ''}
+                          onChange={e => setProdDiscount(e.target.value ? Number(e.target.value) : undefined)}
+                          placeholder="اختياري"
+                          className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2 text-white font-mono outline-none focus:border-amber-500/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1 font-medium">التحضير (دقيقة)</label>
+                        <input
+                          type="number"
+                          value={prodPrepTime}
+                          onChange={e => setProdPrepTime(Number(e.target.value))}
+                          className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2 text-white font-mono outline-none focus:border-amber-500/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1 font-medium">السعرات (Cal)</label>
+                        <input
+                          type="number"
+                          value={prodCalories}
+                          onChange={e => setProdCalories(Number(e.target.value))}
+                          className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2 text-white font-mono outline-none focus:border-amber-500/50"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 mb-1 font-medium">الوصف والمكونات</label>
+                      <textarea
+                        rows={2}
+                        value={prodDescAr}
+                        onChange={e => setProdDescAr(e.target.value)}
+                        placeholder="وصف ومكونات الطبق..."
+                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-amber-500/50 resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Column 2: Transparent Image Box */}
+                  <div className="md:col-span-5 bg-transparent border border-slate-800/80 rounded-2xl p-3 flex flex-col justify-between gap-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 font-semibold text-xs flex items-center gap-1.5">
+                        <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+                        <span>صورة الطبق / الوجبة</span>
+                      </span>
+                      {prodImageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setProdImageUrl('')}
+                          className="text-[10px] text-rose-400 hover:text-rose-300 cursor-pointer"
+                        >
+                          إلغاء الصورة
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Image Preview Box */}
+                    <div className="relative w-full h-36 rounded-xl overflow-hidden border border-slate-800 bg-slate-950/40 flex items-center justify-center group">
+                      {prodImageUrl ? (
+                        <img
+                          src={prodImageUrl}
+                          alt="معاينة الوجبة"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-slate-500 gap-1 text-center p-2">
+                          <ImageIcon className="w-8 h-8 opacity-40 text-slate-400" />
+                          <span className="text-[11px]">لا توجد صورة محددة</span>
+                        </div>
+                      )}
+                      <label className="absolute inset-0 bg-slate-950/70 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[11px] cursor-pointer transition-opacity">
+                        <Camera className="w-5 h-5 mb-1 text-amber-400" />
+                        <span>تغيير الصورة</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleProductImageUpload}
+                        />
+                      </label>
+                    </div>
+
+                    {/* Upload Action */}
+                    <label className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl font-bold cursor-pointer transition-all active:scale-95 text-center text-xs">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>رفع صورة من هاتفك أو جهازك</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -1851,49 +2015,233 @@ export const OwnerDashboard: React.FC = () => {
                         onChange={handleProductImageUpload}
                       />
                     </label>
+
+                    {/* Direct URL */}
+                    <input
+                      type="text"
+                      value={prodImageUrl}
+                      onChange={e => setProdImageUrl(e.target.value)}
+                      placeholder="أو الصق رابط صورة مباشر (URL)..."
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2 text-[11px] text-white placeholder-slate-500 font-mono outline-none focus:border-amber-500/50"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 2: Sizes Manager */}
+              {productModalTab === 'sizes' && (
+                <div className="space-y-3 min-h-[220px]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-white font-bold text-xs flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-amber-400" />
+                        <span>إدارة وتحديد أحجام الوجبة</span>
+                      </h4>
+                      <p className="text-[11px] text-slate-400">
+                        حدد أحجاماً متعددة (صغير، عادي، كبير، عائلي) مع فارق السعر لكل حجم عن السعر الأساسي.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddSize}
+                      className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>إضافة حجم جديد</span>
+                    </button>
                   </div>
 
-                  {/* Upload Action */}
-                  <label className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl font-bold cursor-pointer transition-all active:scale-95 text-center text-xs">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>رفع صورة من هاتفك أو جهازك</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleProductImageUpload}
-                    />
-                  </label>
-
-                  {/* Direct URL */}
-                  <input
-                    type="text"
-                    value={prodImageUrl}
-                    onChange={e => setProdImageUrl(e.target.value)}
-                    placeholder="أو الصق رابط صورة مباشر (URL)..."
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2 text-[11px] text-white placeholder-slate-500 font-mono outline-none focus:border-amber-500/50"
-                  />
+                  {prodSizes.length === 0 ? (
+                    <div className="p-8 text-center bg-slate-950/40 rounded-2xl border border-dashed border-slate-800 text-slate-500 text-xs space-y-2">
+                      <Layers className="w-8 h-8 opacity-40 mx-auto text-amber-400" />
+                      <p>لا توجد أحجام مخصصة - سيعتمد النظام السعر الأساسي فقط.</p>
+                      <button
+                        type="button"
+                        onClick={handleAddSize}
+                        className="text-amber-400 underline font-semibold cursor-pointer"
+                      >
+                        اضغط هنا لإضافة أحجام متعددة (عادي / كبير / عائلي)
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
+                      {prodSizes.map((size, idx) => (
+                        <div
+                          key={size.id || idx}
+                          className="flex items-center gap-2 bg-slate-950/60 border border-slate-800/80 rounded-xl p-2.5"
+                        >
+                          <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div>
+                              <label className="block text-[10px] text-slate-400 mb-0.5">اسم الحجم (عربي) *</label>
+                              <input
+                                type="text"
+                                required
+                                value={size.name_ar}
+                                onChange={e => handleUpdateSize(size.id, 'name_ar', e.target.value)}
+                                placeholder="مثال: كبير (Large)"
+                                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-xs text-white outline-none focus:border-amber-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-slate-400 mb-0.5">اسم الحجم (إنجليزي)</label>
+                              <input
+                                type="text"
+                                value={size.name_en || ''}
+                                onChange={e => handleUpdateSize(size.id, 'name_en', e.target.value)}
+                                placeholder="Large"
+                                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-xs text-white outline-none focus:border-amber-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-slate-400 mb-0.5">السعر الإضافي (د.ع)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="250"
+                                value={size.extra_price}
+                                onChange={e => handleUpdateSize(size.id, 'extra_price', Number(e.target.value))}
+                                placeholder="0 د.ع"
+                                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-xs text-white font-mono outline-none focus:border-amber-500"
+                              />
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSize(size.id)}
+                            className="p-2 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-slate-900 transition-colors cursor-pointer shrink-0 mt-3"
+                            title="حذف هذا الحجم"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* Tab 3: Addons Manager */}
+              {productModalTab === 'addons' && (
+                <div className="space-y-3 min-h-[220px]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-white font-bold text-xs flex items-center gap-1.5">
+                        <PlusCircle className="w-3.5 h-3.5 text-amber-400" />
+                        <span>إدارة الإضافات والخيارات (Addons)</span>
+                      </h4>
+                      <p className="text-[11px] text-slate-400">
+                        خيارات إضافية تظهر للزبون عند طلب الوجبة (مثل صوص حار، جبنة إضافية، مخلل، خبز زيادة).
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddAddon}
+                      className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>إضافة خيار إضافي</span>
+                    </button>
+                  </div>
+
+                  {prodAddons.length === 0 ? (
+                    <div className="p-8 text-center bg-slate-950/40 rounded-2xl border border-dashed border-slate-800 text-slate-500 text-xs space-y-2">
+                      <PlusCircle className="w-8 h-8 opacity-40 mx-auto text-amber-400" />
+                      <p>لا توجد إضافات مخصصة لهذه الوجبة حالياً.</p>
+                      <button
+                        type="button"
+                        onClick={handleAddAddon}
+                        className="text-amber-400 underline font-semibold cursor-pointer"
+                      >
+                        اضغط هنا لإضافة خيارات إضافية للوجبة
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
+                      {prodAddons.map((addon, idx) => (
+                        <div
+                          key={addon.id || idx}
+                          className="flex items-center gap-2 bg-slate-950/60 border border-slate-800/80 rounded-xl p-2.5"
+                        >
+                          <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div>
+                              <label className="block text-[10px] text-slate-400 mb-0.5">اسم الإضافة (عربي) *</label>
+                              <input
+                                type="text"
+                                required
+                                value={addon.name_ar}
+                                onChange={e => handleUpdateAddon(addon.id, 'name_ar', e.target.value)}
+                                placeholder="مثال: جبنة إضافية"
+                                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-xs text-white outline-none focus:border-amber-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-slate-400 mb-0.5">اسم الإضافة (إنجليزي)</label>
+                              <input
+                                type="text"
+                                value={addon.name_en || ''}
+                                onChange={e => handleUpdateAddon(addon.id, 'name_en', e.target.value)}
+                                placeholder="Extra Cheese"
+                                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-xs text-white outline-none focus:border-amber-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-slate-400 mb-0.5">سعر الإضافة (د.ع - 0 = مجاني)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="250"
+                                value={addon.price}
+                                onChange={e => handleUpdateAddon(addon.id, 'price', Number(e.target.value))}
+                                placeholder="1000 د.ع"
+                                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-xs text-white font-mono outline-none focus:border-amber-500"
+                              />
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAddon(addon.id)}
+                            className="p-2 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-slate-900 transition-colors cursor-pointer shrink-0 mt-3"
+                            title="حذف هذه الإضافة"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Bottom Actions */}
-              <div className="flex items-center justify-end gap-2 pt-3 mt-3 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddProductModal(false);
-                    setEditingProduct(null);
-                  }}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700 text-xs font-semibold"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl shadow-md transition-colors text-xs"
-                >
-                  {editingProduct ? 'حفظ التعديلات' : 'حفظ الصنف ونشره في المنيو'}
-                </button>
+              <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-800">
+                <div className="text-[11px] text-slate-400">
+                  <span>{prodSizes.length} أحجام</span>
+                  <span className="mx-1.5">•</span>
+                  <span>{prodAddons.length} إضافات</span>
+                  <span className="mx-1.5">•</span>
+                  <span className={prodIsAvailable ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}>
+                    {prodIsAvailable ? 'متاح للطلب' : 'غير متوفر'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddProductModal(false);
+                      setEditingProduct(null);
+                    }}
+                    className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700 text-xs font-semibold cursor-pointer"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl shadow-md transition-colors text-xs cursor-pointer"
+                  >
+                    {editingProduct ? 'حفظ التعديلات' : 'حفظ الصنف ونشره في المنيو'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

@@ -582,28 +582,39 @@ export const CustomerMenu: React.FC = () => {
             )}
             {filteredProducts.map(prod => {
               const price = prod.discount_price || prod.base_price;
+              const isAvailable = prod.is_available !== false;
               return (
                 <div
                   key={prod.id}
-                  onClick={() => handleOpenProduct(prod)}
-                  className="bg-slate-900 border border-slate-800 hover:border-amber-500/40 rounded-2xl p-4 flex gap-3 cursor-pointer transition-all active:scale-[0.98] group"
+                  onClick={() => {
+                    if (isAvailable) handleOpenProduct(prod);
+                  }}
+                  className={`bg-slate-900 border rounded-2xl p-4 flex gap-3 transition-all ${
+                    isAvailable
+                      ? 'border-slate-800 hover:border-amber-500/40 cursor-pointer active:scale-[0.98] group'
+                      : 'border-slate-800/60 opacity-60 cursor-not-allowed'
+                  }`}
                 >
                   <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-xl overflow-hidden bg-slate-950 shrink-0 relative">
                     <img
                       src={prod.image_url}
                       alt={prod.name_ar}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      className={`w-full h-full object-cover transition-transform ${isAvailable ? 'group-hover:scale-105' : 'grayscale'}`}
                     />
-                    {prod.discount_price && (
+                    {!isAvailable ? (
+                      <span className="absolute inset-0 bg-slate-950/70 backdrop-blur-[2px] flex items-center justify-center text-rose-400 font-bold text-xs text-center p-1">
+                        غير متوفر حالياً
+                      </span>
+                    ) : prod.discount_price ? (
                       <span className="absolute top-1.5 right-1.5 bg-rose-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
                         خصم
                       </span>
-                    )}
+                    ) : null}
                   </div>
 
                   <div className="flex-1 flex flex-col justify-between">
                     <div>
-                      <h3 className="font-bold text-white text-sm group-hover:text-amber-400 transition-colors">
+                      <h3 className={`font-bold text-sm transition-colors ${isAvailable ? 'text-white group-hover:text-amber-400' : 'text-slate-400 line-through'}`}>
                         {prod.name_ar}
                       </h3>
                       <p className="text-xs text-slate-400 line-clamp-2 mt-1 leading-relaxed">
@@ -624,25 +635,33 @@ export const CustomerMenu: React.FC = () => {
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={e => handleRecommendDishViaWhatsApp(prod, e)}
-                          className="px-2 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-xs flex items-center gap-1 transition-colors border border-emerald-500/20"
-                          title="توصية بالوجبة وإرسالها عبر واتساب"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5 fill-emerald-400 text-slate-950" />
-                          <span className="text-[10px] font-bold hidden xs:inline">توصية</span>
-                        </button>
-                        <button
-                          onClick={e => {
-                            e.stopPropagation();
-                            handleOpenProduct(prod);
-                          }}
-                          className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-lg flex items-center gap-1 shadow-sm"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>اختيار</span>
-                        </button>
+                        {isAvailable ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={e => handleRecommendDishViaWhatsApp(prod, e)}
+                              className="px-2 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-xs flex items-center gap-1 transition-colors border border-emerald-500/20"
+                              title="توصية بالوجبة وإرسالها عبر واتساب"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5 fill-emerald-400 text-slate-950" />
+                              <span className="text-[10px] font-bold hidden xs:inline">توصية</span>
+                            </button>
+                            <button
+                              onClick={e => {
+                                e.stopPropagation();
+                                handleOpenProduct(prod);
+                              }}
+                              className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-lg flex items-center gap-1 shadow-sm"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>اختيار</span>
+                            </button>
+                          </>
+                        ) : (
+                          <span className="px-2.5 py-1 bg-slate-800 text-slate-500 text-xs font-semibold rounded-lg">
+                            نفدت الكمية
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
