@@ -15,6 +15,7 @@ import {
   MessageSquare,
   Gift,
   ArrowRight,
+  ArrowLeft,
   MapPin,
   Phone,
   Sparkles,
@@ -1192,6 +1193,16 @@ export const CustomerMenu: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Discreet floating return button for manager/owner preview */}
+      <div className="fixed bottom-4 left-4 z-40">
+        <button
+          onClick={() => setCurrentRole('restaurant_owner')}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-amber-400 text-xs font-semibold rounded-full border border-amber-500/30 shadow-xl backdrop-blur transition-all cursor-pointer"
+        >
+          <span>العودة للوحة التحكم</span>
+          <ArrowLeft className="w-3.5 h-3.5" />
+        </button>
+      </div>
     </div>
   );
 };

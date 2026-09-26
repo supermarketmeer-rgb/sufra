@@ -59,15 +59,17 @@ const MainContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-cairo">
-      {/* Top Bar with Role Switcher & Code Studio */}
-      <Navbar
-        onOpenExplorer={() => setShowExplorer(true)}
-        onOpenRegister={() => setShowRegister(true)}
-        onOpenPortal={() => setShowPortal(true)}
-      />
+      {/* Top Bar (Hidden for customer QR Menu so customers never see admin/staff controls) */}
+      {currentRole !== 'customer' && (
+        <Navbar
+          onOpenExplorer={() => setShowExplorer(true)}
+          onOpenRegister={() => setShowRegister(true)}
+          onOpenPortal={() => setShowPortal(true)}
+        />
+      )}
 
       {/* Main Workspace Frame */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+      <main className={currentRole === 'customer' ? 'flex-1 w-full' : 'flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6'}>
         {showRegister ? (
           <RegisterRestaurant onClose={() => setShowRegister(false)} />
         ) : (
