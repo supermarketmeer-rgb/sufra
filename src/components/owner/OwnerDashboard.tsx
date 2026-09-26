@@ -152,15 +152,6 @@ export const OwnerDashboard: React.FC = () => {
   const [prodDescAr, setProdDescAr] = useState('');
   const [prodImageUrl, setProdImageUrl] = useState('/src/assets/images/dish_mixed_grills_1790265810518.jpg');
 
-  const PRESET_DISH_IMAGES = [
-    { name: 'مشاوي مشكلة', url: '/src/assets/images/dish_mixed_grills_1790265810518.jpg' },
-    { name: 'برجر غورميه', url: '/src/assets/images/dish_gourmet_burger_1790265822964.jpg' },
-    { name: 'بيتزا إيطالية', url: '/src/assets/images/dish_artisan_pizza_1790265834441.jpg' },
-    { name: 'قهوة ومشروبات', url: '/src/assets/images/dish_specialty_coffee_1790265843929.jpg' },
-    { name: 'شاورما وسندويش', url: 'https://images.unsplash.com/photo-1561651823-34feb02250e4?w=600&auto=format&fit=crop&q=80' },
-    { name: 'سلطات ومقبلات', url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80' },
-  ];
-
   const handleProductImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1702,141 +1693,155 @@ export const OwnerDashboard: React.FC = () => {
       {/* Add / Edit Product Modal */}
       {showAddProductModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-white">
-                {editingProduct ? `تعديل الصنف: ${editingProduct.name_ar}` : 'إضافة صنف وجبة جديد إلى المنيو'}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-3xl w-full p-5 md:p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <UtensilsCrossed className="w-4 h-4 text-amber-400" />
+                <span>{editingProduct ? `تعديل الصنف: ${editingProduct.name_ar}` : 'إضافة صنف وجبة جديد إلى المنيو'}</span>
               </h3>
               <button
                 onClick={() => {
                   setShowAddProductModal(false);
                   setEditingProduct(null);
                 }}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-white w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center transition-colors"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSaveProduct} className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-400 mb-1">اسم الصنف بالعربية *</label>
-                  <input
-                    type="text"
-                    required
-                    value={prodNameAr}
-                    onChange={e => setProdNameAr(e.target.value)}
-                    placeholder="مثال: شاورما لحم عربي"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-1">الاسم بالإنجليزية</label>
-                  <input
-                    type="text"
-                    value={prodNameEn}
-                    onChange={e => setProdNameEn(e.target.value)}
-                    placeholder="Arabic Beef Shawarma"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white"
-                  />
-                </div>
-              </div>
+            <form onSubmit={handleSaveProduct} className="text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                {/* Column 1: Details */}
+                <div className="md:col-span-7 space-y-2.5">
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-slate-400 mb-1 font-medium">اسم الصنف بالعربية *</label>
+                      <input
+                        type="text"
+                        required
+                        value={prodNameAr}
+                        onChange={e => setProdNameAr(e.target.value)}
+                        placeholder="مثال: شاورما لحم عربي"
+                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1 font-medium">الاسم بالإنجليزية</label>
+                      <input
+                        type="text"
+                        value={prodNameEn}
+                        onChange={e => setProdNameEn(e.target.value)}
+                        placeholder="Beef Shawarma"
+                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-slate-400 mb-1">القسم / التصنيف *</label>
-                <select
-                  value={prodCategory}
-                  onChange={e => setProdCategory(Number(e.target.value))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white"
-                >
-                  {categories.map(c => (
-                    <option key={c.id} value={c.id}>{c.name_ar}</option>
-                  ))}
-                </select>
-              </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-slate-400 mb-1 font-medium">القسم / التصنيف *</label>
+                      <select
+                        value={prodCategory}
+                        onChange={e => setProdCategory(Number(e.target.value))}
+                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-amber-500/50"
+                      >
+                        {categories.map(c => (
+                          <option key={c.id} value={c.id}>{c.name_ar}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1 font-medium">السعر الأساسي (د.ع) *</label>
+                      <input
+                        type="number"
+                        required
+                        value={prodPrice}
+                        onChange={e => setProdPrice(Number(e.target.value))}
+                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-white font-mono outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-400 mb-1">السعر الأساسي (د.ع) *</label>
-                  <input
-                    type="number"
-                    required
-                    value={prodPrice}
-                    onChange={e => setProdPrice(Number(e.target.value))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-1">سعر الخصم (اختياري)</label>
-                  <input
-                    type="number"
-                    value={prodDiscount || ''}
-                    onChange={e => setProdDiscount(e.target.value ? Number(e.target.value) : undefined)}
-                    placeholder="سعر العرض"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white font-mono"
-                  />
-                </div>
-              </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-slate-400 mb-1 font-medium">سعر الخصم (د.ع)</label>
+                      <input
+                        type="number"
+                        value={prodDiscount || ''}
+                        onChange={e => setProdDiscount(e.target.value ? Number(e.target.value) : undefined)}
+                        placeholder="اختياري"
+                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2 text-white font-mono outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1 font-medium">التحضير (دقيقة)</label>
+                      <input
+                        type="number"
+                        value={prodPrepTime}
+                        onChange={e => setProdPrepTime(Number(e.target.value))}
+                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2 text-white font-mono outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1 font-medium">السعرات (Cal)</label>
+                      <input
+                        type="number"
+                        value={prodCalories}
+                        onChange={e => setProdCalories(Number(e.target.value))}
+                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2 text-white font-mono outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-400 mb-1">مدة التحضير (بالدقائق)</label>
-                  <input
-                    type="number"
-                    value={prodPrepTime}
-                    onChange={e => setProdPrepTime(Number(e.target.value))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-1">السعرات الحرارية</label>
-                  <input
-                    type="number"
-                    value={prodCalories}
-                    onChange={e => setProdCalories(Number(e.target.value))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white font-mono"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-400 mb-1">الوصف والمكونات</label>
-                <textarea
-                  rows={3}
-                  value={prodDescAr}
-                  onChange={e => setProdDescAr(e.target.value)}
-                  placeholder="وصف شهي ومكونات الطبق..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white"
-                />
-              </div>
-
-              {/* Dish Image Upload Section */}
-              <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-300 font-semibold text-xs flex items-center gap-1.5">
-                    <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
-                    <span>صورة الطبق / الوجبة</span>
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-normal">من هاتفك أو رابط مباشر أو صورة جاهزة</span>
+                  <div>
+                    <label className="block text-slate-400 mb-1 font-medium">الوصف والمكونات</label>
+                    <textarea
+                      rows={2}
+                      value={prodDescAr}
+                      onChange={e => setProdDescAr(e.target.value)}
+                      placeholder="وصف ومكونات الطبق..."
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-amber-500/50 resize-none"
+                    />
+                  </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 items-center">
+                {/* Column 2: Transparent Image Box */}
+                <div className="md:col-span-5 bg-transparent border border-slate-800/80 rounded-2xl p-3 flex flex-col justify-between gap-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-300 font-semibold text-xs flex items-center gap-1.5">
+                      <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+                      <span>صورة الطبق / الوجبة</span>
+                    </span>
+                    {prodImageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setProdImageUrl('')}
+                        className="text-[10px] text-rose-400 hover:text-rose-300"
+                      >
+                        إلغاء الصورة
+                      </button>
+                    )}
+                  </div>
+
                   {/* Image Preview Box */}
-                  <div className="relative w-full sm:w-28 h-28 rounded-xl overflow-hidden border border-slate-700 bg-slate-900 shrink-0 group">
+                  <div className="relative w-full h-36 rounded-xl overflow-hidden border border-slate-800 bg-slate-950/40 flex items-center justify-center group">
                     {prodImageUrl ? (
                       <img
                         src={prodImageUrl}
                         alt="معاينة الوجبة"
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
                       />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 text-xs">
-                        <ImageIcon className="w-8 h-8 opacity-40 mb-1" />
-                        <span>لا توجد صورة</span>
+                      <div className="flex flex-col items-center justify-center text-slate-500 gap-1 text-center p-2">
+                        <ImageIcon className="w-8 h-8 opacity-40 text-slate-400" />
+                        <span className="text-[11px]">لا توجد صورة محددة</span>
                       </div>
                     )}
-                    <label className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[11px] cursor-pointer transition-opacity">
+                    <label className="absolute inset-0 bg-slate-950/70 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[11px] cursor-pointer transition-opacity">
                       <Camera className="w-5 h-5 mb-1 text-amber-400" />
                       <span>تغيير الصورة</span>
                       <input
@@ -1848,69 +1853,44 @@ export const OwnerDashboard: React.FC = () => {
                     </label>
                   </div>
 
-                  {/* Upload Actions & Direct URL */}
-                  <div className="flex-1 w-full space-y-2">
-                    <div className="flex items-center gap-2">
-                      <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-semibold cursor-pointer transition-colors active:scale-95 text-center">
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>رفع صورة من هاتفك أو جهازك</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleProductImageUpload}
-                        />
-                      </label>
-                    </div>
+                  {/* Upload Action */}
+                  <label className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl font-bold cursor-pointer transition-all active:scale-95 text-center text-xs">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>رفع صورة من هاتفك أو جهازك</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleProductImageUpload}
+                    />
+                  </label>
 
-                    <div>
-                      <input
-                        type="text"
-                        value={prodImageUrl}
-                        onChange={e => setProdImageUrl(e.target.value)}
-                        placeholder="أو الصق رابط صورة مباشر (URL)..."
-                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[11px] text-white placeholder-slate-500 font-mono"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Preset Fast Selection */}
-                <div className="space-y-1.5 pt-1 border-t border-slate-800/80">
-                  <span className="text-[10px] text-slate-400">أو اختر صورة جاهزة بنقرة واحدة:</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {PRESET_DISH_IMAGES.map((preset, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setProdImageUrl(preset.url)}
-                        className={`px-2 py-1 rounded-lg text-[10px] transition-all cursor-pointer border ${
-                          prodImageUrl === preset.url
-                            ? 'bg-amber-500 text-slate-950 font-bold border-amber-500'
-                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700'
-                        }`}
-                      >
-                        {preset.name}
-                      </button>
-                    ))}
-                  </div>
+                  {/* Direct URL */}
+                  <input
+                    type="text"
+                    value={prodImageUrl}
+                    onChange={e => setProdImageUrl(e.target.value)}
+                    placeholder="أو الصق رابط صورة مباشر (URL)..."
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2 text-[11px] text-white placeholder-slate-500 font-mono outline-none focus:border-amber-500/50"
+                  />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+              {/* Bottom Actions */}
+              <div className="flex items-center justify-end gap-2 pt-3 mt-3 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => {
                     setShowAddProductModal(false);
                     setEditingProduct(null);
                   }}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700"
+                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700 text-xs font-semibold"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl shadow-md transition-colors"
+                  className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl shadow-md transition-colors text-xs"
                 >
                   {editingProduct ? 'حفظ التعديلات' : 'حفظ الصنف ونشره في المنيو'}
                 </button>
