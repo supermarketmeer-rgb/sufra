@@ -1,8 +1,10 @@
+providers = ["node"]
+
 [phases.setup]
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmds = ["npm install --include=dev"]
+cmds = ["npm install"]
 
 [phases.build]
 cmds = ["npm run build"]
