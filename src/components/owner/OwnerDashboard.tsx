@@ -152,6 +152,27 @@ export const OwnerDashboard: React.FC = () => {
   const [prodDescAr, setProdDescAr] = useState('');
   const [prodImageUrl, setProdImageUrl] = useState('/src/assets/images/dish_mixed_grills_1790265810518.jpg');
 
+  const PRESET_DISH_IMAGES = [
+    { name: 'مشاوي مشكلة', url: '/src/assets/images/dish_mixed_grills_1790265810518.jpg' },
+    { name: 'برجر غورميه', url: '/src/assets/images/dish_gourmet_burger_1790265822964.jpg' },
+    { name: 'بيتزا إيطالية', url: '/src/assets/images/dish_artisan_pizza_1790265834441.jpg' },
+    { name: 'قهوة ومشروبات', url: '/src/assets/images/dish_specialty_coffee_1790265843929.jpg' },
+    { name: 'شاورما وسندويش', url: 'https://images.unsplash.com/photo-1561651823-34feb02250e4?w=600&auto=format&fit=crop&q=80' },
+    { name: 'سلطات ومقبلات', url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80' },
+  ];
+
+  const handleProductImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setProdImageUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   // New branch form
   const [branchNameAr, setBranchNameAr] = useState('');
   const [branchPhone, setBranchPhone] = useState('');
@@ -580,6 +601,7 @@ export const OwnerDashboard: React.FC = () => {
                   setProdDescAr('');
                   setProdPrice(12000);
                   setProdDiscount(undefined);
+                  setProdImageUrl('/src/assets/images/dish_mixed_grills_1790265810518.jpg');
                   setShowAddProductModal(true);
                 }}
                 className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold rounded-xl shadow-md transition-colors whitespace-nowrap"
@@ -1787,6 +1809,92 @@ export const OwnerDashboard: React.FC = () => {
                   placeholder="وصف شهي ومكونات الطبق..."
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white"
                 />
+              </div>
+
+              {/* Dish Image Upload Section */}
+              <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-300 font-semibold text-xs flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+                    <span>صورة الطبق / الوجبة</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-normal">من هاتفك أو رابط مباشر أو صورة جاهزة</span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 items-center">
+                  {/* Image Preview Box */}
+                  <div className="relative w-full sm:w-28 h-28 rounded-xl overflow-hidden border border-slate-700 bg-slate-900 shrink-0 group">
+                    {prodImageUrl ? (
+                      <img
+                        src={prodImageUrl}
+                        alt="معاينة الوجبة"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 text-xs">
+                        <ImageIcon className="w-8 h-8 opacity-40 mb-1" />
+                        <span>لا توجد صورة</span>
+                      </div>
+                    )}
+                    <label className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[11px] cursor-pointer transition-opacity">
+                      <Camera className="w-5 h-5 mb-1 text-amber-400" />
+                      <span>تغيير الصورة</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleProductImageUpload}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Upload Actions & Direct URL */}
+                  <div className="flex-1 w-full space-y-2">
+                    <div className="flex items-center gap-2">
+                      <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-semibold cursor-pointer transition-colors active:scale-95 text-center">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>رفع صورة من هاتفك أو جهازك</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleProductImageUpload}
+                        />
+                      </label>
+                    </div>
+
+                    <div>
+                      <input
+                        type="text"
+                        value={prodImageUrl}
+                        onChange={e => setProdImageUrl(e.target.value)}
+                        placeholder="أو الصق رابط صورة مباشر (URL)..."
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[11px] text-white placeholder-slate-500 font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Preset Fast Selection */}
+                <div className="space-y-1.5 pt-1 border-t border-slate-800/80">
+                  <span className="text-[10px] text-slate-400">أو اختر صورة جاهزة بنقرة واحدة:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PRESET_DISH_IMAGES.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setProdImageUrl(preset.url)}
+                        className={`px-2 py-1 rounded-lg text-[10px] transition-all cursor-pointer border ${
+                          prodImageUrl === preset.url
+                            ? 'bg-amber-500 text-slate-950 font-bold border-amber-500'
+                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        {preset.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
