@@ -24,7 +24,11 @@ import {
   Sliders,
   AlertCircle,
   MessageCircle,
-  Store
+  Store,
+  Camera,
+  Upload,
+  Palette,
+  Image as ImageIcon
 } from 'lucide-react';
 
 export const OwnerDashboard: React.FC = () => {
@@ -43,12 +47,73 @@ export const OwnerDashboard: React.FC = () => {
     tables,
     orders,
     setCurrentRole,
-    updateRestaurantWhatsApp
+    updateRestaurantWhatsApp,
+    updateRestaurantBranding
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'branches' | 'qr' | 'ai' | 'reports'>('menu');
+  const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'branches' | 'qr' | 'ai' | 'reports' | 'branding'>('menu');
   const [ownerWhatsApp, setOwnerWhatsApp] = useState<string>(activeRestaurant?.whatsapp_number || '+9647701234567');
   const [savedWhatsAppSuccess, setSavedWhatsAppSuccess] = useState(false);
+
+  // Restaurant Branding & Photo Upload states
+  const [showBrandingModal, setShowBrandingModal] = useState(false);
+  const [brandingTarget, setBrandingTarget] = useState<'all' | 'logo' | 'cover'>('all');
+  const [newLogoUrl, setNewLogoUrl] = useState(activeRestaurant?.logo_url || '');
+  const [newCoverUrl, setNewCoverUrl] = useState(activeRestaurant?.cover_url || '');
+  const [newRestName, setNewRestName] = useState(activeRestaurant?.name_ar || '');
+  const [newRestDesc, setNewRestDesc] = useState(activeRestaurant?.description_ar || '');
+  const [savedBrandingSuccess, setSavedBrandingSuccess] = useState(false);
+
+  useEffect(() => {
+    if (activeRestaurant) {
+      setNewLogoUrl(activeRestaurant.logo_url || '');
+      setNewCoverUrl(activeRestaurant.cover_url || '');
+      setNewRestName(activeRestaurant.name_ar || '');
+      setNewRestDesc(activeRestaurant.description_ar || '');
+      setOwnerWhatsApp(activeRestaurant.whatsapp_number || '+9647701234567');
+    }
+  }, [activeRestaurant]);
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setNewLogoUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setNewCoverUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveBranding = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!activeRestaurant) return;
+    updateRestaurantBranding(activeRestaurant.id, {
+      logo_url: newLogoUrl || activeRestaurant.logo_url,
+      cover_url: newCoverUrl || activeRestaurant.cover_url,
+      name_ar: newRestName || activeRestaurant.name_ar,
+      description_ar: newRestDesc || activeRestaurant.description_ar,
+      whatsapp_number: ownerWhatsApp || activeRestaurant.whatsapp_number
+    });
+    setSavedBrandingSuccess(true);
+    setTimeout(() => {
+      setSavedBrandingSuccess(false);
+      setShowBrandingModal(false);
+    }, 1500);
+  };
 
   // Menu filters & modals
   const [selectedCatId, setSelectedCatId] = useState<number | 'all'>('all');
@@ -242,28 +307,64 @@ export const OwnerDashboard: React.FC = () => {
     <div className="space-y-6">
       {/* Restaurant Header Banner */}
       <div className="relative rounded-3xl overflow-hidden border border-slate-800 bg-slate-900 shadow-xl">
-        <div className="h-40 relative">
+        <div className="h-44 sm:h-52 relative group overflow-hidden">
           <img
             src={activeRestaurant.cover_url}
             alt=""
-            className="w-full h-full object-cover brightness-50"
+            className="w-full h-full object-cover brightness-75 transition-all group-hover:brightness-90"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
+          
+          {/* Quick Change Cover Button */}
+          <button
+            onClick={() => {
+              setBrandingTarget('cover');
+              setShowBrandingModal(true);
+            }}
+            className="absolute top-4 left-4 z-10 px-3.5 py-1.5 bg-slate-900/80 hover:bg-slate-900 text-white text-xs font-bold rounded-xl border border-slate-700/80 shadow-lg backdrop-blur flex items-center gap-2 transition-all cursor-pointer hover:border-amber-500/50"
+          >
+            <Camera className="w-3.5 h-3.5 text-amber-400" />
+            <span>تغيير صورة الواجهة (الغلاف)</span>
+          </button>
         </div>
 
-        <div className="px-6 pb-6 pt-0 relative flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-12">
+        <div className="px-6 pb-6 pt-0 relative flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-14">
           <div className="flex items-center gap-4">
-            <img
-              src={activeRestaurant.logo_url}
-              alt=""
-              className="w-20 h-20 rounded-2xl object-cover border-4 border-slate-900 shadow-2xl bg-slate-800"
-            />
+            <div
+              className="relative group cursor-pointer"
+              onClick={() => {
+                setBrandingTarget('logo');
+                setShowBrandingModal(true);
+              }}
+              title="انقر لتغيير لوجو المطعم"
+            >
+              <img
+                src={activeRestaurant.logo_url}
+                alt=""
+                className="w-24 h-24 rounded-2xl object-cover border-4 border-slate-900 shadow-2xl bg-slate-800 transition-transform group-hover:scale-105"
+              />
+              <div className="absolute inset-0 rounded-2xl bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[11px] font-bold transition-opacity">
+                <Camera className="w-5 h-5 text-amber-400 mb-1" />
+                <span>تغيير اللوجو</span>
+              </div>
+            </div>
+
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-white">{activeRestaurant.name_ar}</h1>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-medium">
+                <h1 className="text-xl sm:text-2xl font-black text-white">{activeRestaurant.name_ar}</h1>
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold border border-emerald-500/30">
                   {activeRestaurant.status === 'active' ? 'نشط أونلاين' : 'مغلق مؤقتاً'}
                 </span>
+                <button
+                  onClick={() => {
+                    setBrandingTarget('all');
+                    setShowBrandingModal(true);
+                  }}
+                  className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                  title="تعديل هوية وصور المطعم"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
               </div>
               <div className="text-xs text-slate-400 font-mono mt-0.5 flex items-center gap-2">
                 <span className="text-amber-400 font-semibold">{activeRestaurant.slug}.sufrah.menu</span>
@@ -294,6 +395,7 @@ export const OwnerDashboard: React.FC = () => {
         <div className="px-6 border-t border-slate-800/80 flex items-center gap-2 overflow-x-auto">
           {[
             { id: 'menu', label: 'إدارة المنيو والأصناف', icon: <UtensilsCrossed className="w-4 h-4" /> },
+            { id: 'branding', label: 'هوية وصور المطعم (اللوجو والغلاف)', icon: <Palette className="w-4 h-4" /> },
             { id: 'qr', label: 'استوديو رموز QR', icon: <QrCode className="w-4 h-4" /> },
             { id: 'branches', label: `الفروع (${branches.length})`, icon: <Building2 className="w-4 h-4" /> },
             { id: 'overview', label: 'المبيعات والطلبات', icon: <TrendingUp className="w-4 h-4" /> },
@@ -895,6 +997,367 @@ export const OwnerDashboard: React.FC = () => {
           <p className="text-xs text-slate-400">
             يمكنك تصدير كافة العمليات اليومية أو الشهرية مع تفاصيل الضرائب والخصومات لطابعات الدفاتر والمحاسبين.
           </p>
+        </div>
+      )}
+
+      {/* Tab: Restaurant Branding & Photo Studio */}
+      {activeTab === 'branding' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+              <div>
+                <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2.5">
+                  <Palette className="w-5 h-5 text-amber-400" />
+                  <span>هوية وصور المطعم (اللوجو وصورة الواجهة)</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  قم برفع لوجو المطعم وصورة الغلاف لتظهر بشكل مباشر وفخم في منيو الزبائن (QR Menu).
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleSaveBranding()}
+                className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2 shrink-0"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>حفظ التعديلات في المنيو</span>
+              </button>
+            </div>
+
+            {savedBrandingSuccess && (
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400 text-xs sm:text-sm flex items-center gap-2 animate-fade-in">
+                <CheckCircle2 className="w-5 h-5 shrink-0" />
+                <span>تم حفظ وتحديث هوية المطعم وصور المنيو بنجاح!</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* Box 1: Restaurant Logo Upload */}
+              <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-bold text-white flex items-center gap-2">
+                    <Store className="w-4 h-4 text-amber-400" />
+                    <span>شعار المطعم (Logo)</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400">يفضل صورة مربعة 1:1</span>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-amber-500/30 bg-slate-900 shrink-0 shadow-lg relative group">
+                    <img
+                      src={newLogoUrl || activeRestaurant.logo_url}
+                      alt="Logo Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+
+                  <div className="flex-1 space-y-2">
+                    {/* Device Upload Button */}
+                    <label className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold border border-slate-700 flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-sm">
+                      <Upload className="w-4 h-4 text-amber-400" />
+                      <span>اختيار لوجو من الجهاز / الموبايل</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {/* Direct URL Input */}
+                    <input
+                      type="text"
+                      placeholder="أو الصق رابط صورة الشعار (URL)..."
+                      value={newLogoUrl}
+                      onChange={e => setNewLogoUrl(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Logo Presets */}
+                <div>
+                  <span className="text-[11px] text-slate-400 block mb-2 font-semibold">أو اختر من شعارات جاهزة بنقرة واحدة:</span>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                    {[
+                      { label: 'مشاوي', url: '/src/assets/images/dish_mixed_grills_1790265810518.jpg' },
+                      { label: 'برجر', url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80' },
+                      { label: 'شاورما', url: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=400&q=80' },
+                      { label: 'بيتزا', url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&q=80' },
+                      { label: 'كافيه', url: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400&q=80' },
+                    ].map((p, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setNewLogoUrl(p.url)}
+                        className={`p-1.5 rounded-xl border text-center transition-all cursor-pointer ${
+                          newLogoUrl === p.url ? 'border-amber-500 bg-amber-500/10' : 'border-slate-800 bg-slate-900 hover:border-slate-700'
+                        }`}
+                      >
+                        <img src={p.url} alt="" className="w-10 h-10 rounded-lg object-cover mx-auto mb-1" />
+                        <span className="text-[10px] text-slate-300 block truncate">{p.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Box 2: Restaurant Cover Banner Upload */}
+              <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-bold text-white flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4 text-amber-400" />
+                    <span>صورة الواجهة والغلاف (Cover Banner)</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400">بانوراما عريضة 16:9</span>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="h-28 w-full rounded-2xl overflow-hidden border-2 border-amber-500/30 bg-slate-900 relative shadow-lg">
+                    <img
+                      src={newCoverUrl || activeRestaurant.cover_url}
+                      alt="Cover Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-3">
+                      <span className="text-[11px] text-slate-200 font-bold">معاينة واجهة المنيو</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {/* Device Upload Button */}
+                    <label className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold border border-slate-700 flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-sm shrink-0">
+                      <Upload className="w-4 h-4 text-amber-400" />
+                      <span>اختيار صورة غلاف من الجهاز</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleCoverUpload}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {/* Direct URL Input */}
+                    <input
+                      type="text"
+                      placeholder="أو الصق رابط صورة الغلاف (URL)..."
+                      value={newCoverUrl}
+                      onChange={e => setNewCoverUrl(e.target.value)}
+                      className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Cover Presets */}
+                <div>
+                  <span className="text-[11px] text-slate-400 block mb-2 font-semibold">أو اختر من صور واجهة فخمة جاهزة:</span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { label: 'مطعم فاخر', url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&q=80' },
+                      { label: 'جلسة هادئة', url: 'https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?w=1200&q=80' },
+                      { label: 'كافيه عصري', url: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=1200&q=80' },
+                      { label: 'مشاوي ولحوم', url: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=1200&q=80' },
+                    ].map((p, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setNewCoverUrl(p.url)}
+                        className={`p-1 rounded-xl border text-center transition-all cursor-pointer ${
+                          newCoverUrl === p.url ? 'border-amber-500 bg-amber-500/10' : 'border-slate-800 bg-slate-900 hover:border-slate-700'
+                        }`}
+                      >
+                        <img src={p.url} alt="" className="w-full h-12 rounded-lg object-cover mb-1" />
+                        <span className="text-[10px] text-slate-300 block truncate">{p.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Box 3: Restaurant Info */}
+            <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-5 space-y-4">
+              <h3 className="text-sm font-bold text-white">معلومات المطعم الأساسية</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">اسم المطعم بالعربية</label>
+                  <input
+                    type="text"
+                    value={newRestName}
+                    onChange={e => setNewRestName(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">وصف المطعم والمأكولات</label>
+                  <input
+                    type="text"
+                    value={newRestDesc}
+                    onChange={e => setNewRestDesc(e.target.value)}
+                    placeholder="مثال: أشهى المأكولات الشرقية والغربية"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">رقم واتساب الطلبات</label>
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={ownerWhatsApp}
+                    onChange={e => setOwnerWhatsApp(e.target.value)}
+                    placeholder="+964 770 000 0000"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 text-right"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Branding Upload Modal (Triggered by Camera Buttons on banner or logo) */}
+      {showBrandingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in font-cairo" dir="rtl">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Camera className="w-5 h-5 text-amber-400" />
+                <span>
+                  {brandingTarget === 'logo' ? 'تغيير لوجو المطعم' : brandingTarget === 'cover' ? 'تغيير صورة واجهة المطعم (الغلاف)' : 'تعديل هوية وصور المطعم'}
+                </span>
+              </h3>
+              <button
+                onClick={() => setShowBrandingModal(false)}
+                className="text-slate-400 hover:text-white text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {savedBrandingSuccess && (
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>تم حفظ الصور بنجاح! يتم الآن التحديث...</span>
+              </div>
+            )}
+
+            <div className="space-y-4 text-xs">
+              {/* Target: Logo */}
+              {(brandingTarget === 'logo' || brandingTarget === 'all') && (
+                <div className="space-y-2">
+                  <label className="block text-slate-300 font-bold">شعار المطعم (Logo)</label>
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={newLogoUrl || activeRestaurant.logo_url}
+                      alt=""
+                      className="w-16 h-16 rounded-2xl object-cover border border-slate-700 bg-slate-800 shrink-0"
+                    />
+                    <div className="flex-1 space-y-1.5">
+                      <label className="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 flex items-center justify-center gap-2 cursor-pointer transition-colors">
+                        <Upload className="w-3.5 h-3.5 text-amber-400" />
+                        <span>اختيار ملف من الموبايل أو الكمبيوتر</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                        />
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="أو ضع رابط الشعار (URL)..."
+                        value={newLogoUrl}
+                        onChange={e => setNewLogoUrl(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Target: Cover */}
+              {(brandingTarget === 'cover' || brandingTarget === 'all') && (
+                <div className="space-y-2 pt-2 border-t border-slate-800">
+                  <label className="block text-slate-300 font-bold">صورة الواجهة / الغلاف (Banner)</label>
+                  <div className="h-24 w-full rounded-2xl overflow-hidden border border-slate-700 bg-slate-800 relative">
+                    <img
+                      src={newCoverUrl || activeRestaurant.cover_url}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <label className="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 flex items-center justify-center gap-2 cursor-pointer transition-colors shrink-0">
+                      <Upload className="w-3.5 h-3.5 text-amber-400" />
+                      <span>رفع صورة واجهة من الجهاز</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleCoverUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="أو ضع رابط صورة الغلاف (URL)..."
+                      value={newCoverUrl}
+                      onChange={e => setNewCoverUrl(e.target.value)}
+                      className="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Fast Presets */}
+              <div className="pt-2 border-t border-slate-800">
+                <span className="text-[11px] text-slate-400 font-semibold block mb-1.5">أو اختر قالباً سريعاً بنقرة واحدة:</span>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { label: 'فاخر', cover: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&q=80', logo: '/src/assets/images/dish_mixed_grills_1790265810518.jpg' },
+                    { label: 'برجر', cover: 'https://images.unsplash.com/photo-1586816001966-79b736744398?w=1200&q=80', logo: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80' },
+                    { label: 'كافيه', cover: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=1200&q=80', logo: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400&q=80' },
+                    { label: 'مشاوي', cover: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=1200&q=80', logo: '/src/assets/images/dish_mixed_grills_1790265810518.jpg' },
+                  ].map((p, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        if (brandingTarget === 'logo') setNewLogoUrl(p.logo);
+                        else if (brandingTarget === 'cover') setNewCoverUrl(p.cover);
+                        else {
+                          setNewLogoUrl(p.logo);
+                          setNewCoverUrl(p.cover);
+                        }
+                      }}
+                      className="p-1 rounded-xl border border-slate-800 hover:border-amber-500 bg-slate-950 text-center transition-colors cursor-pointer"
+                    >
+                      <img src={p.cover} alt="" className="w-full h-10 rounded-lg object-cover mb-1" />
+                      <span className="text-[10px] text-slate-300 block">{p.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowBrandingModal(false)}
+                className="px-4 py-2 bg-slate-800 text-slate-300 text-xs rounded-xl hover:bg-slate-700 cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveBranding()}
+                className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+              >
+                حفظ الصورة فوراً
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

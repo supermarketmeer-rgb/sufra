@@ -129,24 +129,61 @@ button[class*="bg-stone-9"],
   color: #ffffff !important;
 }
 
-body.light-mode .text-slate-100 {
+body.light-mode .text-slate-100,
+body.light-mode .text-stone-100 {
   color: #0f172a !important;
 }
 
-body.light-mode .text-slate-200 {
+body.light-mode .text-slate-200,
+body.light-mode .text-stone-200 {
+  color: #0f172a !important;
+}
+
+body.light-mode .text-slate-300,
+body.light-mode .text-stone-300 {
   color: #1e293b !important;
 }
 
-body.light-mode .text-slate-300 {
+body.light-mode .text-slate-400,
+body.light-mode .text-stone-400 {
   color: #334155 !important;
 }
 
-body.light-mode .text-slate-400 {
-  color: #64748b !important;
+body.light-mode .text-slate-500,
+body.light-mode .text-stone-500 {
+  color: #1e293b !important;
 }
 
-body.light-mode .text-slate-500 {
-  color: #64748b !important;
+/* Colors that become faint on light backgrounds: make them deep and rich */
+body.light-mode .text-amber-400,
+body.light-mode .text-amber-300,
+body.light-mode .text-yellow-400 {
+  color: #b45309 !important;
+}
+
+body.light-mode .text-emerald-400,
+body.light-mode .text-emerald-300 {
+  color: #047857 !important;
+}
+
+body.light-mode .text-rose-400,
+body.light-mode .text-rose-300 {
+  color: #be123c !important;
+}
+
+body.light-mode .text-blue-400,
+body.light-mode .text-blue-300 {
+  color: #1d4ed8 !important;
+}
+
+body.light-mode .text-cyan-400,
+body.light-mode .text-cyan-300 {
+  color: #0e7490 !important;
+}
+
+body.light-mode .text-indigo-400,
+body.light-mode .text-indigo-300 {
+  color: #4338ca !important;
 }
 
 /* Forms & Inputs in Light Mode */

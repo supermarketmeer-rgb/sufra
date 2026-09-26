@@ -40,6 +40,15 @@ const loadFromStorage = <T,>(key: string, fallback: T): T => {
   return fallback;
 };
 
+const saveToStorage = <T,>(key: string, value: T): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.error(`Failed to save ${key} to localStorage`, e);
+  }
+};
+
 interface AppContextType {
   currentRole: UserRole;
   setCurrentRole: (role: UserRole) => void;
@@ -81,6 +90,7 @@ interface AppContextType {
   updateRestaurantWhatsApp: (whatsapp: string) => void;
   updatePlan: (planId: number, updates: Partial<Plan>) => void;
   activateRestaurantPlan: (code: string, restaurantId?: number) => { success: boolean; message: string; planName?: string };
+  updateRestaurantBranding: (restaurantId: number, updates: Partial<Restaurant>) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -592,6 +602,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
+  const updateRestaurantBranding = (restaurantId: number, updates: Partial<Restaurant>) => {
+    setRestaurants(prev => {
+      const next = prev.map(r => (r.id === restaurantId ? { ...r, ...updates } : r));
+      saveToStorage('sufrah_v2_restaurants', next);
+      return next;
+    });
+    if (activeRestaurant && activeRestaurant.id === restaurantId) {
+      setActiveRestaurant(prev => (prev ? { ...prev, ...updates } : null));
+    }
+
+    const log: ActivityLog = {
+      id: Date.now(),
+      user_name: activeRestaurant?.name_ar || 'مالك المطعم',
+      role: 'restaurant_owner',
+      action: 'Branding Updated',
+      description: 'تم تحديث هوية وصور المطعم (اللوجو وصورة الغلاف)',
+      timestamp: 'الآن'
+    };
+    setActivityLogs(prev => [log, ...prev]);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -633,6 +664,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateRestaurantWhatsApp,
         updatePlan,
         activateRestaurantPlan,
+        updateRestaurantBranding,
       }}
     >
       {children}
