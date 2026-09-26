@@ -1,0 +1,6 @@
+{
+  "name": "Sufrah SaaS - Enterprise QR Menu & Multi-Restaurant Platform",
+  "description": "منصة SaaS متكاملة لإدارة المنيو الإلكتروني والطلبات للمطاعم والمقاهي مع دعم الكاشير والمطبخ والتوصيل وتوليد QR وإدارة الفروع وقاعدة بيانات كاملة وكود PHP MVC.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

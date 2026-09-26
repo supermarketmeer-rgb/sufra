@@ -1,0 +1,194 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+}
+
+.font-cairo {
+  font-family: 'Cairo', sans-serif;
+}
+
+.font-mono-numbers {
+  font-family: 'JetBrains Mono', 'Plus Jakarta Sans', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}
+
+/* ==========================================================================
+   DAY / LIGHT THEME (الثيم النهاري) COMPREHENSIVE OVERRIDES
+   ========================================================================== */
+body.light-mode {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+body.light-mode header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+body.light-mode main {
+  color: #0f172a;
+}
+
+/* Backgrounds in Light Mode */
+body.light-mode .bg-slate-950 {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+body.light-mode .bg-slate-900 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+}
+
+body.light-mode .bg-slate-900\/95 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #e2e8f0 !important;
+}
+
+body.light-mode .bg-slate-950\/60,
+body.light-mode .bg-slate-950\/80 {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+}
+
+body.light-mode .bg-slate-800 {
+  background-color: #f1f5f9 !important;
+  color: #1e293b !important;
+  border-color: #e2e8f0 !important;
+}
+
+body.light-mode .bg-slate-800\/80,
+body.light-mode .bg-slate-800\/50,
+body.light-mode .bg-slate-800\/40,
+body.light-mode .bg-slate-800\/30 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Borders and Dividers */
+body.light-mode .border-slate-800,
+body.light-mode .border-slate-800\/80,
+body.light-mode .border-slate-800\/60,
+body.light-mode .border-slate-700,
+body.light-mode .border-slate-700\/60,
+body.light-mode .divide-slate-800,
+body.light-mode .divide-slate-800\/80,
+body.light-mode .divide-slate-800\/60 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Hover States */
+body.light-mode .hover\:bg-slate-800:hover,
+body.light-mode .hover\:bg-slate-700:hover {
+  background-color: #e2e8f0 !important;
+}
+
+body.light-mode .hover\:bg-slate-800\/40:hover,
+body.light-mode .hover\:bg-slate-800\/30:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Typography in Light Mode */
+body.light-mode .text-white {
+  color: #0f172a !important;
+}
+
+body.light-mode .text-slate-100 {
+  color: #0f172a !important;
+}
+
+body.light-mode .text-slate-200 {
+  color: #1e293b !important;
+}
+
+body.light-mode .text-slate-300 {
+  color: #334155 !important;
+}
+
+body.light-mode .text-slate-400 {
+  color: #64748b !important;
+}
+
+body.light-mode .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Forms & Inputs in Light Mode */
+body.light-mode input,
+body.light-mode select,
+body.light-mode textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+body.light-mode input::placeholder,
+body.light-mode textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Keep Modal Backdrop Semi-transparent dark for focus */
+body.light-mode .fixed.inset-0.bg-slate-950\/80,
+body.light-mode .fixed.inset-0.bg-slate-950\/85 {
+  background-color: rgba(15, 23, 42, 0.65) !important;
+}
+
+body.light-mode .fixed .bg-slate-900 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Scrollbar in light mode */
+body.light-mode ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+body.light-mode ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+body.light-mode ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printable-receipt, .printable-receipt * {
+    visibility: visible;
+  }
+  .printable-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm;
+    margin: 0;
+    padding: 10px;
+    background: white;
+    color: black;
+  }
+}
