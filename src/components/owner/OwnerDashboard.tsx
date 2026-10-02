@@ -224,6 +224,10 @@ export const OwnerDashboard: React.FC = () => {
 
   const [customQrBase, setCustomQrBase] = useState<string>(() => {
     if (typeof window !== 'undefined' && window.location.origin) {
+      // If running on local machine, mobile phone cannot access localhost, so default to live cloud domain!
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'https://sufra-production-ef42.up.railway.app';
+      }
       return window.location.origin;
     }
     return 'https://sufra-production-ef42.up.railway.app';
