@@ -1,25 +1,21 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package*.json .npmrc* ./
+# Copy dependency manifests
+COPY package*.json ./
+
+# Install dependencies cleanly
 RUN npm install --legacy-peer-deps
 
+# Copy full application code including server.js, api-routes.js, and src
 COPY . .
+
+# Build production bundle (generates /app/dist)
 RUN npm run build
-
-FROM node:20-alpine AS runner
-
-WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
-
-COPY package*.json .npmrc* ./
-RUN npm install --legacy-peer-deps --omit=dev express dotenv
-
-COPY --from=builder /app/dist ./dist
-COPY server.js ./
 
 EXPOSE 3000
 
