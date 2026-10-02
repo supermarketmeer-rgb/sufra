@@ -98,12 +98,18 @@ export const CustomerMenu: React.FC = () => {
   const [placedOrderNumber, setPlacedOrderNumber] = useState<string | null>(null);
   const [scannedTableDetected, setScannedTableDetected] = useState<string | null>(null);
 
-  // Auto-detect QR scan parameters from URL (e.g. ?table=T-02&branch=1)
+  // Auto-detect QR scan parameters from URL (e.g. ?type=delivery or ?table=T-02&branch=1)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tableParam = params.get('table');
-      if (tableParam) {
+      const typeParam = params.get('type') || params.get('mode') || params.get('orderType');
+
+      if (typeParam === 'delivery') {
+        setOrderType('delivery');
+      } else if (typeParam === 'takeaway') {
+        setOrderType('takeaway');
+      } else if (tableParam) {
         setSelectedTableNum(tableParam);
         setOrderType('dine_in');
         setScannedTableDetected(tableParam);
@@ -417,14 +423,20 @@ export const CustomerMenu: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-white text-xs sm:text-sm">
-                {scannedTableDetected ? `تم فتح المنيو عبر مسح QR كود (طاولة: ${scannedTableDetected})` : 'الطلب المباشر والتوصية عبر واتساب مفعل 🟢'}
+                {orderType === 'delivery'
+                  ? 'طلب التوصيل المنزلي المباشر مفعل 🛵'
+                  : scannedTableDetected
+                  ? `تم فتح المنيو عبر مسح QR كود (طاولة: ${scannedTableDetected})`
+                  : 'الطلب المباشر والتوصية عبر واتساب مفعل 🟢'}
               </span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
-                WhatsApp Direct Order
+                {orderType === 'delivery' ? 'Home Delivery' : 'WhatsApp Direct Order'}
               </span>
             </div>
             <p className="text-[11px] text-slate-300 mt-0.5">
-              اختر وجباتك ومشروباتك وتفضيلاتك وسيتم تجهيز الطلب وإرساله إلى واتساب المطعم مباشرة بنقرة واحدة!
+              {orderType === 'delivery'
+                ? 'اختر وجباتك وأدخل عنوانك للتوصيل السريع مباشرة إلى باب بيتك!'
+                : 'اختر وجباتك ومشروباتك وتفضيلاتك وسيتم تجهيز الطلب وإرساله إلى واتساب المطعم مباشرة بنقرة واحدة!'}
             </p>
           </div>
         </div>
@@ -432,6 +444,11 @@ export const CustomerMenu: React.FC = () => {
         {orderType === 'dine_in' && (
           <div className="self-end sm:self-center px-3 py-1.5 bg-slate-950 rounded-xl border border-slate-800 text-xs font-mono font-bold text-amber-400">
             طاولة: {selectedTableNum}
+          </div>
+        )}
+        {orderType === 'delivery' && (
+          <div className="self-end sm:self-center px-3 py-1.5 bg-emerald-950/80 rounded-xl border border-emerald-500/40 text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+            <span>🛵 طلب توصيل منزلي</span>
           </div>
         )}
       </div>
