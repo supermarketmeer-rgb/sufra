@@ -10,7 +10,8 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '.env.local') });
 dotenv.config();
 
-const connectionUrl = process.env.MYSQL_PUBLIC_URL || process.env.DATABASE_URL || process.env.MYSQL_URL;
+const connectionUrl = process.env.MYSQL_PUBLIC_URL || process.env.DATABASE_URL || process.env.MYSQL_URL ||
+  (process.env.MYSQLHOST ? `mysql://${process.env.MYSQLUSER || 'root'}:${encodeURIComponent(process.env.MYSQLPASSWORD || '')}@${process.env.MYSQLHOST}:${process.env.MYSQLPORT || 3306}/${process.env.MYSQLDATABASE || 'railway'}` : null);
 let dbPool = null;
 
 if (connectionUrl) {
