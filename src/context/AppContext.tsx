@@ -227,6 +227,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.restaurants.length > 0) {
         setRestaurants(data.restaurants);
         setActiveRestaurant(prev => {
+          if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const restParam = params.get('restaurant') || params.get('r');
+            if (restParam) {
+              const matchedParam = data.restaurants.find(
+                r => String(r.id) === restParam || r.slug === restParam.toLowerCase() || r.name_ar.includes(restParam)
+              );
+              if (matchedParam) return matchedParam;
+            }
+          }
           if (!prev) return data.restaurants[0];
           const matched = data.restaurants.find(r => r.id === prev.id);
           return matched || data.restaurants[0];

@@ -10,8 +10,12 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '.env.local') });
 dotenv.config();
 
-const connectionUrl = process.env.MYSQL_PUBLIC_URL || process.env.DATABASE_URL || process.env.MYSQL_URL ||
-  (process.env.MYSQLHOST ? `mysql://${process.env.MYSQLUSER || 'root'}:${encodeURIComponent(process.env.MYSQLPASSWORD || '')}@${process.env.MYSQLHOST}:${process.env.MYSQLPORT || 3306}/${process.env.MYSQLDATABASE || 'railway'}` : null);
+const connectionUrl = process.env.MYSQL_PUBLIC_URL || 
+  process.env.DATABASE_URL || 
+  process.env.MYSQL_URL ||
+  (process.env.MYSQLHOST ? `mysql://${process.env.MYSQLUSER || 'root'}:${encodeURIComponent(process.env.MYSQLPASSWORD || '')}@${process.env.MYSQLHOST}:${process.env.MYSQLPORT || 3306}/${process.env.MYSQLDATABASE || 'railway'}` : null) ||
+  (process.env.DB_HOST ? `mysql://${process.env.DB_USERNAME || 'root'}:${encodeURIComponent(process.env.DB_PASSWORD || '')}@${process.env.DB_HOST}:${process.env.DB_PORT || 3306}/${process.env.DB_DATABASE || 'railway'}` : null) ||
+  'mysql://root:GosKQabEkLaBCIyDNQlZqGPwqhTjBDzg@altaria.proxy.rlwy.net:56675/railway';
 let dbPool = null;
 
 if (connectionUrl) {
@@ -99,7 +103,7 @@ apiRouter.get('/health', async (req, res) => {
 });
 
 // Full platform data sync
-apiRouter.get('/data', async (req, res) => {
+apiRouter.get(['/data', '/bootstrap'], async (req, res) => {
   if (!dbPool) {
     return res.status(503).json({ error: 'Database not initialized' });
   }
