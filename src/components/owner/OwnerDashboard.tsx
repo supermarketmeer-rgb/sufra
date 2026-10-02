@@ -222,13 +222,32 @@ export const OwnerDashboard: React.FC = () => {
   const [qrColor, setQrColor] = useState<string>('#1e293b');
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Calculate dynamic QR target link
+  const [customQrBase, setCustomQrBase] = useState<string>(() => {
+    if (typeof window !== 'undefined' && window.location.origin) {
+      return window.location.origin;
+    }
+    return 'https://sufra-production-ef42.up.railway.app';
+  });
+
+  // Calculate dynamic QR target link that opens directly in mobile browsers
   const getQrUrl = () => {
-    if (!activeRestaurant) return 'https://sufrah.menu';
-    const baseUrl = `https://${activeRestaurant.slug}.sufrah.menu`;
-    if (qrType === 'restaurant') return baseUrl;
-    if (qrType === 'branch') return `${baseUrl}/branch/${selectedBranchId}`;
-    return `${baseUrl}?table=${selectedTableNumber}&branch=${selectedBranchId}`;
+    if (!activeRestaurant) return customQrBase || 'https://sufra-production-ef42.up.railway.app';
+    
+    let base = (customQrBase || (typeof window !== 'undefined' ? window.location.origin : 'https://sufra-production-ef42.up.railway.app')).trim();
+    if (!base.startsWith('http://') && !base.startsWith('https://')) {
+      base = `https://${base}`;
+    }
+    base = base.replace(/\/+$/, '');
+
+    const params = new URLSearchParams();
+    params.set('role', 'customer');
+    params.set('restaurant', String(activeRestaurant.id));
+    if (selectedBranchId) params.set('branch', String(selectedBranchId));
+    if (qrType === 'table' && selectedTableNumber) {
+      params.set('table', selectedTableNumber);
+    }
+
+    return `${base}/?${params.toString()}`;
   };
 
   useEffect(() => {
@@ -249,7 +268,7 @@ export const OwnerDashboard: React.FC = () => {
         }
       );
     }
-  }, [qrType, selectedBranchId, selectedTableNumber, qrColor, activeRestaurant?.slug, activeTab]);
+  }, [qrType, selectedBranchId, selectedTableNumber, qrColor, activeRestaurant?.slug, activeTab, customQrBase]);
 
   const handleDownloadQr = () => {
     if (!qrCanvasRef.current || !activeRestaurant) return;
@@ -881,9 +900,30 @@ export const OwnerDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-400 font-mono break-all">
-              <div className="text-[11px] text-slate-500 mb-1">رابط الهبوط عند المسح بالهاتف:</div>
-              <span className="text-amber-400">{getQrUrl()}</span>
+            {/* Domain URL configuration */}
+            <div className="space-y-1.5 p-3.5 bg-slate-950 rounded-xl border border-slate-800">
+              <label className="text-xs font-semibold text-slate-300 block">نطاق رابط الـ QR (الدومين المباشر):</label>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={customQrBase}
+                  onChange={e => setCustomQrBase(e.target.value)}
+                  className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-amber-500"
+                  placeholder="https://sufra-production-ef42.up.railway.app"
+                />
+                <button
+                  type="button"
+                  onClick={() => setCustomQrBase('https://sufra-production-ef42.up.railway.app')}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-bold rounded-lg transition-colors shrink-0"
+                >
+                  السحابة (Railway)
+                </button>
+              </div>
+              <div className="text-[11px] text-slate-500 pt-1 flex items-center justify-between">
+                <span>رابط الفتح المباشر عند المسح:</span>
+                <span className="text-amber-400 font-mono text-[11px] truncate max-w-[240px] sm:max-w-none">{getQrUrl()}</span>
+              </div>
             </div>
 
             {/* WhatsApp Direct Ordering Setup */}

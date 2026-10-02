@@ -24,8 +24,8 @@ const MainContent: React.FC = () => {
     if (typeof window !== 'undefined') {
       const p = window.location.pathname.toLowerCase();
       const s = window.location.search.toLowerCase();
-      // If explicit role is specified (e.g. ?role=super_admin), don't show portal
-      if (s.includes('role=')) return false;
+      // If explicit role is specified (e.g. ?role=customer) or table/restaurant query, don't show portal
+      if (s.includes('role=') || s.includes('table=') || s.includes('restaurant=')) return false;
       if (p.includes('signup') || s.includes('signup')) return false;
       // Default to showing the Welcome Portal directly for mobile & new visitors!
       return true;

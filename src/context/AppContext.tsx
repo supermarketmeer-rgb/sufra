@@ -114,7 +114,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (roleParam === 'cashier' || roleParam === 'pos') return 'cashier';
       if (roleParam === 'kitchen' || roleParam === 'kds') return 'kitchen';
       if (roleParam === 'driver') return 'driver';
-      if (roleParam === 'customer') return 'customer';
+      if (roleParam === 'customer' || params.has('table') || params.has('restaurant')) return 'customer';
     }
     const initialRests = loadFromStorage<Restaurant[]>('sufrah_v2_restaurants', INITIAL_RESTAURANTS);
     return initialRests.length === 0 ? 'super_admin' : 'customer';
@@ -144,6 +144,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeRestaurant, setActiveRestaurant] = useState<Restaurant | null>(() => {
     const list = loadFromStorage<Restaurant[]>('sufrah_v2_restaurants', INITIAL_RESTAURANTS);
     if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const restParam = params.get('restaurant');
+      if (restParam && list.length > 0) {
+        const found = list.find(r => String(r.id) === restParam || r.slug === restParam.toLowerCase());
+        if (found) return found;
+      }
       const savedActiveId = localStorage.getItem('sufrah_v2_active_restaurant_id');
       if (savedActiveId && list.length > 0) {
         const found = list.find(r => r.id === Number(savedActiveId));

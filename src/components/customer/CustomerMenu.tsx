@@ -49,7 +49,14 @@ export const CustomerMenu: React.FC = () => {
   // Navigation mode
   const [activeTab, setActiveTab] = useState<'menu' | 'reservation' | 'reviews' | 'loyalty'>('menu');
   const [orderType, setOrderType] = useState<OrderType>('dine_in');
-  const [selectedTableNum, setSelectedTableNum] = useState<string>('T-01');
+  const [selectedTableNum, setSelectedTableNum] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tableParam = params.get('table') || params.get('t');
+      if (tableParam) return decodeURIComponent(tableParam);
+    }
+    return 'طاولة 1';
+  });
 
   // Search & Category
   const [searchQuery, setSearchQuery] = useState('');
