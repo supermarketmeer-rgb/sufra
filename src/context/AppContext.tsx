@@ -28,6 +28,7 @@ import {
   INITIAL_COUPONS,
   INITIAL_ACTIVITY_LOGS
 } from '../data/initialData';
+import { api } from '../services/api';
 
 const loadFromStorage = <T,>(key: string, fallback: T): T => {
   if (typeof window === 'undefined') return fallback;
@@ -178,16 +179,119 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [plans, setPlans] = useState<Plan[]>(() =>
     loadFromStorage('sufrah_v2_plans', SAAS_PLANS)
   );
-  const [coupons] = useState<Coupon[]>(INITIAL_COUPONS);
+  const [coupons, setCoupons] = useState<Coupon[]>(() =>
+    loadFromStorage('sufrah_v2_coupons', INITIAL_COUPONS)
+  );
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() =>
     loadFromStorage('sufrah_v2_activity_logs', INITIAL_ACTIVITY_LOGS)
   );
 
+  // Web Audio Chime for live incoming orders
+  const playNotificationSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.35);
+    } catch {
+      // AudioContext might be blocked until user gesture, safely ignore
+    }
+  };
+
+  // -----------------------------------------------------------------
+  // Live Cloud Synchronization with Railway MySQL & Real-time SSE
+  // -----------------------------------------------------------------
+  useEffect(() => {
+    let isMounted = true;
+
+    // 1. Initial Bootstrap Fetch from Cloud API
+    api.fetchBootstrapData().then(data => {
+      if (!isMounted || !data) return;
+
+      if (data.restaurants.length > 0) {
+        setRestaurants(data.restaurants);
+        setActiveRestaurant(prev => {
+          if (!prev) return data.restaurants[0];
+          const matched = data.restaurants.find(r => r.id === prev.id);
+          return matched || data.restaurants[0];
+        });
+      }
+      if (data.branches.length > 0) {
+        setBranches(data.branches);
+        setActiveBranch(prev => {
+          if (!prev) return data.branches[0];
+          const matched = data.branches.find(b => b.id === prev.id);
+          return matched || data.branches[0];
+        });
+      }
+      if (data.tables.length > 0) setTables(data.tables);
+      if (data.categories.length > 0) setCategories(data.categories);
+      if (data.products.length > 0) setProducts(data.products);
+      if (data.orders.length > 0) setOrders(data.orders);
+      if (data.reservations.length > 0) setReservations(data.reservations);
+      if (data.reviews.length > 0) setReviews(data.reviews);
+      if (data.coupons.length > 0) setCoupons(data.coupons);
+      if (data.plans.length > 0) setPlans(data.plans);
+      if (data.activityLogs.length > 0) setActivityLogs(data.activityLogs);
+    });
+
+    // 2. Real-Time SSE Listener across all devices
+    const unsubscribe = api.subscribeToEvents((type, payload) => {
+      if (!isMounted) return;
+
+      if (type === 'new_order') {
+        setOrders(prev => {
+          if (prev.some(o => o.id === payload.id || o.order_number === payload.order_number)) {
+            return prev;
+          }
+          playNotificationSound();
+          return [payload, ...prev];
+        });
+      } else if (type === 'order_status_updated') {
+        setOrders(prev => prev.map(o => o.id === payload.id ? { ...o, status: payload.status } : o));
+      } else if (type === 'table_updated') {
+        setTables(prev => prev.map(t => t.id === payload.id ? { ...t, status: payload.status } : t));
+      } else if (type === 'table_created') {
+        setTables(prev => prev.some(t => t.id === payload.id) ? prev : [...prev, payload]);
+      } else if (type === 'table_deleted') {
+        setTables(prev => prev.filter(t => t.id !== payload.id));
+      } else if (type === 'product_created') {
+        setProducts(prev => prev.some(p => p.id === payload.id) ? prev : [...prev, payload]);
+      } else if (type === 'product_updated') {
+        setProducts(prev => prev.map(p => p.id === payload.id ? { ...p, ...payload } : p));
+      } else if (type === 'product_deleted') {
+        setProducts(prev => prev.filter(p => p.id !== payload.id));
+      } else if (type === 'category_created') {
+        setCategories(prev => prev.some(c => c.id === payload.id) ? prev : [...prev, payload]);
+      } else if (type === 'category_deleted') {
+        setCategories(prev => prev.filter(c => c.id !== payload.id));
+      } else if (type === 'restaurant_created') {
+        setRestaurants(prev => prev.some(r => r.id === payload.id) ? prev : [...prev, payload]);
+      } else if (type === 'plan_activated') {
+        setActiveRestaurant(prev => prev && prev.id === payload.restaurant_id ? { ...prev, plan_name: payload.planName } : prev);
+        setRestaurants(prev => prev.map(r => r.id === payload.restaurant_id ? { ...r, plan_name: payload.planName } : r));
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []);
+
+  // Sync state to localStorage for offline cache
   useEffect(() => {
     localStorage.setItem('sufrah_v2_plans', JSON.stringify(plans));
   }, [plans]);
 
-  // Sync state to localStorage
   useEffect(() => {
     localStorage.setItem('sufrah_v2_restaurants', JSON.stringify(restaurants));
   }, [restaurants]);
@@ -221,28 +325,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [reviews]);
 
   useEffect(() => {
+    localStorage.setItem('sufrah_v2_coupons', JSON.stringify(coupons));
+  }, [coupons]);
+
+  useEffect(() => {
     localStorage.setItem('sufrah_v2_activity_logs', JSON.stringify(activityLogs));
   }, [activityLogs]);
-
-  // Web Audio Chime
-  const playNotificationSound = () => {
-    try {
-      const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15); // A5
-      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.35);
-    } catch {
-      // AudioContext might be blocked until user gesture, safely ignore
-    }
-  };
 
   const handleSetActiveRestaurant = (restaurant: Restaurant | null) => {
     setActiveRestaurant(restaurant);
@@ -294,6 +382,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       items: orderData.items
     };
 
+    // Optimistic local update
     setOrders(prev => [newOrder, ...prev]);
 
     if (orderData.table_id) {
@@ -311,6 +400,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActivityLogs(prev => [log, ...prev]);
 
     playNotificationSound();
+
+    // Async Cloud API persist & SSE broadcast
+    api.createOrder(newOrder).catch(err => {
+      console.warn('Order cloud sync delayed:', err);
+    });
+
     return newOrder;
   };
 
@@ -331,6 +426,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: 'الآن'
     };
     setActivityLogs(prev => [log, ...prev]);
+
+    // Cloud API call
+    api.updateOrderStatus(orderId, newStatus).catch(console.error);
   };
 
   const updateTableStatus = (tableId: number, status: 'available' | 'occupied' | 'reserved') => {
@@ -339,6 +437,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       saveToStorage('sufrah_v2_tables', next);
       return next;
     });
+
+    api.updateTableStatus(tableId, status).catch(console.error);
   };
 
   const getRestaurantMaxTables = (restaurantId: number): number => {
@@ -397,10 +497,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       user_name: activeRestaurant.name_ar,
       role: 'restaurant_owner',
       action: 'Table Created',
-      description: `تمت إضافة طاولة جديدة (${cleanNum}) بسعة ${newTable.capacity} أشخاص (الطاولة ${currentTables.length + 1} من ${maxAllowed})`,
+      description: `تمت إضافة طاولة جديدة (${cleanNum}) بسعة ${newTable.capacity} أشخاص`,
       timestamp: 'الآن'
     };
     setActivityLogs(prev => [log, ...prev]);
+
+    api.addTable(newTable).catch(console.error);
 
     return {
       success: true,
@@ -450,6 +552,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setActivityLogs(prev => [log, ...prev]);
 
+    api.deleteTable(tableId).catch(console.error);
+
     return { success: true, message: `تم حذف الطاولة (${target.table_number}) بنجاح.` };
   };
 
@@ -477,14 +581,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addons: productData.addons || []
     };
     setProducts(prev => [newProd, ...prev]);
+
+    api.addProduct(newProd).catch(console.error);
   };
 
   const updateProduct = (productId: number, updates: Partial<Product>) => {
     setProducts(prev => prev.map(p => p.id === productId ? { ...p, ...updates } : p));
+    api.updateProduct(productId, updates).catch(console.error);
   };
 
   const deleteProduct = (productId: number) => {
     setProducts(prev => prev.filter(p => p.id !== productId));
+    api.deleteProduct(productId).catch(console.error);
   };
 
   const addCategory = (categoryData: Partial<Category>) => {
@@ -500,6 +608,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       sort_order: categories.length + 1
     };
     setCategories(prev => [...prev, newCat]);
+    api.addCategory(newCat).catch(console.error);
   };
 
   const updateCategory = (categoryId: number, updates: Partial<Category>) => {
@@ -508,6 +617,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteCategory = (categoryId: number) => {
     setCategories(prev => prev.filter(c => c.id !== categoryId));
+    api.deleteCategory(categoryId).catch(console.error);
   };
 
   const addBranch = (branchData: Partial<Branch>) => {
@@ -586,7 +696,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       email: data.email || `info@${slug}.com`,
       address: data.address || 'العراق',
       currency: 'IQD',
-      tax_percentage: data.tax_percentage || 10,
+      tax_percentage: data.tax_percentage || 5,
       status: 'active',
       created_at: new Date().toISOString().slice(0, 10),
       theme_primary_color: data.theme_primary_color || '#f59e0b',
@@ -604,48 +714,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       name_en: 'Main Branch',
       phone: newRest.phone,
       address: newRest.address,
-      latitude: 33.315,
-      longitude: 44.354,
-      opening_time: '10:00',
-      closing_time: '00:00',
-      manager_name: 'إدارة المطعم',
+      latitude: 33.3152,
+      longitude: 44.3661,
+      opening_time: '11:00',
+      closing_time: '01:00',
+      manager_name: 'المدير العام',
       is_active: true
     };
 
-    // Auto create default dining tables for QR scanning and in-hall dining
-    const tableBaseId = tables.length > 0 ? Math.max(...tables.map(t => t.id)) + 1 : 1;
-    const initialBranchTables: DiningTable[] = [
-      { id: tableBaseId, branch_id: mainBranch.id, table_number: 'T-01', capacity: 4, status: 'available', qr_token: `qr_${newRest.slug}_t01` },
-      { id: tableBaseId + 1, branch_id: mainBranch.id, table_number: 'T-02', capacity: 2, status: 'available', qr_token: `qr_${newRest.slug}_t02` },
-      { id: tableBaseId + 2, branch_id: mainBranch.id, table_number: 'T-03', capacity: 6, status: 'available', qr_token: `qr_${newRest.slug}_t03` },
-      { id: tableBaseId + 3, branch_id: mainBranch.id, table_number: 'T-04', capacity: 4, status: 'available', qr_token: `qr_${newRest.slug}_t04` },
+    // Auto create initial 5 tables
+    const newTables: DiningTable[] = Array.from({ length: 5 }, (_, i) => ({
+      id: (tables.length > 0 ? Math.max(...tables.map(t => t.id)) : 0) + i + 1,
+      branch_id: branchId,
+      table_number: `طاولة ${i + 1}`,
+      capacity: 4,
+      status: 'available',
+      qr_token: `TBL-${slug}-${i + 1}`
+    }));
+
+    // Auto create starter categories
+    const baseCatId = categories.length > 0 ? Math.max(...categories.map(c => c.id)) : 0;
+    const starterCategories: Category[] = [
+      { id: baseCatId + 1, restaurant_id: newRest.id, name_ar: 'الأطباق الرئيسية', name_en: 'Main Dishes', slug: 'main', icon_name: 'Flame', sort_order: 1 },
+      { id: baseCatId + 2, restaurant_id: newRest.id, name_ar: 'المقبلات والسلطات', name_en: 'Appetizers', slug: 'appetizers', icon_name: 'Salad', sort_order: 2 },
+      { id: baseCatId + 3, restaurant_id: newRest.id, name_ar: 'المشروبات المنعشة', name_en: 'Drinks', slug: 'drinks', icon_name: 'Coffee', sort_order: 3 },
     ];
 
     setRestaurants(prev => [...prev, newRest]);
     setBranches(prev => [...prev, mainBranch]);
-    setTables(prev => [...prev, ...initialBranchTables]);
+    setTables(prev => [...prev, ...newTables]);
+    setCategories(prev => [...prev, ...starterCategories]);
     setActiveRestaurant(newRest);
     setActiveBranch(mainBranch);
-    localStorage.setItem('sufrah_v2_active_restaurant_id', String(newRest.id));
 
     const log: ActivityLog = {
       id: Date.now(),
-      user_name: 'مدير المنصة (Super Admin)',
-      role: 'super_admin',
-      action: 'Create Restaurant',
-      description: `تم تسجيل مطعم جديد: ${newRest.name_ar} مع الفرع الرئيسي والطاولات بنجاح`,
+      user_name: newRest.name_ar,
+      role: 'restaurant_owner',
+      action: 'Restaurant Created',
+      description: `تم إنشاء مطعم جديد: ${newRest.name_ar} مع الفرع الرئيسي وقوائم الأصناف`,
       timestamp: 'الآن'
     };
     setActivityLogs(prev => [log, ...prev]);
 
+    api.createRestaurant(newRest).catch(console.error);
+
     return newRest;
   };
 
-  const applyCoupon = (code: string, currentTotal: number) => {
-    const coupon = coupons.find(c => c.code.toUpperCase() === code.trim().toUpperCase() && c.is_active);
+  const applyCoupon = (code: string, currentTotal: number): { success: boolean; discount: number; message: string } => {
+    const cleanCode = code.trim().toUpperCase();
+    const coupon = coupons.find(c => c.code.toUpperCase() === cleanCode && c.is_active);
+
     if (!coupon) {
-      return { success: false, discount: 0, message: 'كود الخصم غير صالح أو منتهي الصلاحية' };
+      return {
+        success: false,
+        discount: 0,
+        message: 'كود الخصم غير صالح أو منتهي الصلاحية'
+      };
     }
+
     if (currentTotal < coupon.min_order_amount) {
       return {
         success: false,
@@ -713,6 +841,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: 'الآن'
     };
     setActivityLogs(prev => [log, ...prev]);
+
+    api.activatePlan(code, targetRest.id).catch(console.error);
 
     return {
       success: true,

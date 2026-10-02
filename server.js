@@ -1,12 +1,16 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { apiRouter } from './api-routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Mount REST API & SSE on /api
+app.use('/api', apiRouter);
 
 // Serve static files from the React dist directory
 app.use(express.static(path.join(__dirname, 'dist')));
@@ -17,5 +21,5 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Sufrah SaaS production server is running on http://0.0.0.0:${PORT}`);
+  console.log(`🚀 Sufrah SaaS Production Server & API is running on http://0.0.0.0:${PORT}`);
 });
