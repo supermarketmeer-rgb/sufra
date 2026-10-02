@@ -48,7 +48,15 @@ export const CustomerMenu: React.FC = () => {
 
   // Navigation mode
   const [activeTab, setActiveTab] = useState<'menu' | 'reservation' | 'reviews' | 'loyalty'>('menu');
-  const [orderType, setOrderType] = useState<OrderType>('dine_in');
+  const [orderType, setOrderType] = useState<OrderType>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const typeParam = params.get('type') || params.get('mode') || params.get('orderType');
+      if (typeParam === 'delivery') return 'delivery';
+      if (typeParam === 'takeaway') return 'takeaway';
+    }
+    return 'dine_in';
+  });
   const [selectedTableNum, setSelectedTableNum] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
