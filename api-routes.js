@@ -801,6 +801,73 @@ apiRouter.post('/restaurants', async (req, res) => {
   }
 });
 
+// Update Restaurant Status (Activate / Suspend)
+apiRouter.patch('/restaurants/:id/status', async (req, res) => {
+  if (!dbPool) return res.status(503).json({ error: 'DB not available' });
+
+  try {
+    const id = Number(req.params.id);
+    const { status } = req.body; // 'active' | 'suspended' | 'inactive'
+    const cleanStatus = status === 'active' ? 'active' : 'suspended';
+
+    await dbPool.query(`UPDATE restaurants SET status = ? WHERE id = ?`, [cleanStatus, id]);
+    await dbPool.query(`
+      INSERT INTO activity_logs (restaurant_id, action, description)
+      VALUES (?, 'Status Change', ?)
+    `, [id, `تم تغيير حالة المطعم إلى: ${cleanStatus === 'active' ? 'نشط' : 'موقوف مؤقتاً'}`]);
+
+    broadcastEvent('restaurant_status_updated', { id, status: cleanStatus });
+    res.json({ success: true, id, status: cleanStatus });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Delete Restaurant
+apiRouter.delete('/restaurants/:id', async (req, res) => {
+  if (!dbPool) return res.status(503).json({ error: 'DB not available' });
+
+  const conn = await dbPool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const id = Number(req.params.id);
+
+    // Get name for log
+    const [rows] = await conn.query(`SELECT name_ar FROM restaurants WHERE id = ?`, [id]);
+    const restName = rows[0]?.name_ar || `مطعم #${id}`;
+
+    // Delete cascading references
+    await conn.query(`DELETE FROM restaurant_settings WHERE restaurant_id = ?`, [id]);
+    await conn.query(`DELETE FROM subscriptions WHERE restaurant_id = ?`, [id]);
+    await conn.query(`DELETE FROM products WHERE restaurant_id = ?`, [id]);
+    await conn.query(`DELETE FROM categories WHERE restaurant_id = ?`, [id]);
+    await conn.query(`DELETE FROM tables WHERE branch_id IN (SELECT id FROM branches WHERE restaurant_id = ?)`, [id]);
+    await conn.query(`DELETE FROM branches WHERE restaurant_id = ?`, [id]);
+    await conn.query(`DELETE FROM order_details WHERE order_id IN (SELECT id FROM orders WHERE restaurant_id = ?)`, [id]);
+    await conn.query(`DELETE FROM orders WHERE restaurant_id = ?`, [id]);
+    await conn.query(`DELETE FROM coupons WHERE restaurant_id = ?`, [id]);
+    await conn.query(`DELETE FROM reservations WHERE restaurant_id = ?`, [id]);
+    await conn.query(`DELETE FROM reviews WHERE restaurant_id = ?`, [id]);
+    await conn.query(`DELETE FROM users WHERE restaurant_id = ?`, [id]);
+    await conn.query(`DELETE FROM restaurants WHERE id = ?`, [id]);
+
+    await conn.query(`
+      INSERT INTO activity_logs (restaurant_id, action, description)
+      VALUES (NULL, 'Restaurant Deleted', ?)
+    `, [`تم حذف مطعم (${restName}) وكافة بياناته نهائياً من قبل الإدارة العامة`]);
+
+    await conn.commit();
+
+    broadcastEvent('restaurant_deleted', { id });
+    res.json({ success: true, id, message: `تم حذف مطعم ${restName} بنجاح` });
+  } catch (err) {
+    await conn.rollback();
+    res.status(500).json({ success: false, message: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
 // Plan Activation
 apiRouter.post('/plans/activate', async (req, res) => {
   if (!dbPool) return res.status(503).json({ error: 'DB not available' });

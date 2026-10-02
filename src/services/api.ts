@@ -197,6 +197,32 @@ export const api = {
     return null;
   },
 
+  async updateRestaurantStatus(restaurantId: number, status: 'active' | 'suspended' | 'inactive'): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/restaurants/${restaurantId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      return res.ok;
+    } catch (err) {
+      console.error('Failed to update restaurant status via API:', err);
+      return false;
+    }
+  },
+
+  async deleteRestaurant(restaurantId: number): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/restaurants/${restaurantId}`, {
+        method: 'DELETE'
+      });
+      return res.ok;
+    } catch (err) {
+      console.error('Failed to delete restaurant via API:', err);
+      return false;
+    }
+  },
+
   async activatePlan(code: string, restaurantId?: number): Promise<{ success: boolean; message: string; planName?: string }> {
     try {
       const res = await fetch('/api/plans/activate', {
@@ -322,6 +348,20 @@ export const api = {
           try {
             const data = JSON.parse(e.data);
             onEvent('plan_activated', data);
+          } catch {}
+        });
+
+        es.addEventListener('restaurant_status_updated', (e: MessageEvent) => {
+          try {
+            const data = JSON.parse(e.data);
+            onEvent('restaurant_status_updated', data);
+          } catch {}
+        });
+
+        es.addEventListener('restaurant_deleted', (e: MessageEvent) => {
+          try {
+            const data = JSON.parse(e.data);
+            onEvent('restaurant_deleted', data);
           } catch {}
         });
 

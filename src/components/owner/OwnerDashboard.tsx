@@ -512,8 +512,12 @@ export const OwnerDashboard: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-black text-white">{activeRestaurant.name_ar}</h1>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold border border-emerald-500/30">
-                  {activeRestaurant.status === 'active' ? 'نشط أونلاين' : 'مغلق مؤقتاً'}
+                <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border ${
+                  activeRestaurant.status === 'active'
+                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                    : 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                }`}>
+                  {activeRestaurant.status === 'active' ? 'نشط أونلاين' : 'موقوف مؤقتاً'}
                 </span>
                 <button
                   onClick={() => {

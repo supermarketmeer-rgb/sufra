@@ -95,6 +95,8 @@ interface AppContextType {
   updatePlan: (planId: number, updates: Partial<Plan>) => void;
   activateRestaurantPlan: (code: string, restaurantId?: number) => { success: boolean; message: string; planName?: string };
   updateRestaurantBranding: (restaurantId: number, updates: Partial<Restaurant>) => void;
+  toggleRestaurantStatus: (restaurantId: number) => void;
+  deleteRestaurant: (restaurantId: number) => { success: boolean; message: string };
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -281,6 +283,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCategories(prev => prev.filter(c => c.id !== payload.id));
       } else if (type === 'restaurant_created') {
         setRestaurants(prev => prev.some(r => r.id === payload.id) ? prev : [...prev, payload]);
+      } else if (type === 'restaurant_status_updated') {
+        setRestaurants(prev => prev.map(r => r.id === payload.id ? { ...r, status: payload.status } : r));
+        setActiveRestaurant(prev => (prev && prev.id === payload.id ? { ...prev, status: payload.status } : prev));
+      } else if (type === 'restaurant_deleted') {
+        setRestaurants(prev => prev.filter(r => r.id !== payload.id));
+        setBranches(prev => prev.filter(b => b.restaurant_id !== payload.id));
+        setProducts(prev => prev.filter(p => p.restaurant_id !== payload.id));
+        setCategories(prev => prev.filter(c => c.restaurant_id !== payload.id));
+        setOrders(prev => prev.filter(o => o.restaurant_id !== payload.id));
+        setActiveRestaurant(prev => {
+          if (prev && prev.id === payload.id) {
+            const remaining = restaurants.filter(r => r.id !== payload.id);
+            return remaining.length > 0 ? remaining[0] : null;
+          }
+          return prev;
+        });
       } else if (type === 'plan_activated') {
         setActiveRestaurant(prev => prev && prev.id === payload.restaurant_id ? { ...prev, plan_name: payload.planName } : prev);
         setRestaurants(prev => prev.map(r => r.id === payload.restaurant_id ? { ...r, plan_name: payload.planName } : r));
@@ -878,6 +896,64 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActivityLogs(prev => [log, ...prev]);
   };
 
+  const toggleRestaurantStatus = (restaurantId: number) => {
+    const target = restaurants.find(r => r.id === restaurantId);
+    if (!target) return;
+    const newStatus: 'active' | 'suspended' = target.status === 'active' ? 'suspended' : 'active';
+
+    setRestaurants(prev => prev.map(r => (r.id === restaurantId ? { ...r, status: newStatus } : r)));
+    if (activeRestaurant && activeRestaurant.id === restaurantId) {
+      setActiveRestaurant(prev => (prev ? { ...prev, status: newStatus } : null));
+    }
+
+    const log: ActivityLog = {
+      id: Date.now(),
+      user_name: 'مدير المنصة العام',
+      role: 'super_admin',
+      action: newStatus === 'active' ? 'Restaurant Activated' : 'Restaurant Suspended',
+      description: `تم ${newStatus === 'active' ? 'تنشيط واستئناف عمل' : 'إيقاف مؤقت لنشاط'} مطعم (${target.name_ar})`,
+      timestamp: 'الآن'
+    };
+    setActivityLogs(prev => [log, ...prev]);
+
+    api.updateRestaurantStatus(restaurantId, newStatus).catch(console.error);
+  };
+
+  const deleteRestaurant = (restaurantId: number): { success: boolean; message: string } => {
+    const target = restaurants.find(r => r.id === restaurantId);
+    if (!target) return { success: false, message: 'المطعم غير موجود' };
+
+    setRestaurants(prev => prev.filter(r => r.id !== restaurantId));
+    setBranches(prev => prev.filter(b => b.restaurant_id !== restaurantId));
+    setProducts(prev => prev.filter(p => p.restaurant_id !== restaurantId));
+    setCategories(prev => prev.filter(c => c.restaurant_id !== restaurantId));
+    setOrders(prev => prev.filter(o => o.restaurant_id !== restaurantId));
+
+    if (activeRestaurant && activeRestaurant.id === restaurantId) {
+      const remaining = restaurants.filter(r => r.id !== restaurantId);
+      setActiveRestaurant(remaining.length > 0 ? remaining[0] : null);
+      const remainingBranch = branches.filter(b => b.restaurant_id !== restaurantId);
+      setActiveBranch(remainingBranch.length > 0 ? remainingBranch[0] : null);
+    }
+
+    const log: ActivityLog = {
+      id: Date.now(),
+      user_name: 'مدير المنصة العام',
+      role: 'super_admin',
+      action: 'Restaurant Deleted',
+      description: `تم حذف مطعم (${target.name_ar}) وكافة فروعه وطاولاته وقوائمه نهائياً`,
+      timestamp: 'الآن'
+    };
+    setActivityLogs(prev => [log, ...prev]);
+
+    api.deleteRestaurant(restaurantId).catch(console.error);
+
+    return {
+      success: true,
+      message: `تم حذف مطعم "${target.name_ar}" وكافة بياناته بنجاح`
+    };
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -923,6 +999,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updatePlan,
         activateRestaurantPlan,
         updateRestaurantBranding,
+        toggleRestaurantStatus,
+        deleteRestaurant,
       }}
     >
       {children}

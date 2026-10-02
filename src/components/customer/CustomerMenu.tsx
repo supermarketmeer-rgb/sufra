@@ -386,6 +386,26 @@ export const CustomerMenu: React.FC = () => {
     );
   }
 
+  if (activeRestaurant?.status === 'suspended' || activeRestaurant?.status === 'inactive') {
+    return (
+      <div className="max-w-md mx-auto text-center py-16 px-6 bg-slate-900 border border-amber-500/30 rounded-3xl mt-12 shadow-2xl space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 mx-auto flex items-center justify-center text-2xl font-bold">
+          ⏸️
+        </div>
+        <h2 className="text-xl font-bold text-white">المطعم موقوف مؤقتاً</h2>
+        <p className="text-slate-400 text-sm leading-relaxed">
+          نعتذر لكم، مطعم ({activeRestaurant.name_ar}) متوقف مؤقتاً عن استقبال الطلبات في الوقت الحالي بقرار إداري. يرجى المحاولة لاحقاً.
+        </p>
+        <button
+          onClick={() => setCurrentRole('super_admin')}
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs transition-all cursor-pointer"
+        >
+          <span>لوحة التحكم الرئيسية</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto pb-24 space-y-6">
       {/* Scanned QR Table & Direct WhatsApp Notification Banner */}
