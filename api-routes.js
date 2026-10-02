@@ -44,7 +44,7 @@ export function broadcastEvent(eventName, payload) {
   }
 }
 
-setInterval(() => {
+const sseKeepAlive = setInterval(() => {
   for (const client of sseClients) {
     try {
       client.write(': keepalive\n\n');
@@ -53,6 +53,7 @@ setInterval(() => {
     }
   }
 }, 25000);
+if (sseKeepAlive.unref) sseKeepAlive.unref();
 
 export const apiRouter = express.Router();
 
