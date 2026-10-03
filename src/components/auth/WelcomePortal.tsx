@@ -808,7 +808,7 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
           
           {/* Header & Logo */}
           <div className="text-center space-y-2 mb-6">
-            <div className="inline-flex items-center justify-center gap-2 px-3 py-1 rounded-full bg-[#9a3412]/10 border border-[#9a3412]/20 text-[#9a3412] text-xs font-bold mb-1">
+            <div className="hidden items-center justify-center gap-2 px-3 py-1 rounded-full bg-[#9a3412]/10 border border-[#9a3412]/20 text-[#9a3412] text-xs font-bold mb-1">
               <Store className="w-3.5 h-3.5" />
               <span>بوابة الدخول الموحدة للمطاعم</span>
             </div>
@@ -822,7 +822,7 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
 
           {/* Login Card */}
           <div className="w-full bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-[#e8e2d5] text-right space-y-5">
-            <div className="border-b border-stone-100 pb-3">
+            <div className="hidden border-b border-stone-100 pb-3">
               <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2">
                 <LogIn className="w-5 h-5 text-[#9a3412]" />
                 <span>تسجيل الدخول إلى حسابك</span>
@@ -923,8 +923,8 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
               </button>
             </form>
 
-            {/* Quick direct access buttons for restaurants */}
-            {restaurants.length > 0 && (
+            {/* Quick direct access buttons for restaurants (hidden, not removed) */}
+            {false && restaurants.length > 0 && (
               <div className="pt-2 border-t border-stone-100">
                 <span className="text-[11px] font-bold text-stone-600 block mb-2">⚡ أو دخول مباشر سريع إلى أحد المطاعم:</span>
                 <div className="grid grid-cols-2 gap-2">
