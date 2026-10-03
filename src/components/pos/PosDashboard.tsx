@@ -43,7 +43,8 @@ export const PosDashboard: React.FC = () => {
     playNotificationSound,
     coupons,
     applyCoupon,
-    setCurrentRole
+    setCurrentRole,
+    currentUser
   } = useApp();
 
   const restaurantProducts = products.filter(p => p.restaurant_id === activeRestaurant?.id);
@@ -63,13 +64,13 @@ export const PosDashboard: React.FC = () => {
   const [selectedIncomingOrder, setSelectedIncomingOrder] = useState<Order | null>(null);
   const [incomingSuccessMsg, setIncomingSuccessMsg] = useState<string | null>(null);
 
-  // Filter pending incoming orders for this restaurant (resilient to string/number ID and branch matching)
+  // Filter pending incoming orders for this restaurant (matches exactly how OwnerDashboard sees them)
   const incomingOrders = orders.filter(o => {
-    const isSameRest = Number(o.restaurant_id) === Number(activeRestaurant?.id);
+    const orderRestId = Number(o.restaurant_id);
+    const currRestId = Number(activeRestaurant?.id || currentUser?.restaurant_id || 1);
+    const isSameRest = orderRestId === currRestId;
     const isPending = o.status === 'new' || o.status === 'in_review';
-    const restBranches = branches.filter(b => Number(b.restaurant_id) === Number(activeRestaurant?.id));
-    const matchesBranch = restBranches.length <= 1 || !activeBranch?.id || !o.branch_id || Number(o.branch_id) === Number(activeBranch.id);
-    return isSameRest && isPending && matchesBranch;
+    return isSameRest && isPending;
   });
 
   // Sound alert on new incoming order

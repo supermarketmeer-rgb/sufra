@@ -21,7 +21,8 @@ export const KdsDashboard: React.FC = () => {
     orders,
     updateOrderStatus,
     playNotificationSound,
-    setCurrentRole
+    setCurrentRole,
+    currentUser
   } = useApp();
 
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -36,23 +37,21 @@ export const KdsDashboard: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const restBranches = branches.filter(b => Number(b.restaurant_id) === Number(activeRestaurant?.id));
+  const currRestId = Number(activeRestaurant?.id || currentUser?.restaurant_id || 1);
 
   // Filter kitchen active orders: ONLY show orders confirmed by cashier for preparation ('preparing')
   const kitchenOrders = orders.filter(o => {
-    const isSameRest = Number(o.restaurant_id) === Number(activeRestaurant?.id);
+    const isSameRest = Number(o.restaurant_id) === currRestId;
     const isPreparing = o.status === 'preparing';
-    const matchesBranch = restBranches.length <= 1 || !activeBranch?.id || !o.branch_id || Number(o.branch_id) === Number(activeBranch.id);
     const matchesType = filterType === 'all' || o.order_type === filterType;
-    return isSameRest && isPreparing && matchesBranch && matchesType;
+    return isSameRest && isPreparing && matchesType;
   });
 
   // Orders awaiting cashier review & confirmation
   const pendingCashierOrdersCount = orders.filter(o => {
-    const isSameRest = Number(o.restaurant_id) === Number(activeRestaurant?.id);
+    const isSameRest = Number(o.restaurant_id) === currRestId;
     const isPending = o.status === 'new' || o.status === 'in_review';
-    const matchesBranch = restBranches.length <= 1 || !activeBranch?.id || !o.branch_id || Number(o.branch_id) === Number(activeBranch.id);
-    return isSameRest && isPending && matchesBranch;
+    return isSameRest && isPending;
   }).length;
 
   const getElapsedMinutes = (createdAt: string) => {
