@@ -15,8 +15,12 @@ import {
   Sparkles,
   Phone,
   Lock,
-  User,
-  Mail
+  Mail,
+  LogIn,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  ChevronDown
 } from 'lucide-react';
 
 interface WelcomePortalProps {
@@ -43,6 +47,16 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
   const [managerPassword, setManagerPassword] = useState('');
   const [managerLoginError, setManagerLoginError] = useState<string | null>(null);
 
+  // Direct Unified Login State
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginMsg, setLoginMsg] = useState<{ success: boolean; message: string } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedLoginRestId, setSelectedLoginRestId] = useState<number>(() => {
+    return activeRestaurant ? activeRestaurant.id : (restaurants[0]?.id || 1);
+  });
+
   // Staff login state
   const [staffUsernameInput, setStaffUsernameInput] = useState('');
   const [staffPasswordInput, setStaffPasswordInput] = useState('');
@@ -66,6 +80,49 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
     activeRestaurant ? activeRestaurant.id : (restaurants[0]?.id || 0)
   );
   const [activationResult, setActivationResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Handle Direct Unified Login
+  const handleDirectLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginMsg(null);
+
+    const u = loginUsername.trim();
+    const p = loginPassword.trim();
+
+    if (!u) {
+      setLoginMsg({ success: false, message: 'يرجى إدخال اسم المستخدم أو البريد الإلكتروني' });
+      return;
+    }
+    if (!p) {
+      setLoginMsg({ success: false, message: 'يرجى إدخال كلمة المرور أو رمز الـ PIN' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    const res = loginUser(u, p, selectedLoginRestId);
+    setLoginMsg(res);
+    setIsSubmitting(false);
+
+    if (res.success) {
+      try {
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      } catch {}
+
+      setTimeout(() => {
+        if (onClose) onClose();
+      }, 1100);
+    }
+  };
+
+  const handleQuickFill = (u: any) => {
+    setLoginUsername(u.username);
+    setLoginPassword(u.password || u.pin_code || '123456');
+    setLoginMsg(null);
+  };
 
   // Handle Manager Login
   const handleManagerLoginSubmit = (e: React.FormEvent) => {
@@ -755,73 +812,233 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
         </div>
       )}
 
-      {/* ROOT MAIN SCREEN: Matches EXACT User Attachment `media_1790427297468.png` */}
+      {/* ROOT MAIN SCREEN: Direct Unified Login with Username, Password, and Restaurant Selection */}
       {viewMode === 'main' && (
-        <div className="w-full max-w-xs sm:max-w-sm text-center relative animate-fade-in flex flex-col items-center">
-          {/* Top Globe Button - Aligned to Top-Left exactly as in user attachment */}
-          <div className="w-full flex justify-start mb-6">
-            <button
-              type="button"
-              className="w-11 h-11 rounded-full border border-[#d6cfc2] text-stone-700 flex items-center justify-center hover:bg-stone-100 transition-colors shadow-none cursor-pointer"
-            >
-              <Globe className="w-5 h-5 stroke-[1.5]" />
-            </button>
+        <div className="w-full max-w-md sm:max-w-lg animate-fade-in relative flex flex-col items-center">
+          
+          {/* Header & Logo */}
+          <div className="text-center space-y-2 mb-6">
+            <div className="inline-flex items-center justify-center gap-2 px-3 py-1 rounded-full bg-[#9a3412]/10 border border-[#9a3412]/20 text-[#9a3412] text-xs font-bold mb-1">
+              <Store className="w-3.5 h-3.5" />
+              <span>بوابة الدخول الموحدة للمطاعم</span>
+            </div>
+            <h1 className="text-4xl sm:text-5xl font-black text-stone-950 tracking-tight">
+              سُفرة
+            </h1>
+            <p className="text-stone-500 text-xs sm:text-sm font-medium">
+              نظام إدارة المطاعم والطلبات وقوائم الطعام الذكية
+            </p>
           </div>
 
-          {/* Logo & Subtitle */}
-          <div className="space-y-1 mb-8 w-full">
-            <div className="text-4xl sm:text-5xl font-black text-stone-900 leading-none">
-              <span>سُفرة</span>
-            </div>
-            <p className="text-[#78716c] text-sm font-medium mt-2">نظام الطلب من الطاولة</p>
-          </div>
-
-          {/* Buttons Stack - Floating directly on warm cream background with exact borders */}
-          <div className="w-full space-y-3.5">
-            <button
-              onClick={() => setViewMode('manager_login')}
-              style={{ color: '#2c241e' }}
-              className="w-full py-4 px-6 rounded-2xl bg-white border border-[#c4bcb0] hover:border-stone-800 text-[#2c241e] font-bold text-lg transition-all active:scale-[0.99] cursor-pointer shadow-none"
-            >
-              لوحة المدير
-            </button>
-
-            <button
-              onClick={() => setViewMode('staff')}
-              style={{ color: '#2c241e' }}
-              className="w-full py-4 px-6 rounded-2xl bg-white border border-[#c4bcb0] hover:border-stone-800 text-[#2c241e] font-bold text-lg transition-all active:scale-[0.99] cursor-pointer shadow-none"
-            >
-              دخول الطاقم
-            </button>
-
-            {/* Divider */}
-            <div className="py-2 w-full">
-              <hr className="border-t border-[#e2dbcd]" />
+          {/* Login Card */}
+          <div className="w-full bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-[#e8e2d5] text-right space-y-5">
+            <div className="border-b border-stone-100 pb-3">
+              <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2">
+                <LogIn className="w-5 h-5 text-[#9a3412]" />
+                <span>تسجيل الدخول إلى حسابك</span>
+              </h2>
+              <p className="text-xs text-stone-500 mt-0.5">
+                اختر المطعم وأدخل بيانات الدخول للوصول إلى لوحة التحكم بصلاحيتك
+              </p>
             </div>
 
-            {/* New restaurant prompt */}
-            <p className="text-[#78716c] text-sm font-normal">مطعمٌ جديد؟</p>
+            {loginMsg && (
+              <div
+                className={`p-3.5 rounded-2xl text-xs flex items-center gap-2.5 transition-all ${
+                  loginMsg.success
+                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                    : 'bg-rose-50 border border-rose-200 text-rose-800'
+                }`}
+              >
+                {loginMsg.success ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                )}
+                <span className="font-semibold">{loginMsg.message}</span>
+              </div>
+            )}
 
-            <button
-              onClick={() => setViewMode('choose_signup')}
-              style={{ color: '#ffffff' }}
-              className="w-full py-4 px-6 rounded-2xl bg-[#a3421e] hover:bg-[#8d3717] text-white font-bold text-lg shadow-sm transition-all active:scale-[0.98] cursor-pointer"
-            >
-              أنشئ مطعمك مجّاناً
-            </button>
+            <form onSubmit={handleDirectLogin} className="space-y-4">
+              
+              {/* 1. Restaurant Selector */}
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Store className="w-3.5 h-3.5 text-[#9a3412]" />
+                    <span>المطعم المختار للدخول <span className="text-[#9a3412]">*</span></span>
+                  </span>
+                  <span className="text-[11px] font-normal text-stone-400">
+                    ({restaurants.length} مطعم مسجل)
+                  </span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedLoginRestId}
+                    onChange={e => {
+                      setSelectedLoginRestId(Number(e.target.value));
+                      setLoginMsg(null);
+                    }}
+                    className="w-full bg-stone-50 border border-[#c8c1b4] rounded-2xl px-4 py-3 text-sm text-stone-900 font-semibold focus:outline-none focus:border-[#9a3412] focus:bg-white transition-all appearance-none cursor-pointer"
+                  >
+                    {restaurants.map(r => (
+                      <option key={r.id} value={r.id}>
+                        {r.name_ar} {r.slug ? `(@${r.slug})` : ''} - {r.plan_name || 'الخطة القياسية'}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-stone-400 absolute left-3.5 top-3.5 pointer-events-none" />
+                </div>
+              </div>
 
-            {/* Bottom link for activation */}
-            <div className="pt-2">
-              <p className="text-[#78716c] text-sm font-normal">
-                عندك رمز تفعيل؟{' '}
+              {/* 2. Username Input */}
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1.5 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-[#9a3412]" />
+                  <span>اسم المستخدم أو البريد الإلكتروني <span className="text-[#9a3412]">*</span></span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={loginUsername}
+                    onChange={e => {
+                      setLoginUsername(e.target.value);
+                      setLoginMsg(null);
+                    }}
+                    placeholder="مثال: owner_jwan أو cashier_jwan أو admin"
+                    className="w-full bg-white border border-[#c8c1b4] rounded-2xl px-4 py-3 text-sm text-stone-900 focus:outline-none focus:border-[#9a3412] transition-colors font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* 3. Password / PIN Input */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-[#9a3412]" />
+                    <span>كلمة المرور أو رمز الـ PIN <span className="text-[#9a3412]">*</span></span>
+                  </label>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={loginPassword}
+                    onChange={e => {
+                      setLoginPassword(e.target.value);
+                      setLoginMsg(null);
+                    }}
+                    placeholder="•••••••• أو PIN من 4 أرقام"
+                    className="w-full bg-white border border-[#c8c1b4] rounded-2xl pr-4 pl-11 py-3 text-sm text-stone-900 focus:outline-none focus:border-[#9a3412] transition-colors font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute left-3.5 top-3 text-stone-400 hover:text-stone-700 p-1 cursor-pointer transition-colors"
+                    title={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                style={{ color: '#ffffff' }}
+                className="w-full py-4 px-6 rounded-2xl bg-[#9a3412] hover:bg-[#852d0f] text-white font-bold text-base shadow-lg shadow-[#9a3412]/20 transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
+              >
+                <LogIn className="w-5 h-5" />
+                <span>
+                  {isSubmitting
+                    ? 'جاري التحقق والدخول...'
+                    : `تسجيل الدخول إلى (${restaurants.find(r => r.id === selectedLoginRestId)?.name_ar || 'المطعم'})`}
+                </span>
+              </button>
+            </form>
+
+            {/* Quick Demo Accounts for Selected Restaurant */}
+            <div className="pt-2 border-t border-stone-100">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold text-stone-600 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-500" />
+                  <span>حسابات تجريبية سريعة لـ ({restaurants.find(r => r.id === selectedLoginRestId)?.name_ar}):</span>
+                </span>
+                <span className="text-[10px] text-stone-400">انقر للتعبئة التلقائية</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1.5">
+                {/* Admin account */}
                 <button
                   type="button"
-                  onClick={() => setViewMode('activate')}
-                  className="underline text-stone-800 hover:text-[#a3421e] font-normal cursor-pointer"
+                  onClick={() => handleQuickFill({ username: 'admin', password: '123' })}
+                  className="p-2 rounded-xl bg-stone-50 hover:bg-amber-50 border border-stone-200 hover:border-amber-300 text-right transition-all cursor-pointer group"
                 >
-                  فعّل مطعمك
+                  <div className="text-[10px] font-bold text-amber-700 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3" />
+                    <span>المدير العام</span>
+                  </div>
+                  <div className="font-mono text-[11px] text-stone-800 font-semibold group-hover:text-amber-800">
+                    admin / 123
+                  </div>
                 </button>
-              </p>
+
+                {/* Restaurant specific accounts */}
+                {users
+                  .filter(u => u.restaurant_id === selectedLoginRestId && u.is_active)
+                  .slice(0, 5)
+                  .map(u => {
+                    const roleLabel = (() => {
+                      switch (u.role) {
+                        case 'restaurant_owner': return { title: 'المالك', icon: <Store className="w-3 h-3 text-emerald-600" />, color: 'text-emerald-700' };
+                        case 'cashier': return { title: 'كاشير POS', icon: <Receipt className="w-3 h-3 text-blue-600" />, color: 'text-blue-700' };
+                        case 'kitchen': return { title: 'المطبخ KDS', icon: <UtensilsCrossed className="w-3 h-3 text-rose-600" />, color: 'text-rose-700' };
+                        case 'branch_manager': return { title: 'مدير فرع', icon: <Building2 className="w-3 h-3 text-purple-600" />, color: 'text-purple-700' };
+                        case 'driver': return { title: 'دليفري', icon: <Bike className="w-3 h-3 text-cyan-600" />, color: 'text-cyan-700' };
+                        default: return { title: 'موظف', icon: <User className="w-3 h-3 text-stone-600" />, color: 'text-stone-700' };
+                      }
+                    })();
+
+                    return (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => handleQuickFill(u)}
+                        className="p-2 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 hover:border-stone-400 text-right transition-all cursor-pointer group"
+                      >
+                        <div className={`text-[10px] font-bold flex items-center gap-1 ${roleLabel.color}`}>
+                          {roleLabel.icon}
+                          <span>{roleLabel.title}</span>
+                        </div>
+                        <div className="font-mono text-[11px] text-stone-800 font-semibold truncate group-hover:text-[#9a3412]">
+                          {u.username}
+                        </div>
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
+
+            {/* Bottom Actions: New Restaurant & Code Activation */}
+            <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-xs">
+              <button
+                type="button"
+                onClick={() => setViewMode('choose_signup')}
+                className="text-[#9a3412] hover:text-[#852d0f] font-bold hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <span>مطعم جديد؟ سجّل الآن</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setViewMode('activate')}
+                className="text-stone-600 hover:text-stone-900 font-semibold hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-amber-600" />
+                <span>تفعيل كود ترقية</span>
+              </button>
             </div>
           </div>
         </div>

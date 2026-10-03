@@ -41,7 +41,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer, onOpenRegister, 
     toggleTheme,
     activateRestaurantPlan,
     currentUser,
-    updateUser
+    updateUser,
+    logoutUser
   } = useApp();
 
   const [showRoleMenu, setShowRoleMenu] = useState(false);
@@ -399,7 +400,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer, onOpenRegister, 
             {/* Logout / Exit to Welcome Portal */}
             {onOpenPortal && (
               <button
-                onClick={onOpenPortal}
+                onClick={() => {
+                  logoutUser();
+                  if (onOpenPortal) onOpenPortal();
+                }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-rose-950/40 text-slate-300 hover:text-rose-400 font-semibold text-xs rounded-lg border border-slate-700 hover:border-rose-500/40 transition-all cursor-pointer whitespace-nowrap"
                 title="تسجيل الخروج والعودة لشاشة الدخول الرئيسية"
               >
