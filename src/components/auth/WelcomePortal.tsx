@@ -54,9 +54,6 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loginMsg, setLoginMsg] = useState<{ success: boolean; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedLoginRestId, setSelectedLoginRestId] = useState<number>(() => {
-    return activeRestaurant ? activeRestaurant.id : (restaurants[0]?.id || 1);
-  });
 
   // Staff login state
   const [staffUsernameInput, setStaffUsernameInput] = useState('');
@@ -100,7 +97,7 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
     }
 
     setIsSubmitting(true);
-    const res = loginUser(u, p, selectedLoginRestId);
+    const res = loginUser(u, p);
     setLoginMsg(res);
     setIsSubmitting(false);
 
@@ -115,14 +112,8 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
 
       setTimeout(() => {
         if (onClose) onClose();
-      }, 1100);
+      }, 1000);
     }
-  };
-
-  const handleQuickFill = (u: any) => {
-    setLoginUsername(u.username);
-    setLoginPassword(u.password || u.pin_code || '123456');
-    setLoginMsg(null);
   };
 
   // Handle Manager Login
@@ -839,7 +830,7 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
                 <span>تسجيل الدخول إلى حسابك</span>
               </h2>
               <p className="text-xs text-stone-500 mt-0.5">
-                اختر المطعم وأدخل بيانات الدخول للوصول إلى لوحة التحكم بصلاحيتك
+                أدخل اسم المستخدم وكلمة المرور للوصول إلى لوحة التحكم بصلاحيتك المعتمدة
               </p>
             </div>
 
@@ -862,37 +853,7 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
 
             <form onSubmit={handleDirectLogin} className="space-y-4">
               
-              {/* 1. Restaurant Selector */}
-              <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1.5 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Store className="w-3.5 h-3.5 text-[#9a3412]" />
-                    <span>المطعم المختار للدخول <span className="text-[#9a3412]">*</span></span>
-                  </span>
-                  <span className="text-[11px] font-normal text-stone-400">
-                    ({restaurants.length} مطعم مسجل)
-                  </span>
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedLoginRestId}
-                    onChange={e => {
-                      setSelectedLoginRestId(Number(e.target.value));
-                      setLoginMsg(null);
-                    }}
-                    className="w-full bg-stone-50 border border-[#c8c1b4] rounded-2xl px-4 py-3 text-sm text-stone-900 font-semibold focus:outline-none focus:border-[#9a3412] focus:bg-white transition-all appearance-none cursor-pointer"
-                  >
-                    {restaurants.map(r => (
-                      <option key={r.id} value={r.id}>
-                        {r.name_ar} {r.slug ? `(@${r.slug})` : ''} - {r.plan_name || 'الخطة القياسية'}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-stone-400 absolute left-3.5 top-3.5 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* 2. Username Input */}
+              {/* 1. Username Input */}
               <div>
                 <label className="block text-xs font-bold text-stone-700 mb-1.5 flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-[#9a3412]" />
@@ -913,7 +874,7 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
                 </div>
               </div>
 
-              {/* 3. Password / PIN Input */}
+              {/* 2. Password / PIN Input */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
@@ -952,75 +913,9 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
                 className="w-full py-4 px-6 rounded-2xl bg-[#9a3412] hover:bg-[#852d0f] text-white font-bold text-base shadow-lg shadow-[#9a3412]/20 transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
               >
                 <LogIn className="w-5 h-5" />
-                <span>
-                  {isSubmitting
-                    ? 'جاري التحقق والدخول...'
-                    : `تسجيل الدخول إلى (${restaurants.find(r => r.id === selectedLoginRestId)?.name_ar || 'المطعم'})`}
-                </span>
+                <span>{isSubmitting ? 'جاري التحقق والدخول...' : 'تسجيل الدخول'}</span>
               </button>
             </form>
-
-            {/* Quick Demo Accounts for Selected Restaurant */}
-            <div className="pt-2 border-t border-stone-100">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold text-stone-600 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-amber-500" />
-                  <span>حسابات تجريبية سريعة لـ ({restaurants.find(r => r.id === selectedLoginRestId)?.name_ar}):</span>
-                </span>
-                <span className="text-[10px] text-stone-400">انقر للتعبئة التلقائية</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-1.5">
-                {/* Admin account */}
-                <button
-                  type="button"
-                  onClick={() => handleQuickFill({ username: 'admin', password: '123' })}
-                  className="p-2 rounded-xl bg-stone-50 hover:bg-amber-50 border border-stone-200 hover:border-amber-300 text-right transition-all cursor-pointer group"
-                >
-                  <div className="text-[10px] font-bold text-amber-700 flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3" />
-                    <span>المدير العام</span>
-                  </div>
-                  <div className="font-mono text-[11px] text-stone-800 font-semibold group-hover:text-amber-800">
-                    admin / 123
-                  </div>
-                </button>
-
-                {/* Restaurant specific accounts */}
-                {users
-                  .filter(u => u.restaurant_id === selectedLoginRestId && u.is_active)
-                  .slice(0, 5)
-                  .map(u => {
-                    const roleLabel = (() => {
-                      switch (u.role) {
-                        case 'restaurant_owner': return { title: 'المالك', icon: <Store className="w-3 h-3 text-emerald-600" />, color: 'text-emerald-700' };
-                        case 'cashier': return { title: 'كاشير POS', icon: <Receipt className="w-3 h-3 text-blue-600" />, color: 'text-blue-700' };
-                        case 'kitchen': return { title: 'المطبخ KDS', icon: <UtensilsCrossed className="w-3 h-3 text-rose-600" />, color: 'text-rose-700' };
-                        case 'branch_manager': return { title: 'مدير فرع', icon: <Building2 className="w-3 h-3 text-purple-600" />, color: 'text-purple-700' };
-                        case 'driver': return { title: 'دليفري', icon: <Bike className="w-3 h-3 text-cyan-600" />, color: 'text-cyan-700' };
-                        default: return { title: 'موظف', icon: <User className="w-3 h-3 text-stone-600" />, color: 'text-stone-700' };
-                      }
-                    })();
-
-                    return (
-                      <button
-                        key={u.id}
-                        type="button"
-                        onClick={() => handleQuickFill(u)}
-                        className="p-2 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 hover:border-stone-400 text-right transition-all cursor-pointer group"
-                      >
-                        <div className={`text-[10px] font-bold flex items-center gap-1 ${roleLabel.color}`}>
-                          {roleLabel.icon}
-                          <span>{roleLabel.title}</span>
-                        </div>
-                        <div className="font-mono text-[11px] text-stone-800 font-semibold truncate group-hover:text-[#9a3412]">
-                          {u.username}
-                        </div>
-                      </button>
-                    );
-                  })}
-              </div>
-            </div>
 
             {/* Bottom Actions: New Restaurant & Code Activation */}
             <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-xs">

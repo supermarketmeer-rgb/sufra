@@ -412,26 +412,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, message: 'يرجى إدخال اسم المستخدم وكلمة المرور أو رمز الـ PIN' };
     }
 
-    // 1. Look for matching active user within selected restaurant (or super_admin)
-    let found = users.find(u =>
+    // 1. Look for matching active user across all accounts
+    const found = users.find(u =>
       (u.username.toLowerCase() === cleanId || u.email.toLowerCase() === cleanId) &&
-      (restaurantId ? (u.restaurant_id === restaurantId || u.role === 'super_admin') : true) &&
       u.is_active
     );
 
-    // 2. If not found in the selected restaurant, check if user exists in another restaurant
     if (!found) {
-      const existsInOther = users.find(u =>
-        (u.username.toLowerCase() === cleanId || u.email.toLowerCase() === cleanId) &&
-        u.is_active
-      );
-      if (existsInOther && restaurantId && existsInOther.restaurant_id !== restaurantId && existsInOther.role !== 'super_admin') {
-        const otherRest = restaurants.find(r => r.id === existsInOther.restaurant_id);
-        return {
-          success: false,
-          message: `اسم المستخدم "${cleanId}" تابع لمطعم (${otherRest?.name_ar || 'آخر'}). يرجى اختيار المطعم المناسب لتسجيل الدخول.`
-        };
-      }
       return { success: false, message: 'اسم المستخدم أو البريد الإلكتروني غير مسجل أو أن الحساب معطل' };
     }
 
@@ -447,7 +434,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentRole(found.role);
 
     // Bind active restaurant & branch strictly to this user
-    const targetRestId = (found.role === 'super_admin' && restaurantId) ? restaurantId : found.restaurant_id;
+    const targetRestId = found.restaurant_id || (found.role === 'super_admin' ? (restaurantId || activeRestaurant?.id || restaurants[0]?.id) : null);
     if (targetRestId) {
       const targetRest = restaurants.find(r => r.id === targetRestId);
       if (targetRest) {
@@ -480,21 +467,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     })();
 
-    const restName = restaurants.find(r => r.id === (targetRestId || found.restaurant_id))?.name_ar || 'المنصة';
+    const restObj = restaurants.find(r => r.id === (targetRestId || found.restaurant_id));
+    const restName = restObj ? `مطعم ${restObj.name_ar}` : 'المنصة';
 
     const log: ActivityLog = {
       id: Date.now(),
       user_name: found.name,
       role: found.role,
       action: 'User Logged In',
-      description: `تم تسجيل دخول (${found.name}) بنجاح بصلاحية (${roleNameAr}) إلى (${restName})`,
+      description: `تم تسجيل دخول (${found.name}) بنجاح بصلاحية (${roleNameAr})${restObj ? ` إلى (${restName})` : ''}`,
       timestamp: 'الآن'
     };
     setActivityLogs(prev => [log, ...prev]);
 
     return {
       success: true,
-      message: `أهلاً بك يا ${found.name}! تم تسجيل الدخول بنجاح بصلاحية (${roleNameAr})`,
+      message: `أهلاً بك يا ${found.name}! تم تسجيل الدخول بنجاح بصلاحية (${roleNameAr})${restObj ? ` في ${restName}` : ''}`,
       user: found
     };
   };
