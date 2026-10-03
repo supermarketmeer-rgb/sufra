@@ -87,6 +87,9 @@ export const OwnerDashboard: React.FC = () => {
   const [showPasswordMap, setShowPasswordMap] = useState<{ [key: number]: boolean }>({});
   const [staffRoleFilter, setStaffRoleFilter] = useState<'all' | UserRole>('all');
   const [staffBranchFilter, setStaffBranchFilter] = useState<number | 'all'>('all');
+  const [staffToDelete, setStaffToDelete] = useState<User | null>(null);
+  const [isDeletingStaff, setIsDeletingStaff] = useState(false);
+  const [staffDeleteNotice, setStaffDeleteNotice] = useState<{ success: boolean; message: string } | null>(null);
 
   // Table Management States
   const [showTableModal, setShowTableModal] = useState(false);
@@ -506,10 +509,8 @@ export const OwnerDashboard: React.FC = () => {
   };
 
   const handleDeleteStaff = (user: User) => {
-    if (confirm(`هل أنت متأكد من حذف حساب (${user.name} - ${user.username}) نهائياً؟`)) {
-      const res = deleteUser(user.id);
-      alert(res.message);
-    }
+    setStaffToDelete(user);
+    setStaffDeleteNotice(null);
   };
 
   const currentPlan = plans.find(p => p.name_ar === activeRestaurant.plan_name || activeRestaurant.plan_name.includes(p.name_en));
@@ -3112,6 +3113,75 @@ export const OwnerDashboard: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Staff Confirmation Modal */}
+      {staffToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in font-cairo" dir="rtl">
+          <div className="bg-slate-900 border border-rose-500/30 w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">تأكيد حذف حساب الموظف</h3>
+                <p className="text-xs text-slate-400">إجراء حساس لا يمكن التراجع عنه</p>
+              </div>
+            </div>
+
+            {staffDeleteNotice && (
+              <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+                staffDeleteNotice.success ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' : 'bg-rose-500/10 border border-rose-500/30 text-rose-400'
+              }`}>
+                <span>{staffDeleteNotice.success ? '✅' : '⚠️'}</span>
+                <span>{staffDeleteNotice.message}</span>
+              </div>
+            )}
+
+            <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400">الاسم الكامل:</span>
+                <span className="font-bold text-white text-xs">{staffToDelete.name}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400">اسم المستخدم:</span>
+                <span className="font-mono font-bold text-amber-400 text-xs">{staffToDelete.username}</span>
+              </div>
+              <p className="text-xs text-rose-300/80 pt-2 border-t border-slate-800/80 leading-relaxed">
+                هل أنت متأكد من رغبتك في حذف هذا الحساب نهائياً؟ سيتم إلغاء صلاحيات الدخول لمحطة العمل فوراً.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                disabled={isDeletingStaff}
+                onClick={() => setStaffToDelete(null)}
+                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingStaff}
+                onClick={() => {
+                  setIsDeletingStaff(true);
+                  const res = deleteUser(staffToDelete.id);
+                  setIsDeletingStaff(false);
+                  if (res.success) {
+                    setStaffToDelete(null);
+                  } else {
+                    setStaffDeleteNotice(res);
+                  }
+                }}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/20 cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isDeletingStaff ? 'جاري الحذف...' : 'نعم، حذف الحساب نهائياً'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

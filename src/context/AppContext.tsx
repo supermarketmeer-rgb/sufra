@@ -330,6 +330,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else if (type === 'plan_activated') {
         setActiveRestaurant(prev => prev && prev.id === payload.restaurant_id ? { ...prev, plan_name: payload.planName } : prev);
         setRestaurants(prev => prev.map(r => r.id === payload.restaurant_id ? { ...r, plan_name: payload.planName } : r));
+      } else if (type === 'user_deleted') {
+        setUsers(prev => {
+          const updated = prev.filter(u => String(u.id) !== String(payload.id));
+          saveToStorage('sufrah_v2_users', updated);
+          return updated;
+        });
       }
     });
 
@@ -553,25 +559,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteUser = (userId: number): { success: boolean; message: string } => {
-    if (currentUser?.id === userId) {
+    const target = users.find(u => String(u.id) === String(userId));
+    if (!target) {
+      return { success: false, message: 'المستخدم غير موجود أو تم حذفه مسبقاً' };
+    }
+
+    if (currentUser && String(currentUser.id) === String(userId)) {
       return { success: false, message: 'لا يمكن حذف الحساب الحالي المسجل دخولك به' };
     }
-    const target = users.find(u => u.id === userId);
-    setUsers(prev => prev.filter(u => u.id !== userId));
 
-    if (target) {
-      const log: ActivityLog = {
-        id: Date.now(),
-        user_name: currentUser?.name || 'مدير النظام',
-        role: currentRole,
-        action: 'User Deleted',
-        description: `تم حذف حساب المستخدم (${target.name}) نهائياً`,
-        timestamp: 'الآن'
-      };
-      setActivityLogs(prev => [log, ...prev]);
-    }
+    const remainingUsers = users.filter(u => String(u.id) !== String(userId));
+    setUsers(remainingUsers);
+    saveToStorage('sufrah_v2_users', remainingUsers);
 
-    return { success: true, message: 'تم حذف المستخدم بنجاح' };
+    // Call Cloud API
+    api.deleteUser(Number(userId)).catch(() => {});
+
+    const log: ActivityLog = {
+      id: Date.now(),
+      user_name: currentUser?.name || 'مدير النظام',
+      role: currentRole,
+      action: 'User Deleted',
+      description: `تم حذف حساب المستخدم (${target.name} - ${target.username}) نهائياً`,
+      timestamp: 'الآن'
+    };
+    setActivityLogs(prev => [log, ...prev]);
+
+    return { success: true, message: `تم حذف حساب (${target.name}) بنجاح` };
   };
 
   const handleSetActiveRestaurant = (restaurant: Restaurant | null) => {

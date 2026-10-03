@@ -60,6 +60,9 @@ export const SuperAdminDashboard: React.FC = () => {
   // SuperAdmin User Add/Edit Modal
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [userToDelete, setUserToDelete] = useState<any | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const [userDeleteNotice, setUserDeleteNotice] = useState<{ success: boolean; message: string } | null>(null);
   const [userModalName, setUserModalName] = useState('');
   const [userModalUsername, setUserModalUsername] = useState('');
   const [userModalPassword, setUserModalPassword] = useState('');
@@ -145,10 +148,8 @@ export const SuperAdminDashboard: React.FC = () => {
   };
 
   const handleDeleteUser = (user: any) => {
-    if (confirm(`هل أنت متأكد من حذف حساب (${user.name} - ${user.username})؟`)) {
-      const res = deleteUser(user.id);
-      alert(res.message);
-    }
+    setUserToDelete(user);
+    setUserDeleteNotice(null);
   };
 
   // Form state
@@ -1347,6 +1348,79 @@ export const SuperAdminDashboard: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* SuperAdmin Delete User Confirmation Modal */}
+      {userToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in font-cairo" dir="rtl">
+          <div className="bg-slate-900 border border-rose-500/30 w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">تأكيد حذف حساب المستخدم</h3>
+                <p className="text-xs text-slate-400">إجراء حساس لا يمكن التراجع عنه</p>
+              </div>
+            </div>
+
+            {userDeleteNotice && (
+              <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+                userDeleteNotice.success ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' : 'bg-rose-500/10 border border-rose-500/30 text-rose-400'
+              }`}>
+                <span>{userDeleteNotice.success ? '✅' : '⚠️'}</span>
+                <span>{userDeleteNotice.message}</span>
+              </div>
+            )}
+
+            <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400">الاسم الكامل:</span>
+                <span className="font-bold text-white text-xs">{userToDelete.name}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400">اسم المستخدم:</span>
+                <span className="font-mono font-bold text-amber-400 text-xs">{userToDelete.username}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400">الدور:</span>
+                <span className="text-xs font-semibold text-slate-300">{userToDelete.role}</span>
+              </div>
+              <p className="text-xs text-rose-300/80 pt-2 border-t border-slate-800/80 leading-relaxed">
+                هل أنت متأكد من رغبتك في حذف هذا الحساب نهائياً من المنصة؟
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                disabled={isDeletingUser}
+                onClick={() => setUserToDelete(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs rounded-xl cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingUser}
+                onClick={() => {
+                  setIsDeletingUser(true);
+                  const res = deleteUser(userToDelete.id);
+                  setIsDeletingUser(false);
+                  if (res.success) {
+                    setUserToDelete(null);
+                  } else {
+                    setUserDeleteNotice(res);
+                  }
+                }}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/20 cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeletingUser ? 'جاري الحذف...' : 'نعم، حذف الحساب نهائياً'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

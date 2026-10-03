@@ -872,6 +872,20 @@ apiRouter.delete('/restaurants/:id', async (req, res) => {
   }
 });
 
+// Delete User
+apiRouter.delete('/users/:id', async (req, res) => {
+  if (!dbPool) return res.status(503).json({ error: 'DB not available' });
+
+  try {
+    const id = Number(req.params.id);
+    await dbPool.query(`DELETE FROM users WHERE id = ?`, [id]);
+    broadcastEvent('user_deleted', { id });
+    res.json({ success: true, id, message: 'تم حذف المستخدم بنجاح' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // Plan Activation
 apiRouter.post('/plans/activate', async (req, res) => {
   if (!dbPool) return res.status(503).json({ error: 'DB not available' });

@@ -254,7 +254,20 @@ export const api = {
     }
   },
 
-  // 8. Server-Sent Events (SSE) Real-Time Listener
+  // 8. Delete User API
+  async deleteUser(userId: number): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: 'DELETE'
+      });
+      return res.ok;
+    } catch (err) {
+      console.warn('Failed to delete user via API:', err);
+      return false;
+    }
+  },
+
+  // 9. Server-Sent Events (SSE) Real-Time Listener
   subscribeToEvents(onEvent: (type: string, data: any) => void): () => void {
     if (typeof window === 'undefined' || !window.EventSource) {
       return () => {};
@@ -362,6 +375,13 @@ export const api = {
           try {
             const data = JSON.parse(e.data);
             onEvent('restaurant_deleted', data);
+          } catch {}
+        });
+
+        es.addEventListener('user_deleted', (e: MessageEvent) => {
+          try {
+            const data = JSON.parse(e.data);
+            onEvent('user_deleted', data);
           } catch {}
         });
 
