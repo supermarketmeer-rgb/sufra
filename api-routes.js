@@ -1022,3 +1022,76 @@ apiRouter.post('/users/update', async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
+// Create Order endpoint (persist to MySQL & broadcast to connected devices)
+apiRouter.post('/orders', async (req, res) => {
+  if (!dbPool) return res.status(503).json({ error: 'DB not available' });
+
+  try {
+    const o = req.body;
+    const [result] = await dbPool.query(
+      `INSERT INTO orders (restaurant_id, branch_id, table_id, order_number, order_type, status, subtotal, tax_amount, discount_amount, delivery_fee, total_amount, customer_name, customer_phone, delivery_address, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        o.restaurant_id || 1,
+        o.branch_id || 1,
+        o.table_id || null,
+        o.order_number || `ORD-${Date.now()}`,
+        o.order_type || 'dine_in',
+        o.status || 'new',
+        o.subtotal || 0,
+        o.tax_amount || 0,
+        o.discount_amount || 0,
+        o.delivery_fee || 0,
+        o.total_amount || 0,
+        o.customer_name || 'عميل السفرة',
+        o.customer_phone || '',
+        o.delivery_address || null,
+        o.notes || null
+      ]
+    );
+
+    const orderId = result.insertId;
+
+    if (o.items && Array.isArray(o.items)) {
+      for (const item of o.items) {
+        await dbPool.query(
+          `INSERT INTO order_details (order_id, product_id, product_name, unit_price, quantity, subtotal, special_instructions)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [
+            orderId,
+            item.product_id || null,
+            item.product_name || '',
+            item.unit_price || 0,
+            item.quantity || 1,
+            item.subtotal || 0,
+            item.special_instructions || null
+          ]
+        );
+      }
+    }
+
+    const savedOrder = { ...o, id: orderId };
+    broadcastEvent('new_order', savedOrder);
+    res.json({ success: true, order: savedOrder });
+  } catch (err) {
+    console.error('Error creating order in MySQL:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Update Order Status endpoint (persist to MySQL & broadcast to connected devices)
+apiRouter.patch('/orders/:id/status', async (req, res) => {
+  if (!dbPool) return res.status(503).json({ error: 'DB not available' });
+
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    await dbPool.query(`UPDATE orders SET status = ? WHERE id = ?`, [status, id]);
+    broadcastEvent('order_status_updated', { id: Number(id), status });
+    res.json({ success: true, id: Number(id), status });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+

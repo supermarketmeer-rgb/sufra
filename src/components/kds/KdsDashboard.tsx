@@ -35,13 +35,20 @@ export const KdsDashboard: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Filter kitchen active orders (strictly for current restaurant and current branch)
+  // Filter kitchen active orders: ONLY show orders confirmed by cashier for preparation ('preparing')
   const kitchenOrders = orders.filter(o =>
     o.restaurant_id === activeRestaurant?.id &&
     (!activeBranch?.id || o.branch_id === activeBranch.id) &&
-    (o.status === 'new' || o.status === 'in_review' || o.status === 'preparing') &&
+    o.status === 'preparing' &&
     (filterType === 'all' || o.order_type === filterType)
   );
+
+  // Orders awaiting cashier review & confirmation
+  const pendingCashierOrdersCount = orders.filter(o =>
+    o.restaurant_id === activeRestaurant?.id &&
+    (!activeBranch?.id || o.branch_id === activeBranch.id) &&
+    (o.status === 'new' || o.status === 'in_review')
+  ).length;
 
   const getElapsedMinutes = (createdAt: string) => {
     const elapsedMs = currentTime - new Date(createdAt).getTime();
@@ -111,9 +118,16 @@ export const KdsDashboard: React.FC = () => {
                 {activeBranch?.name_ar || 'الفرع الرئيسي'}
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              تحديث فوري وتنبيهات صوتية بدون إعادة تحميل الصفحة · {kitchenOrders.length} تذاكر قيد العمل
-            </p>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              <p className="text-xs text-slate-400">
+                تحديث فوري وتنبيهات صوتية بدون إعادة تحميل الصفحة · {kitchenOrders.length} تذاكر قيد التحضير
+              </p>
+              {pendingCashierOrdersCount > 0 && (
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold animate-pulse">
+                  ⏳ {pendingCashierOrdersCount} طلب خارجي بانتظار اعتماد الكاشير
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

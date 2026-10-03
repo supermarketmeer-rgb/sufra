@@ -774,7 +774,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       table_id: orderData.table_id,
       table_number: orderData.table_number,
       order_type: orderData.order_type || 'dine_in',
-      status: 'new',
+      status: orderData.status || 'new',
       subtotal,
       tax_amount: taxAmount,
       discount_amount: discountAmount,

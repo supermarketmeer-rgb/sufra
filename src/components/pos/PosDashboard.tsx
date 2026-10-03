@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { useApp } from '../../context/AppContext';
-import { Product, OrderItem, DiningTable } from '../../types';
+import { Product, OrderItem, DiningTable, Order } from '../../types';
 import {
   Search,
   Barcode,
@@ -16,7 +16,17 @@ import {
   Receipt,
   User,
   ShoppingBag,
-  Sparkles
+  Sparkles,
+  Bell,
+  Clock,
+  Phone,
+  MapPin,
+  ChefHat,
+  Check,
+  X,
+  AlertCircle,
+  Bike,
+  Eye
 } from 'lucide-react';
 
 export const PosDashboard: React.FC = () => {
@@ -27,6 +37,9 @@ export const PosDashboard: React.FC = () => {
     products,
     tables,
     createOrder,
+    orders,
+    updateOrderStatus,
+    playNotificationSound,
     coupons,
     applyCoupon,
     setCurrentRole
@@ -43,6 +56,54 @@ export const PosDashboard: React.FC = () => {
   const [selectedTable, setSelectedTable] = useState<DiningTable | null>(branchTables[0] || null);
   const [couponCode, setCouponCode] = useState('');
   const [discountAmount, setDiscountAmount] = useState(0);
+
+  // Incoming Online / External Orders state (Waiting for Cashier Confirmation)
+  const [showIncomingDrawer, setShowIncomingDrawer] = useState(false);
+  const [selectedIncomingOrder, setSelectedIncomingOrder] = useState<Order | null>(null);
+  const [incomingSuccessMsg, setIncomingSuccessMsg] = useState<string | null>(null);
+
+  // Filter pending incoming orders for this restaurant & branch
+  const incomingOrders = orders.filter(o =>
+    o.restaurant_id === activeRestaurant?.id &&
+    (!activeBranch?.id || o.branch_id === activeBranch.id) &&
+    (o.status === 'new' || o.status === 'in_review')
+  );
+
+  // Sound alert on new incoming order
+  const prevIncomingCount = useRef(incomingOrders.length);
+  useEffect(() => {
+    if (incomingOrders.length > prevIncomingCount.current) {
+      try {
+        playNotificationSound();
+      } catch {}
+    }
+    prevIncomingCount.current = incomingOrders.length;
+  }, [incomingOrders.length, playNotificationSound]);
+
+  const handleAcceptOrder = (orderId: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    updateOrderStatus(orderId, 'preparing');
+    setIncomingSuccessMsg(`✅ تم تأكيد الطلب #${orderId} وإرساله للمطبخ بنجاح!`);
+    setTimeout(() => setIncomingSuccessMsg(null), 3000);
+  };
+
+  const handleRejectOrder = (orderId: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (window.confirm('هل أنت متأكد من رفض هذا الطلب؟')) {
+      updateOrderStatus(orderId, 'cancelled');
+      setIncomingSuccessMsg(`⚠️ تم رفض الطلب #${orderId}`);
+      setTimeout(() => setIncomingSuccessMsg(null), 3000);
+    }
+  };
+
+  const handlePrintIncomingOrder = (order: Order, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setCompletedOrderReceipt({
+      order,
+      cashTendered: order.total_amount,
+      changeDue: 0
+    });
+  };
 
   // Payment Drawer state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -121,6 +182,7 @@ export const PosDashboard: React.FC = () => {
       table_id: selectedOrderType === 'dine_in' ? selectedTable?.id : undefined,
       table_number: selectedOrderType === 'dine_in' ? selectedTable?.table_number : undefined,
       order_type: selectedOrderType,
+      status: 'preparing', // Counter order entered directly by cashier goes straight to kitchen
       discount_amount: discountAmount,
       items: cart,
       payment_method: selectedPaymentMethod,
@@ -162,25 +224,47 @@ export const PosDashboard: React.FC = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[calc(100vh-120px)]">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[calc(100vh-120px)] relative">
       {/* Products & Fast Sale Grid (8 Cols) */}
       <div className="lg:col-span-7 xl:col-span-8 space-y-4">
-        {/* Search & Barcode Simulator */}
-        <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="البحث بالاسم، أو رقم الصنف السريع (مثال: 1، كباب، برغر)..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl pr-9 pl-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-mono"
-            />
+        {/* POS Top Action Bar: Search + Incoming Online Orders Alert Button */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="bg-slate-900 border border-slate-800 p-2.5 rounded-2xl flex items-center gap-3 flex-1 shadow-sm">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="البحث بالاسم، أو رقم الصنف السريع (مثال: 1، كباب، برغر)..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl pr-9 pl-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-mono"
+              />
+            </div>
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-400 font-mono shrink-0">
+              <Barcode className="w-4 h-4 text-amber-400" />
+              <span>Barcode Ready</span>
+            </div>
           </div>
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-400 font-mono">
-            <Barcode className="w-4 h-4 text-amber-400" />
-            <span>Barcode Ready</span>
-          </div>
+
+          {/* Dedicated Incoming Online Orders Alert Button (Non-intrusive) */}
+          <button
+            type="button"
+            onClick={() => setShowIncomingDrawer(true)}
+            className={`flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-2xl text-xs font-bold border transition-all cursor-pointer shrink-0 shadow-lg ${
+              incomingOrders.length > 0
+                ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-700 text-slate-950 border-amber-400 ring-2 ring-amber-500/50 animate-pulse'
+                : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800'
+            }`}
+            title="الطلبات الخارجية الواردة بانتظار التأكيد والإرسال للمطبخ"
+          >
+            <Bell className={`w-4 h-4 ${incomingOrders.length > 0 ? 'text-slate-950 animate-bounce' : 'text-slate-400'}`} />
+            <span>الطلبات الواردة أونلاين</span>
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${
+              incomingOrders.length > 0 ? 'bg-slate-950 text-amber-400' : 'bg-slate-800 text-slate-400'
+            }`}>
+              {incomingOrders.length}
+            </span>
+          </button>
         </div>
 
         {/* Categories Pills */}
@@ -574,6 +658,205 @@ export const PosDashboard: React.FC = () => {
                 إغلاق وبدء طلب جديد
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Incoming Online Orders Slide-over Drawer (Non-blocking, does not touch active cart) */}
+      {showIncomingDrawer && (
+        <div className="fixed inset-0 z-50 flex items-stretch justify-start bg-slate-950/70 backdrop-blur-sm animate-fade-in font-cairo" dir="rtl">
+          <div className="w-full max-w-xl h-full bg-slate-900 border-l border-slate-800 flex flex-col shadow-2xl overflow-hidden">
+            
+            {/* Drawer Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-800 bg-slate-900/90 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
+                  incomingOrders.length > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-400'
+                }`}>
+                  <Bell className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base flex items-center gap-2">
+                    <span>الطلبات الواردة أونلاين</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      {incomingOrders.length} طلب معلق
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400">مراجعة وتأكيد طلبات الزبائن قبل إرسالها للمطبخ</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowIncomingDrawer(false)}
+                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-sm transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Notification alert banner */}
+            {incomingSuccessMsg && (
+              <div className="m-4 mb-0 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2 animate-fade-in">
+                <span>{incomingSuccessMsg}</span>
+              </div>
+            )}
+
+            {/* Orders List Content */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
+              {incomingOrders.length === 0 ? (
+                <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center p-6 text-slate-400">
+                  <div className="w-16 h-16 rounded-3xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-center text-slate-500 mb-3">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500/60" />
+                  </div>
+                  <h4 className="font-bold text-white text-sm mb-1">لا توجد طلبات معلقة حالياً</h4>
+                  <p className="text-xs text-slate-400 max-w-xs">
+                    جميع الطلبات الخارجية تم تأكيدها وإرسالها للمطبخ بنجاح. أي طلب جديد يصل سيظهر هنا فوراً مع رنة تنبيه.
+                  </p>
+                </div>
+              ) : (
+                incomingOrders.map(order => {
+                  const isDelivery = order.order_type === 'delivery';
+                  const isTakeaway = order.order_type === 'takeaway';
+                  const isDineIn = order.order_type === 'dine_in';
+
+                  return (
+                    <div
+                      key={order.id}
+                      className="bg-slate-950/70 border border-slate-800 hover:border-amber-500/40 rounded-2xl p-4 space-y-3 shadow-lg transition-all"
+                    >
+                      {/* Top Badges */}
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          {isDelivery && (
+                            <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                              <Bike className="w-3 h-3" />
+                              <span>توصيل دليفري</span>
+                            </span>
+                          )}
+                          {isTakeaway && (
+                            <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                              <ShoppingBag className="w-3 h-3" />
+                              <span>استلام سفري</span>
+                            </span>
+                          )}
+                          {isDineIn && (
+                            <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                              <UtensilsCrossed className="w-3 h-3" />
+                              <span>طاولة {order.table_number || order.table_id}</span>
+                            </span>
+                          )}
+                          <span className="font-mono text-xs font-bold text-amber-400">
+                            #{order.order_number}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-slate-400 font-mono">
+                          {new Date(order.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+
+                      {/* Customer Details */}
+                      <div className="space-y-1 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-white text-sm">{order.customer_name}</span>
+                          {order.customer_phone && (
+                            <a
+                              href={`tel:${order.customer_phone}`}
+                              className="flex items-center gap-1 text-amber-400 hover:text-amber-300 font-mono font-semibold"
+                            >
+                              <Phone className="w-3 h-3" />
+                              <span>{order.customer_phone}</span>
+                            </a>
+                          )}
+                        </div>
+
+                        {order.delivery_address && (
+                          <div className="flex items-start gap-1.5 text-slate-300 text-[11px] pt-1">
+                            <MapPin className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
+                            <span>{order.delivery_address}</span>
+                          </div>
+                        )}
+
+                        {order.notes && (
+                          <div className="p-2 rounded-xl bg-amber-500/5 border border-amber-500/15 text-amber-300/90 text-[11px]">
+                            <span className="font-bold">ملاحظات:</span> {order.notes}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Items Summary */}
+                      <div className="bg-slate-900/80 rounded-xl p-2.5 divide-y divide-slate-800/60 text-xs">
+                        {order.items.map((it, idx) => (
+                          <div key={idx} className="py-1 flex items-center justify-between">
+                            <span className="text-slate-200">
+                              <span className="font-bold text-amber-400 font-mono ml-1">{it.quantity}x</span>
+                              {it.product_name}
+                            </span>
+                            <span className="font-mono text-slate-300">{it.subtotal.toLocaleString()} د.ع</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Price Total */}
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-800">
+                        <span className="text-xs text-slate-400">الإجمالي المستحق:</span>
+                        <span className="font-black text-amber-400 text-sm font-mono">
+                          {order.total_amount.toLocaleString()} د.ع
+                        </span>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={(e) => handleAcceptOrder(order.id, e)}
+                          className="sm:col-span-7 py-2.5 px-3 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                        >
+                          <ChefHat className="w-4 h-4" />
+                          <span>تأكيد وإرسال للمطبخ 👨‍🍳</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => handlePrintIncomingOrder(order, e)}
+                          className="sm:col-span-3 py-2.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl flex items-center justify-center gap-1 transition-all cursor-pointer"
+                          title="طباعة الفاتورة"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>طباعة</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => handleRejectOrder(order.id, e)}
+                          className="sm:col-span-2 py-2.5 px-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold rounded-xl border border-rose-500/20 flex items-center justify-center transition-all cursor-pointer"
+                          title="رفض أو إلغاء الطلب"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Drawer Footer */}
+            {incomingOrders.length > 1 && (
+              <div className="p-4 border-t border-slate-800 bg-slate-900/90 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    incomingOrders.forEach(o => updateOrderStatus(o.id, 'preparing'));
+                    setIncomingSuccessMsg(`✅ تم تأكيد جميع الطلبات (${incomingOrders.length}) وإرسالها للمطبخ!`);
+                    setTimeout(() => setIncomingSuccessMsg(null), 3000);
+                  }}
+                  className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>تأكيد كل الطلبات دفعة واحدة وإرسالها للمطبخ ({incomingOrders.length})</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
