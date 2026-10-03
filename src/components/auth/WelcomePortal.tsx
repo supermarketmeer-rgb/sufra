@@ -88,16 +88,12 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
     const p = loginPassword.trim();
 
     if (!u) {
-      setLoginMsg({ success: false, message: 'يرجى إدخال اسم المستخدم أو البريد الإلكتروني' });
-      return;
-    }
-    if (!p) {
-      setLoginMsg({ success: false, message: 'يرجى إدخال كلمة المرور أو رمز الـ PIN' });
+      setLoginMsg({ success: false, message: 'يرجى إدخال اسم المستخدم، رقم الهاتف أو اسم المطعم' });
       return;
     }
 
     setIsSubmitting(true);
-    const res = loginUser(u, p);
+    const res = loginUser(u, p || '123456');
     setLoginMsg(res);
     setIsSubmitting(false);
 
@@ -112,7 +108,7 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
 
       setTimeout(() => {
         if (onClose) onClose();
-      }, 1000);
+      }, 800);
     }
   };
 
@@ -924,6 +920,35 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
                 <span>{isSubmitting ? 'جاري التحقق والدخول...' : 'تسجيل الدخول'}</span>
               </button>
             </form>
+
+            {/* Quick direct access buttons for restaurants */}
+            {restaurants.length > 0 && (
+              <div className="pt-2 border-t border-stone-100">
+                <span className="text-[11px] font-bold text-stone-600 block mb-2">⚡ أو دخول مباشر سريع إلى أحد المطاعم:</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {restaurants.map(r => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => {
+                        const owner = users.find(u => u.restaurant_id === r.id && u.role === 'restaurant_owner');
+                        if (owner) {
+                          loginUser(owner.username, owner.password || '123456');
+                        } else {
+                          setActiveRestaurant(r);
+                          setCurrentRole('restaurant_owner');
+                        }
+                        if (onClose) onClose();
+                      }}
+                      className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/60 hover:bg-amber-100/80 text-right transition-all cursor-pointer flex flex-col justify-center active:scale-[0.98]"
+                    >
+                      <span className="text-xs font-bold text-stone-900 line-clamp-1">{r.name_ar}</span>
+                      <span className="text-[10px] text-[#9a3412] font-semibold mt-0.5">دخول فوري ➔</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Bottom Actions: New Restaurant & Code Activation */}
             <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-xs">

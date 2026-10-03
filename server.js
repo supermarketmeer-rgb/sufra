@@ -15,8 +15,11 @@ app.use('/api', apiRouter);
 // Serve static files from the React dist directory
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// SPA Fallback for client-side routing
+// SPA Fallback for client-side routing with no-cache headers for instant mobile updates
 app.get('*', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
