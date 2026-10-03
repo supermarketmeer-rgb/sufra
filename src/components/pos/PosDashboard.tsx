@@ -33,6 +33,7 @@ export const PosDashboard: React.FC = () => {
   const {
     activeRestaurant,
     activeBranch,
+    branches,
     categories,
     products,
     tables,
@@ -62,12 +63,14 @@ export const PosDashboard: React.FC = () => {
   const [selectedIncomingOrder, setSelectedIncomingOrder] = useState<Order | null>(null);
   const [incomingSuccessMsg, setIncomingSuccessMsg] = useState<string | null>(null);
 
-  // Filter pending incoming orders for this restaurant & branch
-  const incomingOrders = orders.filter(o =>
-    o.restaurant_id === activeRestaurant?.id &&
-    (!activeBranch?.id || o.branch_id === activeBranch.id) &&
-    (o.status === 'new' || o.status === 'in_review')
-  );
+  // Filter pending incoming orders for this restaurant (resilient to string/number ID and branch matching)
+  const incomingOrders = orders.filter(o => {
+    const isSameRest = Number(o.restaurant_id) === Number(activeRestaurant?.id);
+    const isPending = o.status === 'new' || o.status === 'in_review';
+    const restBranches = branches.filter(b => Number(b.restaurant_id) === Number(activeRestaurant?.id));
+    const matchesBranch = restBranches.length <= 1 || !activeBranch?.id || !o.branch_id || Number(o.branch_id) === Number(activeBranch.id);
+    return isSameRest && isPending && matchesBranch;
+  });
 
   // Sound alert on new incoming order
   const prevIncomingCount = useRef(incomingOrders.length);

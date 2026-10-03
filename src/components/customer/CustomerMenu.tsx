@@ -46,6 +46,7 @@ export const CustomerMenu: React.FC = () => {
   const {
     activeRestaurant,
     activeBranch,
+    branches,
     categories,
     products,
     tables,
@@ -277,11 +278,12 @@ export const CustomerMenu: React.FC = () => {
     }
 
     const tableObj = tables.find(t => t.table_number === selectedTableNum);
+    const targetBranch = branches.find(b => Number(b.restaurant_id) === Number(activeRestaurant?.id)) || activeBranch;
 
     const newOrder = createOrder({
-      restaurant_id: activeRestaurant?.id || 1,
-      branch_id: activeBranch?.id || 1,
-      branch_name: activeBranch?.name_ar || 'الفرع الرئيسي',
+      restaurant_id: Number(activeRestaurant?.id || 1),
+      branch_id: Number(targetBranch?.id || activeBranch?.id || 1),
+      branch_name: targetBranch?.name_ar || activeBranch?.name_ar || 'الفرع الرئيسي',
       table_id: orderType === 'dine_in' ? tableObj?.id : undefined,
       table_number: orderType === 'dine_in' ? selectedTableNum : undefined,
       order_type: orderType,
@@ -337,11 +339,12 @@ export const CustomerMenu: React.FC = () => {
     }
 
     const tableObj = tables.find(t => t.table_number === selectedTableNum);
+    const targetBranch = branches.find(b => Number(b.restaurant_id) === Number(activeRestaurant?.id)) || activeBranch;
 
     const newOrder = createOrder({
-      restaurant_id: activeRestaurant?.id || 1,
-      branch_id: activeBranch?.id || 1,
-      branch_name: activeBranch?.name_ar || 'الفرع الرئيسي',
+      restaurant_id: Number(activeRestaurant?.id || 1),
+      branch_id: Number(targetBranch?.id || activeBranch?.id || 1),
+      branch_name: targetBranch?.name_ar || activeBranch?.name_ar || 'الفرع الرئيسي',
       table_id: orderType === 'dine_in' ? tableObj?.id : undefined,
       table_number: orderType === 'dine_in' ? selectedTableNum : undefined,
       order_type: orderType,

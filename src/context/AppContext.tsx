@@ -768,9 +768,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newOrder: Order = {
       id: nextId,
       order_number: orderNum,
-      restaurant_id: activeRestaurant ? activeRestaurant.id : 1,
-      branch_id: activeBranch ? activeBranch.id : 1,
-      branch_name: activeBranch ? activeBranch.name_ar : 'الفرع الرئيسي',
+      restaurant_id: Number(orderData.restaurant_id || activeRestaurant?.id || 1),
+      branch_id: Number(orderData.branch_id || activeBranch?.id || 1),
+      branch_name: orderData.branch_name || activeBranch?.name_ar || 'الفرع الرئيسي',
       table_id: orderData.table_id,
       table_number: orderData.table_number,
       order_type: orderData.order_type || 'dine_in',

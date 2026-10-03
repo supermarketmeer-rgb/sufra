@@ -17,6 +17,7 @@ export const KdsDashboard: React.FC = () => {
   const {
     activeRestaurant,
     activeBranch,
+    branches,
     orders,
     updateOrderStatus,
     playNotificationSound,
@@ -35,20 +36,24 @@ export const KdsDashboard: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
+  const restBranches = branches.filter(b => Number(b.restaurant_id) === Number(activeRestaurant?.id));
+
   // Filter kitchen active orders: ONLY show orders confirmed by cashier for preparation ('preparing')
-  const kitchenOrders = orders.filter(o =>
-    o.restaurant_id === activeRestaurant?.id &&
-    (!activeBranch?.id || o.branch_id === activeBranch.id) &&
-    o.status === 'preparing' &&
-    (filterType === 'all' || o.order_type === filterType)
-  );
+  const kitchenOrders = orders.filter(o => {
+    const isSameRest = Number(o.restaurant_id) === Number(activeRestaurant?.id);
+    const isPreparing = o.status === 'preparing';
+    const matchesBranch = restBranches.length <= 1 || !activeBranch?.id || !o.branch_id || Number(o.branch_id) === Number(activeBranch.id);
+    const matchesType = filterType === 'all' || o.order_type === filterType;
+    return isSameRest && isPreparing && matchesBranch && matchesType;
+  });
 
   // Orders awaiting cashier review & confirmation
-  const pendingCashierOrdersCount = orders.filter(o =>
-    o.restaurant_id === activeRestaurant?.id &&
-    (!activeBranch?.id || o.branch_id === activeBranch.id) &&
-    (o.status === 'new' || o.status === 'in_review')
-  ).length;
+  const pendingCashierOrdersCount = orders.filter(o => {
+    const isSameRest = Number(o.restaurant_id) === Number(activeRestaurant?.id);
+    const isPending = o.status === 'new' || o.status === 'in_review';
+    const matchesBranch = restBranches.length <= 1 || !activeBranch?.id || !o.branch_id || Number(o.branch_id) === Number(activeBranch.id);
+    return isSameRest && isPending && matchesBranch;
+  }).length;
 
   const getElapsedMinutes = (createdAt: string) => {
     const elapsedMs = currentTime - new Date(createdAt).getTime();
