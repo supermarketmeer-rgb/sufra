@@ -28,7 +28,8 @@ import {
   Bike,
   Eye,
   Store,
-  ChevronDown
+  ChevronDown,
+  TrendingUp
 } from 'lucide-react';
 
 export const PosDashboard: React.FC = () => {
@@ -70,7 +71,38 @@ export const PosDashboard: React.FC = () => {
   const [selectedIncomingOrder, setSelectedIncomingOrder] = useState<Order | null>(null);
   const [incomingSuccessMsg, setIncomingSuccessMsg] = useState<string | null>(null);
 
+  // View Mode: 'register' (نقطة البيع السريعة) or 'orders_log' (شاشة المبيعات والطلبات للمتابعة)
+  const [posViewMode, setPosViewMode] = useState<'register' | 'orders_log'>('register');
+  const [orderSearchQuery, setOrderSearchQuery] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'new' | 'preparing' | 'ready' | 'completed' | 'cancelled'>('all');
+  const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'dine_in' | 'takeaway' | 'delivery'>('all');
+  const [selectedDetailOrder, setSelectedDetailOrder] = useState<Order | null>(null);
+
   const currRestId = Number(activeRestaurant?.id || currentUser?.restaurant_id || 1);
+  const restaurantOrders = orders.filter(o => Number(o.restaurant_id) === currRestId);
+  const totalSales = restaurantOrders
+    .filter(o => o.status !== 'cancelled')
+    .reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+  const completedOrders = restaurantOrders.filter(o => o.status === 'completed');
+
+  // Filtered orders for the Orders & Sales monitoring table
+  const filteredOrdersLog = restaurantOrders.filter(o => {
+    if (orderStatusFilter !== 'all' && o.status !== orderStatusFilter) {
+      return false;
+    }
+    if (orderTypeFilter !== 'all' && o.order_type !== orderTypeFilter) {
+      return false;
+    }
+    if (orderSearchQuery.trim()) {
+      const q = orderSearchQuery.trim().toLowerCase();
+      const matchNum = String(o.order_number || '').toLowerCase().includes(q);
+      const matchCustomer = String(o.customer_name || '').toLowerCase().includes(q);
+      const matchPhone = String(o.customer_phone || '').includes(q);
+      const matchTable = String(o.table_number || '').toLowerCase().includes(q);
+      return matchNum || matchCustomer || matchPhone || matchTable;
+    }
+    return true;
+  });
 
   // Strictly filter pending incoming orders for the active restaurant ONLY
   const incomingOrders = orders.filter(o => {
@@ -235,35 +267,52 @@ export const PosDashboard: React.FC = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[calc(100vh-120px)] relative">
-      {/* Products & Fast Sale Grid (8 Cols) */}
-      <div className="lg:col-span-7 xl:col-span-8 space-y-4">
-        {/* POS Top Action Bar: Search + Restaurant Switcher + Incoming Online Orders Alert Button */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-          <div className="bg-slate-900 border border-slate-800 p-2 rounded-2xl flex items-center gap-3 flex-1 shadow-sm">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="البحث بالاسم، أو رقم الصنف السريع (مثال: 1، كباب، برغر)..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pr-9 pl-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-mono"
-              />
-            </div>
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-400 font-mono shrink-0">
-              <Barcode className="w-4 h-4 text-amber-400" />
-              <span>Barcode Ready</span>
-            </div>
-          </div>
+    <div className="space-y-4 min-h-[calc(100vh-120px)] relative">
+      {/* Top Header Switcher: Fast POS Register vs Sales & Orders Tracking */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-2.5 rounded-2xl shadow-lg">
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+          <button
+            type="button"
+            onClick={() => setPosViewMode('register')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              posViewMode === 'register'
+                ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                : 'bg-slate-950 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <Receipt className="w-4 h-4" />
+            <span>نقطة البيع وتسجيل الطلبات (POS)</span>
+          </button>
 
+          <button
+            type="button"
+            onClick={() => setPosViewMode('orders_log')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              posViewMode === 'orders_log'
+                ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                : 'bg-slate-950 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <TrendingUp className="w-4 h-4" />
+            <span>شاشة المبيعات وسجل الطلبات (للمتابعة)</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+              posViewMode === 'orders_log' ? 'bg-slate-950 text-amber-400' : 'bg-slate-800 text-amber-400'
+            }`}>
+              {restaurantOrders.length}
+            </span>
+          </button>
+        </div>
+
+        {/* Right side controls: Restaurant Switcher + Online Orders alert */}
+        <div className="flex items-center gap-2 self-end sm:self-auto">
           {/* Restaurant Switcher for Cashier */}
           {restaurants.length > 1 && (
             <div className="relative shrink-0">
               <button
                 type="button"
                 onClick={() => setShowRestPicker(!showRestPicker)}
-                className="flex items-center gap-2 px-3 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 rounded-2xl text-xs font-bold text-white transition-all shadow-sm cursor-pointer"
+                className="flex items-center gap-2 px-3 py-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 rounded-xl text-xs font-bold text-white transition-all shadow-sm cursor-pointer"
                 title="تغيير المطعم الحالي لشاشة الكاشير"
               >
                 <Store className="w-4 h-4 text-amber-400" />
@@ -304,15 +353,15 @@ export const PosDashboard: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowIncomingDrawer(true)}
-            className={`flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-2xl text-xs font-bold border transition-all cursor-pointer shrink-0 shadow-lg ${
+            className={`flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer shrink-0 shadow-lg ${
               incomingOrders.length > 0
                 ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-700 text-slate-950 border-amber-400 ring-2 ring-amber-500/50 animate-pulse'
-                : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800'
+                : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border-slate-800'
             }`}
             title="الطلبات الخارجية الواردة بانتظار التأكيد والإرسال للمطبخ"
           >
             <Bell className={`w-4 h-4 ${incomingOrders.length > 0 ? 'text-slate-950 animate-bounce' : 'text-slate-400'}`} />
-            <span>الطلبات الواردة أونلاين</span>
+            <span>الطلبات الواردة</span>
             <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${
               incomingOrders.length > 0 ? 'bg-slate-950 text-amber-400' : 'bg-slate-800 text-slate-400'
             }`}>
@@ -320,6 +369,44 @@ export const PosDashboard: React.FC = () => {
             </span>
           </button>
         </div>
+      </div>
+
+      {posViewMode === 'register' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
+          {/* Products & Fast Sale Grid (8 Cols) */}
+          <div className="lg:col-span-7 xl:col-span-8 space-y-4">
+            {/* POS Fast Search Bar */}
+            <div className="flex items-center gap-2.5">
+              <div className="bg-slate-900 border border-slate-800 p-2 rounded-2xl flex items-center gap-3 flex-1 shadow-sm">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="البحث بالاسم، أو رقم الصنف السريع (مثال: 1، كباب، برغر)..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pr-9 pl-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-mono"
+                  />
+                </div>
+                <div className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-400 font-mono shrink-0">
+                  <Barcode className="w-4 h-4 text-amber-400" />
+                  <span>Barcode Ready</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPosViewMode('orders_log')}
+                className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 rounded-2xl text-xs font-bold text-slate-300 hover:text-white transition-all shadow-sm cursor-pointer shrink-0"
+                title="فتح شاشة المبيعات وسجل الطلبات للمتابعة"
+              >
+                <TrendingUp className="w-4 h-4 text-amber-400" />
+                <span className="hidden sm:inline">سجل المبيعات</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-slate-800 text-amber-400 font-bold">
+                  {restaurantOrders.length}
+                </span>
+              </button>
+            </div>
 
         {/* Categories Pills */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
@@ -535,6 +622,282 @@ export const PosDashboard: React.FC = () => {
           </button>
         </div>
       </div>
+    </div>
+      ) : (
+        /* Tab: Sales and Orders Monitoring Screen (Matching Owner Dashboard) */
+        <div className="space-y-6 animate-fade-in">
+          {/* Top Header Banner */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20 shadow-sm shrink-0">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                  <span>شاشة المبيعات ومتابعة الطلبات</span>
+                  <span className="text-xs font-mono font-semibold px-2.5 py-0.5 rounded-full bg-slate-800 text-amber-400 border border-slate-700">
+                    {activeRestaurant?.name_ar}
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  متابعة مبيعات اليوم، إشغال الصالة، وتفاصيل وحالة جميع طلبات المطعم فورياً
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setPosViewMode('register')}
+              className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs font-black rounded-xl flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>تسجيل طلب جديد (POS)</span>
+            </button>
+          </div>
+
+          {/* 3 KPI Stat Cards - Identical to Owner Dashboard Overview Tab */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl relative overflow-hidden group hover:border-slate-700 transition-all">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-slate-400 font-semibold">مبيعات اليوم</span>
+                <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+                  <Banknote className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-2xl font-bold font-mono text-white mt-1">
+                {totalSales.toLocaleString()} د.ع
+              </div>
+              <p className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>من {completedOrders.length} طلبات مكتملة</span>
+              </p>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl relative overflow-hidden group hover:border-slate-700 transition-all">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-slate-400 font-semibold">متوسط قيمة الطلب</span>
+                <span className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400">
+                  <CreditCard className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-2xl font-bold font-mono text-white mt-1">
+                {Math.round(totalSales / (restaurantOrders.length || 1)).toLocaleString()} د.ع
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">معدل الفاتورة للزبون</p>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl relative overflow-hidden group hover:border-slate-700 transition-all">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-slate-400 font-semibold">إشغال الطاولات الحالي</span>
+                <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400">
+                  <Store className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-2xl font-bold font-mono text-white mt-1">
+                {tables.filter(t => t.status === 'occupied').length} / {tables.length}
+              </div>
+              <p className="text-[11px] text-amber-400 mt-1">طاولات مشغولة داخل الصالة</p>
+            </div>
+          </div>
+
+          {/* Sijill al-Talabat al-Haliya (Current Orders Log Table matching Owner Dashboard) */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+            {/* Header & Search */}
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <span>سجل الطلبات الحالية بالمطعم</span>
+                  <span className="px-2 py-0.5 bg-slate-800 text-amber-400 text-xs font-mono font-bold rounded-full">
+                    {filteredOrdersLog.length} طلب
+                  </span>
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  البحث والتصفية، معاينة تفاصيل الطلب، تحديث الحالة، وإعادة طباعة الفواتير
+                </p>
+              </div>
+
+              {/* Search input */}
+              <div className="relative min-w-[260px]">
+                <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="بحث برقم الطلب، اسم الزبون، أو الهاتف..."
+                  value={orderSearchQuery}
+                  onChange={e => setOrderSearchQuery(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pr-9 pl-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-mono"
+                />
+              </div>
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/80">
+              <span className="text-xs text-slate-400 font-semibold ml-1">حالة الطلب:</span>
+              {[
+                { id: 'all', label: 'الكل' },
+                { id: 'new', label: 'جديد' },
+                { id: 'preparing', label: 'قيد التحضير' },
+                { id: 'ready', label: 'جاهز' },
+                { id: 'completed', label: 'مكتمل' },
+                { id: 'cancelled', label: 'ملغي' },
+              ].map(st => (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => setOrderStatusFilter(st.id as any)}
+                  className={`px-3 py-1 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+                    orderStatusFilter === st.id
+                      ? 'bg-amber-500 text-slate-950 font-bold'
+                      : 'bg-slate-950 border border-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {st.label}
+                </button>
+              ))}
+
+              <div className="h-4 w-px bg-slate-800 mx-2 hidden sm:block" />
+
+              <span className="text-xs text-slate-400 font-semibold ml-1">النوع:</span>
+              {[
+                { id: 'all', label: 'كافة الأنواع' },
+                { id: 'dine_in', label: 'داخل الصالة' },
+                { id: 'takeaway', label: 'سفري' },
+                { id: 'delivery', label: 'توصيل خارجي' },
+              ].map(tp => (
+                <button
+                  key={tp.id}
+                  type="button"
+                  onClick={() => setOrderTypeFilter(tp.id as any)}
+                  className={`px-3 py-1 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+                    orderTypeFilter === tp.id
+                      ? 'bg-amber-500 text-slate-950 font-bold'
+                      : 'bg-slate-950 border border-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {tp.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Orders Table */}
+            <div className="overflow-x-auto rounded-xl border border-slate-800/80">
+              <table className="w-full text-right text-xs">
+                <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
+                  <tr>
+                    <th className="py-3 px-3">رقم الطلب</th>
+                    <th className="py-3 px-3">الوقت</th>
+                    <th className="py-3 px-3">النوع</th>
+                    <th className="py-3 px-3">الزبون / الهاتف</th>
+                    <th className="py-3 px-3">المبلغ الإجمالي</th>
+                    <th className="py-3 px-3">طريقة الدفع</th>
+                    <th className="py-3 px-3">الحالة</th>
+                    <th className="py-3 px-3 text-center">إجراءات المتابعة</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 bg-slate-900/40">
+                  {filteredOrdersLog.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-slate-500">
+                        لا توجد طلبات تطابق الفلتر الحالي
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredOrdersLog.map(o => (
+                      <tr key={o.id} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="py-3 px-3 font-mono font-bold text-amber-400">
+                          #{o.order_number}
+                        </td>
+                        <td className="py-3 px-3 font-mono text-slate-400 text-[11px]">
+                          {new Date(o.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="py-3 px-3">
+                          {o.order_type === 'dine_in' ? (
+                            <span className="inline-flex items-center gap-1 text-slate-200">
+                              <span>داخل المطعم</span>
+                              <span className="font-mono font-bold text-amber-400">({o.table_number || 'صالة'})</span>
+                            </span>
+                          ) : o.order_type === 'takeaway' ? (
+                            <span className="text-cyan-400 font-semibold">سفري (Takeaway)</span>
+                          ) : (
+                            <span className="text-emerald-400 font-semibold">توصيل خارجي</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="font-medium text-white">{o.customer_name || 'زبون عام'}</div>
+                          {o.customer_phone && (
+                            <div className="text-[11px] font-mono text-slate-400">{o.customer_phone}</div>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 font-mono font-bold text-white">
+                          {o.total_amount.toLocaleString()} د.ع
+                        </td>
+                        <td className="py-3 px-3 uppercase text-slate-300 font-mono text-[11px]">
+                          {o.payment_method === 'cash' ? 'نقداً (Cash)' :
+                           o.payment_method === 'visa' || o.payment_method === 'mastercard' ? 'بطاقة بنكية' :
+                           o.payment_method === 'zaincash' ? 'زين كاش' : o.payment_method}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`px-2.5 py-0.5 rounded text-[11px] font-semibold border ${
+                            o.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                            o.status === 'preparing' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                            o.status === 'ready' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                            o.status === 'cancelled' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
+                            'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                          }`}>
+                            {o.status === 'new' ? 'جديد' :
+                             o.status === 'in_review' ? 'قيد المراجعة' :
+                             o.status === 'preparing' ? 'قيد التحضير' :
+                             o.status === 'ready' ? 'جاهز' :
+                             o.status === 'out_for_delivery' ? 'في الطريق' :
+                             o.status === 'completed' ? 'مكتمل' :
+                             o.status === 'cancelled' ? 'ملغي' : o.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="flex items-center justify-center gap-1.5">
+                            {/* View Order Details */}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDetailOrder(o)}
+                              className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg transition-colors cursor-pointer"
+                              title="معاينة تفاصيل الطلب والأصناف"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Print Receipt */}
+                            <button
+                              type="button"
+                              onClick={() => handlePrintIncomingOrder(o)}
+                              className="p-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 rounded-lg transition-colors cursor-pointer"
+                              title="طباعة إيصال الفاتورة"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Change status quick actions */}
+                            <select
+                              value={o.status}
+                              onChange={(e) => updateOrderStatus(o.id, e.target.value as any)}
+                              className="bg-slate-950 border border-slate-800 text-[10px] text-slate-300 rounded-lg px-1.5 py-1 focus:outline-none focus:border-amber-500 font-semibold cursor-pointer"
+                              title="تحديث حالة الطلب"
+                            >
+                              <option value="new">جديد</option>
+                              <option value="preparing">قيد التحضير</option>
+                              <option value="ready">جاهز</option>
+                              <option value="completed">مكتمل</option>
+                              <option value="cancelled">ملغي</option>
+                            </select>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Payment Selection Modal */}
       {showPaymentModal && (
@@ -914,6 +1277,141 @@ export const PosDashboard: React.FC = () => {
           </div>
         </div>
       )}
+    {/* Selected Order Details Modal for Cashier Monitoring */}
+    {selectedDetailOrder && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <Receipt className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white font-mono">
+                  تفاصيل الطلب #{selectedDetailOrder.order_number}
+                </h3>
+                <span className="text-[11px] text-slate-400 font-mono">
+                  {new Date(selectedDetailOrder.created_at).toLocaleString('ar-EG')}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedDetailOrder(null)}
+              className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Content scrollable */}
+          <div className="space-y-4 overflow-y-auto pr-1 flex-1">
+            {/* Customer and Order Type Cards */}
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                <span className="text-slate-400 block text-[11px]">نوع الطلب:</span>
+                <span className="font-bold text-white mt-0.5 block">
+                  {selectedDetailOrder.order_type === 'dine_in' ? `طاولة (${selectedDetailOrder.table_number || 'صالة'})` :
+                   selectedDetailOrder.order_type === 'takeaway' ? 'استلام سفري (Takeaway)' : 'توصيل خارجي (Delivery)'}
+                </span>
+              </div>
+              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                <span className="text-slate-400 block text-[11px]">الزبون:</span>
+                <span className="font-bold text-white mt-0.5 block">{selectedDetailOrder.customer_name || 'زبون عام'}</span>
+                {selectedDetailOrder.customer_phone && (
+                  <a href={`tel:${selectedDetailOrder.customer_phone}`} className="text-amber-400 text-[11px] font-mono mt-0.5 block">
+                    {selectedDetailOrder.customer_phone}
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {selectedDetailOrder.delivery_address && (
+              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs flex items-start gap-2">
+                <MapPin className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="text-slate-400 block text-[11px]">عنوان التوصيل:</span>
+                  <span className="text-slate-200 mt-0.5 block">{selectedDetailOrder.delivery_address}</span>
+                </div>
+              </div>
+            )}
+
+            {selectedDetailOrder.notes && (
+              <div className="p-3 bg-amber-500/5 rounded-xl border border-amber-500/20 text-xs text-amber-300">
+                <span className="font-bold block text-[11px] text-amber-400">ملاحظات الزبون:</span>
+                <span>{selectedDetailOrder.notes}</span>
+              </div>
+            )}
+
+            {/* Items List */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-slate-300">الأصناف المطلوبة ({selectedDetailOrder.items?.length || 0}):</h4>
+              <div className="bg-slate-950 rounded-xl border border-slate-800 divide-y divide-slate-800/80 p-2 text-xs">
+                {selectedDetailOrder.items?.map((it, idx) => (
+                  <div key={idx} className="py-2 px-1 flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-white flex items-center gap-1.5">
+                        <span className="font-mono text-amber-400 font-black">{it.quantity}x</span>
+                        <span>{it.product_name}</span>
+                        {it.selected_size && (
+                          <span className="text-[10px] text-slate-400">({it.selected_size.name_ar})</span>
+                        )}
+                      </div>
+                      {it.selected_addons && it.selected_addons.length > 0 && (
+                        <div className="text-[10px] text-slate-400 mt-0.5 pr-4">
+                          + {it.selected_addons.map(a => a.name_ar).join(', ')}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-left font-mono font-bold text-slate-200">
+                      {it.subtotal?.toLocaleString()} د.ع
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Order Financials */}
+            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5 text-xs font-mono">
+              <div className="flex justify-between text-slate-400">
+                <span>طريقة الدفع:</span>
+                <span className="text-slate-200 font-bold uppercase">{selectedDetailOrder.payment_method}</span>
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>حالة الطلب:</span>
+                <span className="text-amber-400 font-bold">{selectedDetailOrder.status}</span>
+              </div>
+              <div className="flex justify-between text-white font-bold text-sm pt-2 border-t border-slate-800">
+                <span>المبلغ الإجمالي:</span>
+                <span className="text-amber-400">{selectedDetailOrder.total_amount?.toLocaleString()} د.ع</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
+            <button
+              type="button"
+              onClick={() => {
+                handlePrintIncomingOrder(selectedDetailOrder);
+              }}
+              className="flex-1 py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+              <span>طباعة إيصال الفاتورة</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedDetailOrder(null)}
+              className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+            >
+              إغلاق
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 };
