@@ -963,10 +963,10 @@ export const SuperAdminDashboard: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1">رقم الهاتف</label>
+                  <label className="block text-slate-400 mb-1">رقم الهاتف (بدون كود الدولة)</label>
                   <input
                     type="text"
-                    placeholder="+964 770 000 0000"
+                    placeholder="07XXXXXXXXX (مثال: 07701234567)"
                     value={newRestPhone}
                     onChange={e => setNewRestPhone(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500"

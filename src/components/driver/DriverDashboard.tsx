@@ -139,7 +139,7 @@ export const DriverDashboard: React.FC = () => {
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors w-fit"
                 >
                   <Phone className="w-3.5 h-3.5" />
-                  <span>اتصال بالزبون ({selectedOrder.customer_phone || '+964 770 123 4567'})</span>
+                  <span>اتصال بالزبون ({selectedOrder.customer_phone || '07701234567'})</span>
                 </a>
               </div>
 

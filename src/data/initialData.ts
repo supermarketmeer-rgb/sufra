@@ -9,7 +9,7 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
     logo_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&q=80',
     cover_url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80',
     description_ar: 'أفخم المأكولات الشرقية والغربية بنكهة أصيلة وتجربة ضيافة فريدة',
-    phone: '+964 770 123 4567',
+    phone: '07701234567',
     email: 'contact@sufrah-restaurant.com',
     address: 'بغداد - المنصور - شارع 14 رمضان',
     currency: 'IQD',
@@ -19,7 +19,7 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
     theme_primary_color: '#f59e0b',
     plan_name: 'الباقة الاحترافية (Pro)',
     delivery_fee_base: 3000,
-    whatsapp_number: '+9647701234567'
+    whatsapp_number: '07701234567'
   },
   {
     id: 2,
@@ -49,7 +49,7 @@ export const INITIAL_BRANCHES: Branch[] = [
     restaurant_id: 1,
     name_ar: 'الفرع الرئيسي - المنصور',
     name_en: 'Main Branch - Al Mansour',
-    phone: '+964 770 123 4567',
+    phone: '07701234567',
     address: 'بغداد - المنصور',
     latitude: 33.3152,
     longitude: 44.3661,
@@ -363,7 +363,7 @@ export const INITIAL_USERS: User[] = [
     email: 'admin@sufrah.com',
     password: 'admin123',
     pin_code: '1234',
-    phone: '+9647700000000',
+    phone: '07700000000',
     is_active: true,
     created_at: '2026-01-01'
   },
@@ -377,7 +377,7 @@ export const INITIAL_USERS: User[] = [
     email: 'owner@sufrah.com',
     password: 'owner123',
     pin_code: '1111',
-    phone: '+9647701234567',
+    phone: '07701234567',
     is_active: true,
     created_at: '2026-01-01'
   },
@@ -391,7 +391,7 @@ export const INITIAL_USERS: User[] = [
     email: 'manager@sufrah.com',
     password: 'manager123',
     pin_code: '2222',
-    phone: '+9647701112222',
+    phone: '07701112222',
     is_active: true,
     created_at: '2026-01-01'
   },
@@ -405,7 +405,7 @@ export const INITIAL_USERS: User[] = [
     email: 'cashier@sufrah.com',
     password: 'cashier123',
     pin_code: '3333',
-    phone: '+9647703334444',
+    phone: '07703334444',
     is_active: true,
     created_at: '2026-01-01'
   },
@@ -419,7 +419,7 @@ export const INITIAL_USERS: User[] = [
     email: 'chef@sufrah.com',
     password: 'chef123',
     pin_code: '4444',
-    phone: '+9647705556666',
+    phone: '07705556666',
     is_active: true,
     created_at: '2026-01-01'
   },
@@ -433,7 +433,7 @@ export const INITIAL_USERS: User[] = [
     email: 'driver@sufrah.com',
     password: 'driver123',
     pin_code: '5555',
-    phone: '+9647707778888',
+    phone: '07707778888',
     is_active: true,
     created_at: '2026-01-01'
   },

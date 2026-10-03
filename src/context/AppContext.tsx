@@ -1037,7 +1037,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       restaurant_id: activeRestaurant.id,
       name_ar: branchData.name_ar || 'فرع جديد',
       name_en: branchData.name_en || 'New Branch',
-      phone: branchData.phone || '+964 770 000 0000',
+      phone: branchData.phone || '07700000000',
       address: branchData.address || 'العنوان',
       latitude: branchData.latitude || 33.315,
       longitude: branchData.longitude || 44.354,
@@ -1188,7 +1188,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       logo_url: data.logo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&q=80',
       cover_url: data.cover_url || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80',
       description_ar: data.description_ar || 'مطعم ومقهى عصري',
-      phone: data.phone || '+964 770 000 0000',
+      phone: data.phone || '07700000000',
       email: data.email || `info@${slug}.com`,
       address: data.address || 'العراق',
       currency: 'IQD',
@@ -1198,7 +1198,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       theme_primary_color: data.theme_primary_color || '#f59e0b',
       plan_name: data.plan_name || 'الباقة الاحترافية (Pro)',
       delivery_fee_base: data.delivery_fee_base || 3000,
-      whatsapp_number: data.whatsapp_number || data.phone || '+9647700000000'
+      whatsapp_number: data.whatsapp_number || data.phone || '07700000000'
     };
 
     // Auto create main branch

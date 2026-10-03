@@ -30,6 +30,18 @@ import {
   UtensilsCrossed
 } from 'lucide-react';
 
+// Format WhatsApp URLs automatically without requiring user/restaurant to enter country codes (+964)
+const formatWhatsAppUrl = (phone?: string, text?: string) => {
+  const raw = phone || '07810909577';
+  let clean = raw.replace(/[^0-9]/g, '');
+  if (clean.startsWith('07')) {
+    clean = '964' + clean.slice(1);
+  } else if (clean.startsWith('7') && clean.length === 10) {
+    clean = '964' + clean;
+  }
+  return `https://wa.me/${clean}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
+};
+
 export const CustomerMenu: React.FC = () => {
   const {
     activeRestaurant,
@@ -287,10 +299,8 @@ export const CustomerMenu: React.FC = () => {
       confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
     } catch {}
 
-    const rawNumber = activeRestaurant?.whatsapp_number || '+9647701234567';
-    const cleanPhone = rawNumber.replace(/[^0-9]/g, '');
     const message = buildWhatsAppOrderMessage(newOrder.order_number, cart, totalAmount);
-    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    const waUrl = formatWhatsAppUrl(activeRestaurant?.whatsapp_number || activeRestaurant?.phone, message);
 
     setPlacedOrderNumber(newOrder.order_number);
     setCart([]);
@@ -541,7 +551,7 @@ export const CustomerMenu: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <a
-              href={`https://wa.me/${activeRestaurant.whatsapp_number?.replace(/\+/g, '')}`}
+              href={formatWhatsAppUrl(activeRestaurant.whatsapp_number || activeRestaurant.phone)}
               target="_blank"
               rel="noreferrer"
               className="px-3.5 py-2 bg-emerald-600/90 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors"
@@ -848,14 +858,15 @@ export const CustomerMenu: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1">رقم الهاتف *</label>
+                  <label className="block text-slate-400 mb-1">رقم الهاتف (بدون كود الدولة) *</label>
                   <input
-                    type="text"
+                    type="tel"
                     required
-                    placeholder="+964 770 000 0000"
+                    placeholder="07XXXXXXXXX (مثال: 07701234567)"
                     value={resPhone}
-                    onChange={e => setResPhone(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white"
+                    onChange={e => setResPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-mono"
+                    dir="ltr"
                   />
                 </div>
               </div>
@@ -1236,15 +1247,16 @@ export const CustomerMenu: React.FC = () => {
 
               <div>
                 <label className="block text-slate-400 mb-1">
-                  رقم الهاتف للتواصل {(orderType === 'delivery' || orderType === 'takeaway') && '*'}
+                  رقم الهاتف للتواصل (بدون كود الدولة) {(orderType === 'delivery' || orderType === 'takeaway') && '*'}
                 </label>
                 <input
-                  type="text"
+                  type="tel"
                   required={orderType === 'delivery' || orderType === 'takeaway'}
-                  placeholder="+964 770 000 0000"
+                  placeholder="07XXXXXXXXX (مثال: 07701234567)"
                   value={customerPhone}
-                  onChange={e => setCustomerPhone(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white"
+                  onChange={e => setCustomerPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white font-mono"
+                  dir="ltr"
                 />
               </div>
 
@@ -1408,7 +1420,7 @@ export const CustomerMenu: React.FC = () => {
 
             <div className="space-y-2">
               <a
-                href={`https://wa.me/${(activeRestaurant.whatsapp_number || '+9647701234567').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`السلام عليكم ورحمة الله، أود متابعة حالة طلبي رقم: #${placedOrderNumber}`)}`}
+                href={formatWhatsAppUrl(activeRestaurant.whatsapp_number || activeRestaurant.phone, `السلام عليكم ورحمة الله، أود متابعة حالة طلبي رقم: #${placedOrderNumber}`)}
                 target="_blank"
                 rel="noreferrer"
                 className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-md transition-colors"

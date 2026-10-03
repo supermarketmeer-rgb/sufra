@@ -71,7 +71,7 @@ export const OwnerDashboard: React.FC = () => {
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'branches' | 'tables' | 'staff' | 'qr' | 'ai' | 'reports' | 'branding'>('menu');
-  const [ownerWhatsApp, setOwnerWhatsApp] = useState<string>(activeRestaurant?.whatsapp_number || '+9647701234567');
+  const [ownerWhatsApp, setOwnerWhatsApp] = useState<string>((activeRestaurant?.whatsapp_number || '07810909577').replace(/^\+964/, '0').replace(/^00964/, '0'));
   const [savedWhatsAppSuccess, setSavedWhatsAppSuccess] = useState(false);
 
   // Staff & User Management States
@@ -116,7 +116,7 @@ export const OwnerDashboard: React.FC = () => {
       setNewCoverUrl(activeRestaurant.cover_url || '');
       setNewRestName(activeRestaurant.name_ar || '');
       setNewRestDesc(activeRestaurant.description_ar || '');
-      setOwnerWhatsApp(activeRestaurant.whatsapp_number || '+9647701234567');
+      setOwnerWhatsApp((activeRestaurant.whatsapp_number || '07810909577').replace(/^\+964/, '0').replace(/^00964/, '0'));
     }
   }, [activeRestaurant]);
 
@@ -1207,7 +1207,7 @@ export const OwnerDashboard: React.FC = () => {
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  placeholder="+964 770 123 4567"
+                  placeholder="07XXXXXXXXX (مثال: 07701234567)"
                   value={ownerWhatsApp}
                   onChange={e => setOwnerWhatsApp(e.target.value)}
                   className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white font-mono"
@@ -2146,13 +2146,13 @@ export const OwnerDashboard: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">رقم واتساب الطلبات</label>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">رقم واتساب الطلبات (بدون كود الدولة)</label>
                   <input
                     type="text"
                     dir="ltr"
                     value={ownerWhatsApp}
                     onChange={e => setOwnerWhatsApp(e.target.value)}
-                    placeholder="+964 770 000 0000"
+                    placeholder="07XXXXXXXXX"
                     className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 text-right"
                   />
                 </div>
@@ -2942,12 +2942,12 @@ export const OwnerDashboard: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">هاتف الفرع للتواصل</label>
+                  <label className="block text-slate-300 font-semibold mb-1">هاتف الفرع للتواصل (بدون كود الدولة)</label>
                   <input
                     type="text"
                     value={branchPhone}
                     onChange={e => setBranchPhone(e.target.value)}
-                    placeholder="+964 770 000 0000"
+                    placeholder="07XXXXXXXXX"
                     className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-white outline-none transition-all"
                   />
                 </div>

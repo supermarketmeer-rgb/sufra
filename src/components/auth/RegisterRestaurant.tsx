@@ -210,16 +210,16 @@ export const RegisterRestaurant: React.FC<RegisterRestaurantProps> = ({ onClose,
           {/* Phone / WhatsApp */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              رقم هاتف المالك / الواتساب <span className="text-rose-400">*</span>
+              رقم هاتف المالك / الواتساب (بدون كود الدولة) <span className="text-rose-400">*</span>
             </label>
             <div className="relative">
               <input
                 type="tel"
                 required
                 dir="ltr"
-                placeholder="+964 770 123 4567"
+                placeholder="07XXXXXXXXX (مثال: 07701234567)"
                 value={phone}
-                onChange={e => setPhone(e.target.value)}
+                onChange={e => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-left font-mono"
               />
               <Phone className="w-4 h-4 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2" />
