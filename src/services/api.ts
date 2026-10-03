@@ -3,7 +3,7 @@
  * Connects React UI directly to Railway MySQL via REST & Server-Sent Events (SSE)
  */
 
-import { Order, OrderStatus, Product, Category, DiningTable, Restaurant, Plan, Branch, Reservation, Review, Coupon, ActivityLog } from '../types';
+import { Order, OrderStatus, Product, Category, DiningTable, Restaurant, Plan, Branch, Reservation, Review, Coupon, ActivityLog, User } from '../types';
 
 export interface BootstrapData {
   restaurants: Restaurant[];
@@ -17,6 +17,7 @@ export interface BootstrapData {
   coupons: Coupon[];
   plans: Plan[];
   activityLogs: ActivityLog[];
+  users?: User[];
 }
 
 export const api = {

@@ -207,9 +207,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() =>
     loadFromStorage('sufrah_v2_activity_logs', INITIAL_ACTIVITY_LOGS)
   );
-  const [users, setUsers] = useState<User[]>(() =>
-    loadFromStorage('sufrah_v2_users', INITIAL_USERS)
-  );
+  const normalizeDigits = (str: string): string => {
+    if (!str) return '';
+    return str
+      .replace(/[٠-٩]/g, d => String.fromCharCode(d.charCodeAt(0) - 1632 + 48))
+      .replace(/[۰-۹]/g, d => String.fromCharCode(d.charCodeAt(0) - 1776 + 48));
+  };
+
+  const [users, setUsers] = useState<User[]>(() => {
+    const saved = loadFromStorage<User[]>('sufrah_v2_users', INITIAL_USERS);
+    if (!saved || saved.length === 0) return INITIAL_USERS;
+    const existingUsernames = new Set(saved.map(u => (u.username || '').toLowerCase()));
+    const missing = INITIAL_USERS.filter(u => !existingUsernames.has((u.username || '').toLowerCase()));
+    if (missing.length > 0) {
+      return [...saved, ...missing];
+    }
+    return saved;
+  });
   const [currentUser, setCurrentUser] = useState<User | null>(() =>
     loadFromStorage<User | null>('sufrah_v2_current_user', null)
   );
@@ -279,6 +293,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.coupons.length > 0) setCoupons(data.coupons);
       if (data.plans.length > 0) setPlans(data.plans);
       if (data.activityLogs.length > 0) setActivityLogs(data.activityLogs);
+      if (data.users && data.users.length > 0) setUsers(data.users);
     });
 
     // 2. Real-Time SSE Listener across all devices
@@ -405,25 +420,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentUser]);
 
   const loginUser = (identifier: string, passwordOrPin: string, restaurantId?: number): { success: boolean; message: string; user?: User } => {
-    const cleanId = identifier.trim().toLowerCase();
-    const cleanSecret = passwordOrPin.trim();
+    const rawId = normalizeDigits(identifier || '').trim().toLowerCase();
+    const cleanSecret = normalizeDigits(passwordOrPin || '').trim();
 
-    if (!cleanId || !cleanSecret) {
-      return { success: false, message: 'يرجى إدخال اسم المستخدم وكلمة المرور أو رمز الـ PIN' };
+    if (!rawId || !cleanSecret) {
+      return { success: false, message: 'يرجى إدخال اسم المستخدم أو رقم الهاتف وكلمة المرور أو رمز الـ PIN' };
     }
 
-    // 1. Look for matching active user across all accounts
-    const found = users.find(u =>
-      (u.username.toLowerCase() === cleanId || u.email.toLowerCase() === cleanId) &&
-      u.is_active
-    );
+    const cleanIdWithUnderscore = rawId.replace(/[\s\-]+/g, '_');
+    const cleanIdNoSep = rawId.replace(/[\s_\-]+/g, '');
+    const cleanDigits = rawId.replace(/\D/g, '');
+
+    // 1. Look for matching active user across all accounts (supports username, email, phone, and variants)
+    const found = users.find(u => {
+      if (!u.is_active) return false;
+      const uUsername = (u.username || '').toLowerCase().trim();
+      const uEmail = (u.email || '').toLowerCase().trim();
+      const uPhoneDigits = (u.phone || '').replace(/\D/g, '');
+
+      // Direct username or with underscores/no-separators
+      if (uUsername === rawId || uUsername === cleanIdWithUnderscore) return true;
+      if (uUsername.replace(/[\s_\-]+/g, '') === cleanIdNoSep) return true;
+
+      // Email match
+      if (uEmail === rawId) return true;
+
+      // Phone match (e.g. 07810909577 or +9647810909577)
+      if (cleanDigits.length >= 7 && (uPhoneDigits.endsWith(cleanDigits) || cleanDigits.endsWith(uPhoneDigits))) {
+        return true;
+      }
+
+      return false;
+    });
 
     if (!found) {
-      return { success: false, message: 'اسم المستخدم أو البريد الإلكتروني غير مسجل أو أن الحساب معطل' };
+      return { success: false, message: 'اسم المستخدم أو رقم الهاتف غير مسجل أو أن الحساب معطل' };
     }
 
-    const matchesPassword = (found.password && found.password === cleanSecret) || (cleanSecret === '123456');
-    const matchesPin = (found.pin_code && found.pin_code === cleanSecret);
+    const userPassword = normalizeDigits(found.password || '').trim();
+    const userPin = normalizeDigits(found.pin_code || '').trim();
+
+    const matchesPassword = (userPassword && userPassword === cleanSecret) || (cleanSecret === '123456');
+    const matchesPin = (userPin && userPin === cleanSecret);
 
     if (!matchesPassword && !matchesPin) {
       return { success: false, message: 'كلمة المرور أو رمز الـ PIN غير صحيح، يرجى التأكد وإعادة المحاولة' };

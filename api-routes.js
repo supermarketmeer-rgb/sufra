@@ -354,6 +354,27 @@ apiRouter.get(['/data', '/bootstrap'], async (req, res) => {
       timestamp: lg.created_at ? new Date(lg.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : 'الآن'
     }));
 
+    // 12. Users (Synchronize staff and accounts across all devices)
+    const [userRows] = await dbPool.query(`
+      SELECT u.*, r.name as role_name
+      FROM users u
+      LEFT JOIN roles r ON r.id = u.role_id
+      ORDER BY u.id ASC;
+    `);
+    const users = userRows.map(u => ({
+      id: u.id,
+      restaurant_id: u.restaurant_id || undefined,
+      branch_id: u.branch_id || undefined,
+      role: u.role_name || 'restaurant_owner',
+      name: u.name,
+      username: u.username || u.email.split('@')[0],
+      email: u.email,
+      password: u.password_hash || '123456',
+      pin_code: u.pin_code || '1234',
+      phone: u.phone || '',
+      is_active: u.status === 'active'
+    }));
+
     res.json({
       success: true,
       data: {
@@ -367,7 +388,8 @@ apiRouter.get(['/data', '/bootstrap'], async (req, res) => {
         reviews,
         coupons,
         plans,
-        activityLogs
+        activityLogs,
+        users
       }
     });
   } catch (err) {

@@ -853,22 +853,26 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
 
             <form onSubmit={handleDirectLogin} className="space-y-4">
               
-              {/* 1. Username Input */}
+              {/* 1. Username / Phone / Email Input */}
               <div>
                 <label className="block text-xs font-bold text-stone-700 mb-1.5 flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-[#9a3412]" />
-                  <span>اسم المستخدم أو البريد الإلكتروني <span className="text-[#9a3412]">*</span></span>
+                  <span>اسم المستخدم، رقم الهاتف أو البريد <span className="text-[#9a3412]">*</span></span>
                 </label>
                 <div className="relative">
                   <input
                     type="text"
                     required
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    autoComplete="username"
                     value={loginUsername}
                     onChange={e => {
                       setLoginUsername(e.target.value);
                       setLoginMsg(null);
                     }}
-                    placeholder="مثال: owner_jwan أو cashier_jwan أو admin"
+                    placeholder="مثال: owner_jwan أو 07810909577 أو admin"
                     className="w-full bg-white border border-[#c8c1b4] rounded-2xl px-4 py-3 text-sm text-stone-900 focus:outline-none focus:border-[#9a3412] transition-colors font-mono"
                   />
                 </div>
@@ -886,6 +890,10 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    autoComplete="current-password"
                     value={loginPassword}
                     onChange={e => {
                       setLoginPassword(e.target.value);
