@@ -182,7 +182,7 @@ export const CustomerMenu: React.FC = () => {
   const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
   const taxRate = activeRestaurant?.tax_percentage || 0;
   const taxAmount = (subtotal * taxRate) / 100;
-  const deliveryFee = orderType === 'delivery' ? (activeRestaurant?.delivery_fee_base || 0) : 0;
+  const deliveryFee = orderType === 'delivery' ? (activeRestaurant?.delivery_fee_base ?? 3000) : 0;
   const totalAmount = Math.max(0, subtotal + taxAmount + deliveryFee - discountVal);
 
   const handleApplyCouponCode = () => {
@@ -254,6 +254,16 @@ export const CustomerMenu: React.FC = () => {
     if (e) e.preventDefault();
     if (cart.length === 0) return;
 
+    if (orderType === 'delivery' && !deliveryAddress.trim()) {
+      alert('يرجى كتابة عنوان التوصيل بالتفصيل (المنطقة، الشارع، أقرب نقطة دالة) لنتمكن من توصيل طلبك.');
+      return;
+    }
+
+    if ((orderType === 'delivery' || orderType === 'takeaway') && !customerPhone.trim()) {
+      alert('يرجى إدخال رقم هاتفك للتواصل وتأكيد استلام الطلب.');
+      return;
+    }
+
     const tableObj = tables.find(t => t.table_number === selectedTableNum);
 
     const newOrder = createOrder({
@@ -305,6 +315,16 @@ export const CustomerMenu: React.FC = () => {
   const handlePlaceOrder = (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) return;
+
+    if (orderType === 'delivery' && !deliveryAddress.trim()) {
+      alert('يرجى كتابة عنوان التوصيل بالتفصيل (المنطقة، الشارع، أقرب نقطة دالة) لنتمكن من توصيل طلبك.');
+      return;
+    }
+
+    if ((orderType === 'delivery' || orderType === 'takeaway') && !customerPhone.trim()) {
+      alert('يرجى إدخال رقم هاتفك للتواصل وتأكيد استلام الطلب.');
+      return;
+    }
 
     const tableObj = tables.find(t => t.table_number === selectedTableNum);
 
@@ -422,41 +442,68 @@ export const CustomerMenu: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto pb-24 space-y-6">
-      {/* Scanned QR Table & Direct WhatsApp Notification Banner */}
-      <div className="bg-gradient-to-r from-emerald-950/70 via-slate-900 to-slate-900 border border-emerald-500/40 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl">
+      {/* Scanned QR Table, Takeaway & Delivery Notification Banner */}
+      <div className={`border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl transition-all ${
+        orderType === 'delivery'
+          ? 'bg-gradient-to-r from-emerald-950/80 via-slate-900 to-slate-900 border-emerald-500/50'
+          : orderType === 'takeaway'
+          ? 'bg-gradient-to-r from-blue-950/80 via-slate-900 to-slate-900 border-blue-500/50'
+          : 'bg-gradient-to-r from-amber-950/60 via-slate-900 to-slate-900 border-amber-500/40'
+      }`}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-            <MessageCircle className="w-6 h-6 fill-emerald-400 text-slate-950" />
+          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-2xl ${
+            orderType === 'delivery'
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              : orderType === 'takeaway'
+              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+              : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+          }`}>
+            {orderType === 'delivery' ? '🛵' : orderType === 'takeaway' ? '🛍️' : '🪑'}
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-white text-xs sm:text-sm">
                 {orderType === 'delivery'
-                  ? 'طلب التوصيل المنزلي المباشر مفعل 🛵'
+                  ? 'طلب التوصيل المنزلي السريع مفعل تلقائياً 🛵'
+                  : orderType === 'takeaway'
+                  ? 'طلب الاستلام السفري من الفرع مفعل تلقائياً 🛍️'
                   : scannedTableDetected
-                  ? `تم فتح المنيو عبر مسح QR كود (طاولة: ${scannedTableDetected})`
-                  : 'الطلب المباشر والتوصية عبر واتساب مفعل 🟢'}
+                  ? `تم مسح كود الطاولة بنجاح (طاولة: ${scannedTableDetected})`
+                  : 'منيو المطعم والطلب السريع عبر واتساب مفعل 🟢'}
               </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
-                {orderType === 'delivery' ? 'Home Delivery' : 'WhatsApp Direct Order'}
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                orderType === 'delivery'
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                  : orderType === 'takeaway'
+                  ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                  : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+              }`}>
+                {orderType === 'delivery' ? 'توصيل لموقعك · بدون طاولة' : orderType === 'takeaway' ? 'استلام سفري جاهز' : 'طلب طاولة'}
               </span>
             </div>
-            <p className="text-[11px] text-slate-300 mt-0.5">
+            <p className="text-[11px] text-slate-300 mt-1">
               {orderType === 'delivery'
-                ? 'اختر وجباتك وأدخل عنوانك للتوصيل السريع مباشرة إلى باب بيتك!'
-                : 'اختر وجباتك ومشروباتك وتفضيلاتك وسيتم تجهيز الطلب وإرساله إلى واتساب المطعم مباشرة بنقرة واحدة!'}
+                ? 'تم فتح المنيو مباشرة بنمط التوصيل. اختر وجباتك وأرسل طلبك مع عنوانك دون الحاجة لاختيار زر التوصيل!'
+                : orderType === 'takeaway'
+                ? 'تم فتح المنيو مباشرة بنمط الاستلام السفري. اختر وجباتك وأرسل طلبك ليتم تجهيزه واستلامه دون انتظار وبدون أجور توصيل!'
+                : 'اختر وجباتك ومشروباتك وسيتم إرسال الطلب فوراً إلى المطبخ مع رقم طاولتك المحدد.'}
             </p>
           </div>
         </div>
 
         {orderType === 'dine_in' && (
-          <div className="self-end sm:self-center px-3 py-1.5 bg-slate-950 rounded-xl border border-slate-800 text-xs font-mono font-bold text-amber-400">
+          <div className="self-end sm:self-center px-3 py-1.5 bg-slate-950 rounded-xl border border-amber-500/30 text-xs font-mono font-bold text-amber-400">
             طاولة: {selectedTableNum}
           </div>
         )}
         {orderType === 'delivery' && (
-          <div className="self-end sm:self-center px-3 py-1.5 bg-emerald-950/80 rounded-xl border border-emerald-500/40 text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-            <span>🛵 طلب توصيل منزلي</span>
+          <div className="self-end sm:self-center px-3 py-1.5 bg-emerald-950 rounded-xl border border-emerald-500/40 text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+            <span>🛵 توصيل لموقعك</span>
+          </div>
+        )}
+        {orderType === 'takeaway' && (
+          <div className="self-end sm:self-center px-3 py-1.5 bg-blue-950 rounded-xl border border-blue-500/40 text-xs font-bold text-blue-400 flex items-center gap-1.5">
+            <span>🛍️ استلام سفري</span>
           </div>
         )}
       </div>
@@ -534,7 +581,28 @@ export const CustomerMenu: React.FC = () => {
         <div className="space-y-6">
           {/* Order Type Selector (Dine-in, Takeaway, Delivery, Pre-order) */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-            <div className="text-xs font-semibold text-slate-300">طريقة استلام وجبتك:</div>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="text-xs font-semibold text-slate-300">طريقة استلام وجبتك:</div>
+              {orderType === 'delivery' && (
+                <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                  <span>✓</span>
+                  <span>تم التحديد تلقائياً: توصيل لموقعك 🛵</span>
+                </span>
+              )}
+              {orderType === 'takeaway' && (
+                <span className="text-[10px] text-blue-400 font-bold bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/30 flex items-center gap-1">
+                  <span>✓</span>
+                  <span>تم التحديد تلقائياً: استلام سفري 🛍️</span>
+                </span>
+              )}
+              {orderType === 'dine_in' && (
+                <span className="text-[10px] text-amber-400 font-bold bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1">
+                  <span>✓</span>
+                  <span>داخل المطعم ({selectedTableNum}) 🪑</span>
+                </span>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
                 { id: 'dine_in', label: 'داخل المطعم (طاولة)', icon: '🍽️' },
@@ -545,9 +613,13 @@ export const CustomerMenu: React.FC = () => {
                 <button
                   key={opt.id}
                   onClick={() => setOrderType(opt.id as any)}
-                  className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                  className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                     orderType === opt.id
-                      ? 'bg-amber-500/10 border-amber-500 text-amber-400'
+                      ? opt.id === 'delivery'
+                        ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400 ring-1 ring-emerald-500/40 shadow-sm'
+                        : opt.id === 'takeaway'
+                        ? 'bg-blue-500/15 border-blue-500 text-blue-400 ring-1 ring-blue-500/40 shadow-sm'
+                        : 'bg-amber-500/15 border-amber-500 text-amber-400 ring-1 ring-amber-500/40 shadow-sm'
                       : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
                   }`}
                 >
@@ -570,6 +642,20 @@ export const CustomerMenu: React.FC = () => {
                   ))}
                 </select>
                 <span className="text-[11px] text-emerald-400">تم تحديد الطاولة من مسح QR Code</span>
+              </div>
+            )}
+
+            {orderType === 'delivery' && (
+              <div className="pt-2 border-t border-slate-800/80 text-[11px] text-emerald-400 flex items-center gap-1.5 font-medium">
+                <span>🛵</span>
+                <span>لا حاجة لتحديد طاولة! اختر وجباتك ثم ادخل عنوانك عند التأكيد لتصلك الوجبة فوراً.</span>
+              </div>
+            )}
+
+            {orderType === 'takeaway' && (
+              <div className="pt-2 border-t border-slate-800/80 text-[11px] text-blue-400 flex items-center gap-1.5 font-medium">
+                <span>🛍️</span>
+                <span>اختر وجباتك وأرسل طلبك ليتم تحضيره في المطبخ واستلامه مباشرة من فرع المطعم.</span>
               </div>
             )}
           </div>
@@ -1037,13 +1123,25 @@ export const CustomerMenu: React.FC = () => {
         <div className="fixed bottom-4 left-4 right-4 max-w-md mx-auto z-40">
           <button
             onClick={() => setShowCartDrawer(true)}
-            className="w-full p-3.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 rounded-2xl shadow-2xl shadow-amber-500/40 flex items-center justify-between font-bold text-xs transition-transform active:scale-95"
+            className={`w-full p-3.5 text-slate-950 rounded-2xl shadow-2xl flex items-center justify-between font-bold text-xs transition-transform active:scale-95 cursor-pointer ${
+              orderType === 'delivery'
+                ? 'bg-gradient-to-r from-emerald-400 via-emerald-500 to-green-500 shadow-emerald-500/30'
+                : orderType === 'takeaway'
+                ? 'bg-gradient-to-r from-blue-400 via-blue-500 to-cyan-500 shadow-blue-500/30'
+                : 'bg-gradient-to-r from-amber-500 to-amber-600 shadow-amber-500/40'
+            }`}
           >
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-slate-950 text-amber-400 flex items-center justify-center font-mono text-[11px]">
+              <div className="w-6 h-6 rounded-full bg-slate-950 text-white flex items-center justify-center font-mono text-[11px] font-bold">
                 {cart.length}
               </div>
-              <span>عرض السلة وإتمام الطلب</span>
+              <span>
+                {orderType === 'delivery'
+                  ? 'عرض سلة التوصيل المنزلي وإرسال الطلب 🛵'
+                  : orderType === 'takeaway'
+                  ? 'عرض سلة الاستلام السفري وإرسال الطلب 🛍️'
+                  : 'عرض السلة وإتمام الطلب 🍽️'}
+              </span>
             </div>
             <div className="font-mono text-sm font-black">
               {totalAmount.toLocaleString()} د.ع
@@ -1058,10 +1156,45 @@ export const CustomerMenu: React.FC = () => {
           <div className="bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-5 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <div className="flex items-center gap-2">
-                <ShoppingBag className="w-4 h-4 text-amber-400" />
-                <h3 className="font-bold text-white text-sm">سلة الطلبات</h3>
+                <ShoppingBag className={`w-4 h-4 ${
+                  orderType === 'delivery' ? 'text-emerald-400' : orderType === 'takeaway' ? 'text-blue-400' : 'text-amber-400'
+                }`} />
+                <h3 className="font-bold text-white text-sm">
+                  {orderType === 'delivery'
+                    ? 'سلة طلبات التوصيل المنزلي 🛵'
+                    : orderType === 'takeaway'
+                    ? 'سلة طلبات الاستلام السفري 🛍️'
+                    : `سلة طلبات الصالة (${selectedTableNum}) 🪑`}
+                </h3>
               </div>
-              <button onClick={() => setShowCartDrawer(false)} className="text-slate-400 hover:text-white">✕</button>
+              <button onClick={() => setShowCartDrawer(false)} className="text-slate-400 hover:text-white p-1">✕</button>
+            </div>
+
+            {/* Auto-selected mode badge info */}
+            <div className={`p-2.5 rounded-xl border text-xs flex items-center justify-between ${
+              orderType === 'delivery'
+                ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                : orderType === 'takeaway'
+                ? 'bg-blue-950/40 border-blue-500/40 text-blue-300'
+                : 'bg-amber-950/40 border-amber-500/40 text-amber-300'
+            }`}>
+              <div className="flex items-center gap-2 font-bold">
+                <span>{orderType === 'delivery' ? '🛵' : orderType === 'takeaway' ? '🛍️' : '🪑'}</span>
+                <span>
+                  {orderType === 'delivery'
+                    ? 'طلب توصيل مباشر لموقعك'
+                    : orderType === 'takeaway'
+                    ? 'طلب استلام سفري من المطعم'
+                    : `طلب داخل الصالة - ${selectedTableNum}`}
+                </span>
+              </div>
+              <span className="text-[10px] bg-slate-900 px-2 py-0.5 rounded font-mono font-bold">
+                {orderType === 'delivery'
+                  ? `أجور التوصيل: ${deliveryFee.toLocaleString()} د.ع`
+                  : orderType === 'takeaway'
+                  ? 'أجور التوصيل: 0 د.ع (سفري)'
+                  : 'خدمة صالة'}
+              </span>
             </div>
 
             {/* Items */}
@@ -1102,9 +1235,12 @@ export const CustomerMenu: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">رقم الهاتف للتواصل</label>
+                <label className="block text-slate-400 mb-1">
+                  رقم الهاتف للتواصل {(orderType === 'delivery' || orderType === 'takeaway') && '*'}
+                </label>
                 <input
                   type="text"
+                  required={orderType === 'delivery' || orderType === 'takeaway'}
                   placeholder="+964 770 000 0000"
                   value={customerPhone}
                   onChange={e => setCustomerPhone(e.target.value)}
@@ -1113,15 +1249,18 @@ export const CustomerMenu: React.FC = () => {
               </div>
 
               {orderType === 'delivery' && (
-                <div>
-                  <label className="block text-slate-400 mb-1">عنوان التوصيل بالتفصيل *</label>
+                <div className="p-3 bg-emerald-950/20 border border-emerald-500/30 rounded-xl space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-emerald-400 font-bold">عنوان التوصيل بالتفصيل *</label>
+                    <span className="text-[10px] text-emerald-400/80">مطلوب لتوصيل الوجبة</span>
+                  </div>
                   <input
                     type="text"
                     required
-                    placeholder="المنطقة، الشارع، أقرب نقطة دالة..."
+                    placeholder="المدينة، المنطقة، الشارع، أقرب نقطة دالة أو رقم الدار..."
                     value={deliveryAddress}
                     onChange={e => setDeliveryAddress(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white"
+                    className="w-full bg-slate-950 border border-emerald-500/40 rounded-xl p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400"
                   />
                 </div>
               )}
@@ -1184,7 +1323,13 @@ export const CustomerMenu: React.FC = () => {
                 {deliveryFee > 0 && (
                   <div className="flex justify-between">
                     <span>أجور التوصيل:</span>
-                    <span className="font-mono text-white">{deliveryFee.toLocaleString()} د.ع</span>
+                    <span className="font-mono text-emerald-400 font-bold">{deliveryFee.toLocaleString()} د.ع</span>
+                  </div>
+                )}
+                {orderType === 'takeaway' && (
+                  <div className="flex justify-between text-blue-400">
+                    <span>أجور التوصيل:</span>
+                    <span className="font-mono font-bold">0 د.ع (سفري)</span>
                   </div>
                 )}
                 {discountVal > 0 && (
@@ -1206,10 +1351,22 @@ export const CustomerMenu: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleSendViaWhatsApp}
-                  className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className={`w-full py-3.5 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                    orderType === 'delivery'
+                      ? 'bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-emerald-600/30'
+                      : orderType === 'takeaway'
+                      ? 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-blue-600/30'
+                      : 'bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-emerald-600/30'
+                  }`}
                 >
                   <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 fill-white" />
-                  <span>إرسال وتأكيد الطلب عبر واتساب مباشرة 📲</span>
+                  <span>
+                    {orderType === 'delivery'
+                      ? 'إرسال وتأكيد طلب التوصيل مباشرة 🛵'
+                      : orderType === 'takeaway'
+                      ? 'إرسال وتأكيد طلب الاستلام السفري 🛍️'
+                      : 'إرسال وتأكيد الطلب عبر واتساب 📲'}
+                  </span>
                 </button>
 
                 {/* Secondary Internal / KDS Submission */}
@@ -1217,7 +1374,13 @@ export const CustomerMenu: React.FC = () => {
                   type="submit"
                   className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <span>تأكيد داخلي وإرسال لشاشة المطبخ (KDS)</span>
+                  <span>
+                    {orderType === 'delivery'
+                      ? 'تأكيد وإرسال طلب التوصيل للمطبخ والكاشير 🛵'
+                      : orderType === 'takeaway'
+                      ? 'تأكيد وإرسال طلب السفري للمطبخ والكاشير 🛍️'
+                      : 'تأكيد داخلي وإرسال لشاشة المطبخ (KDS) 🍽️'}
+                  </span>
                 </button>
               </div>
             </form>

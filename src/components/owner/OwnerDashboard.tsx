@@ -216,7 +216,7 @@ export const OwnerDashboard: React.FC = () => {
   const [branchManager, setBranchManager] = useState('');
 
   // QR Studio states
-  const [qrType, setQrType] = useState<'restaurant' | 'branch' | 'table' | 'delivery'>('delivery');
+  const [qrType, setQrType] = useState<'restaurant' | 'branch' | 'table' | 'delivery' | 'takeaway'>('delivery');
   const [selectedBranchId, setSelectedBranchId] = useState<number>(branches[0]?.id || 1);
   const [selectedTableNumber, setSelectedTableNumber] = useState<string>('T-01');
   const [qrColor, setQrColor] = useState<string>('#1e293b');
@@ -249,6 +249,8 @@ export const OwnerDashboard: React.FC = () => {
     if (selectedBranchId) params.set('branch', String(selectedBranchId));
     if (qrType === 'delivery') {
       params.set('type', 'delivery');
+    } else if (qrType === 'takeaway') {
+      params.set('type', 'takeaway');
     } else if (qrType === 'table' && selectedTableNumber) {
       params.set('table', selectedTableNumber);
     }
@@ -821,19 +823,8 @@ export const OwnerDashboard: React.FC = () => {
 
             {/* QR Target Selector */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-300">نوع رمز الـ QR المطلوب:</label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <button
-                  onClick={() => setQrType('delivery')}
-                  className={`p-3 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5 ${
-                    qrType === 'delivery'
-                      ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400 shadow-md ring-1 ring-emerald-500/40'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
-                  }`}
-                >
-                  <span className="text-xl">🛵</span>
-                  <span className="font-bold">QR طلبات التوصيل (دليفري)</span>
-                </button>
+              <label className="text-xs font-semibold text-slate-300">نوع رمز الـ QR المطلوب توليده:</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 <button
                   onClick={() => setQrType('table')}
                   className={`p-3 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5 ${
@@ -842,30 +833,48 @@ export const OwnerDashboard: React.FC = () => {
                       : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
                   }`}
                 >
-                  <span className="text-xl">🪑</span>
-                  <span className="font-bold">QR طاولة محددة (صالة)</span>
+                  <span className="text-2xl">🪑</span>
+                  <span className="font-bold">QR طاولات الصالة</span>
+                  <span className="text-[10px] text-slate-500">طاولة محددة داخل المطعم</span>
                 </button>
+
+                <button
+                  onClick={() => setQrType('delivery')}
+                  className={`p-3 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5 ${
+                    qrType === 'delivery'
+                      ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400 shadow-md ring-1 ring-emerald-500/40'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  <span className="text-2xl">🛵</span>
+                  <span className="font-bold">QR التوصيل المنزلي</span>
+                  <span className="text-[10px] text-emerald-400/80">توصيل تلقائي لموقع الزبون</span>
+                </button>
+
+                <button
+                  onClick={() => setQrType('takeaway')}
+                  className={`p-3 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5 ${
+                    qrType === 'takeaway'
+                      ? 'bg-blue-500/15 border-blue-500 text-blue-400 shadow-md ring-1 ring-blue-500/40'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  <span className="text-2xl">🛍️</span>
+                  <span className="font-bold">QR الاستلام السفري</span>
+                  <span className="text-[10px] text-blue-400/80">سفري واستلام من الفرع</span>
+                </button>
+
                 <button
                   onClick={() => setQrType('restaurant')}
                   className={`p-3 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5 ${
                     qrType === 'restaurant'
-                      ? 'bg-amber-500/15 border-amber-500 text-amber-400 shadow-md ring-1 ring-amber-500/40'
+                      ? 'bg-purple-500/15 border-purple-500 text-purple-400 shadow-md ring-1 ring-purple-500/40'
                       : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
                   }`}
                 >
-                  <span className="text-xl">📖</span>
+                  <span className="text-2xl">📖</span>
                   <span className="font-bold">المنيو الرقمي العام</span>
-                </button>
-                <button
-                  onClick={() => setQrType('branch')}
-                  className={`p-3 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5 ${
-                    qrType === 'branch'
-                      ? 'bg-amber-500/15 border-amber-500 text-amber-400 shadow-md ring-1 ring-amber-500/40'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
-                  }`}
-                >
-                  <span className="text-xl">🏢</span>
-                  <span className="font-bold">QR الفرع الرئيسي</span>
+                  <span className="text-[10px] text-slate-500">تصفح عام لكافة الأقسام</span>
                 </button>
               </div>
             </div>
@@ -875,11 +884,38 @@ export const OwnerDashboard: React.FC = () => {
               <div className="p-4 bg-emerald-950/40 border border-emerald-500/30 rounded-xl space-y-1.5">
                 <div className="text-xs font-bold text-emerald-400 flex items-center gap-2">
                   <span className="text-base">🛵</span>
-                  <span>كيو ار كود الزبون لطلبات التوصيل المنزلي والطلبات الخارجية (Delivery QR)</span>
+                  <span>كيو ار كود طلبات التوصيل المنزلي (Delivery QR)</span>
                 </div>
                 <p className="text-[11px] text-slate-300 leading-relaxed">
-                  هذا الكود مخصص للطباعة على <strong>كروت التوصيل، بروشورات المطعم، أكياس وتغليف الوجبات، ملصقات التوصيل، وصفحات السوشيال ميديا وواتساب</strong>.
-                  عند قيام الزبون بمسح هذا الـ QR بكاميرا هاتفه، يتم فتح المنيو تلقائياً بوضع <strong>«🛵 توصيل لموقعك»</strong> مع طلب رقم الهاتف وعنوان التوصيل مباشرة، دون الحاجة لأي رقم طاولة!
+                  هذا الكود مخصص لطباعته على <strong>كروت التوصيل، بروشورات المطعم، أكياس وتغليف الوجبات، ملصقات التوصيل، وصفحات السوشيال ميديا وواتساب</strong>.
+                  عند قيام الزبون بمسح هذا الـ QR بكاميرا هاتفه، يتم نقله تلقائياً وبشكل كامل إلى نمط <strong>«🛵 توصيل لموقعك»</strong> دون الحاجة لاختيار زر التوصيل ودون الحاجة لرقم طاولة؛ فيقوم الزبون باختيار وجباته مباشرة وإدخال عنوانه وإرسال الطلب بنقرة واحدة!
+                </p>
+              </div>
+            )}
+
+            {/* Takeaway QR Info Box */}
+            {qrType === 'takeaway' && (
+              <div className="p-4 bg-blue-950/40 border border-blue-500/30 rounded-xl space-y-1.5">
+                <div className="text-xs font-bold text-blue-400 flex items-center gap-2">
+                  <span className="text-base">🛍️</span>
+                  <span>كيو ار كود طلبات الاستلام السفري (Takeaway QR)</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  هذا الكود مخصص للزبائن الراغبين بطلب وجباتهم مسبقاً واستلامها جاهزة وسريعة من فرع المطعم.
+                  عند مسح هذا الـ QR، يتم الانتقال تلقائياً إلى نمط <strong>«🛍️ استلام سفري»</strong> بدون الحاجة لاختيار زر السفري؛ ويختار الزبون وجباته ويرسل طلبه ليتم تجهيزه في المطبخ بدون أجور توصيل وبدون طاولة!
+                </p>
+              </div>
+            )}
+
+            {/* Table QR Info Box */}
+            {qrType === 'table' && (
+              <div className="p-4 bg-amber-950/30 border border-amber-500/30 rounded-xl space-y-1.5">
+                <div className="text-xs font-bold text-amber-400 flex items-center gap-2">
+                  <span className="text-base">🪑</span>
+                  <span>كيو ار كود طاولات الصالة (Dine-in Table QR)</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  اختر رقم الطاولة من القائمة أدناه ليتم توليد باركود يوضع على ستاند الطاولة داخل الصالة؛ وعند مسح الزبون للباركود، يتم تحديد رقم طاولته تلقائياً وإرسال الطلبات إلى الكاشير والمطبخ مع رقم الطاولة.
                 </p>
               </div>
             )}
@@ -1033,10 +1069,16 @@ export const OwnerDashboard: React.FC = () => {
                     ? `طاولة رقم: ${selectedTableNumber}`
                     : qrType === 'delivery'
                     ? '🛵 طلبات التوصيل المنزلي السريع'
+                    : qrType === 'takeaway'
+                    ? '🛍️ طلبات الاستلام السفري من الفرع'
                     : 'امسح بالهاتف لفتح المنيو'}
                 </div>
                 <div className="text-[10px] text-slate-500 mt-0.5">
-                  {qrType === 'delivery' ? 'توصيل مباشر إلى باب منزلك · اطلب فوراً' : 'لا يتطلب تطبيق · اطلب وادفع فوراً'}
+                  {qrType === 'delivery'
+                    ? 'توصيل مباشر إلى باب منزلك · اطلب فوراً'
+                    : qrType === 'takeaway'
+                    ? 'اطلب واستلم وجبتك ساخنة مباشرة من المطعم'
+                    : 'لا يتطلب تطبيق · اطلب وادفع فوراً'}
                 </div>
               </div>
             </div>
@@ -1067,35 +1109,45 @@ export const OwnerDashboard: React.FC = () => {
         <div className="space-y-6 animate-fade-in">
           {/* Header & Plan Limit Usage Card */}
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
-            {/* Delivery QR Shortcut Banner */}
-            <div className="bg-gradient-to-r from-emerald-950/60 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+            {/* Delivery & Takeaway QR Shortcut Banner */}
+            <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 text-xl">
-                  🛵
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 text-xl">
+                  📲
                 </div>
                 <div>
-                  <div className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
-                    <span>كيو ار كود الزبون لطلبات التوصيل والدليفري (Delivery QR)</span>
+                  <div className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                    <span>رموز QR للطلبات الخارجية (بدون طاولة)</span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
-                      جاهز للطباعة والنشر
+                      توصيل وسفري
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-300 mt-0.5">
-                    للطلبات الخارجية والتوصيل المنزلي، لا يحتاج الزبون لطاولة. يمكنك استخدام كود الـ QR الخاص بالتوصيل لطباعته على بروشورات المطعم، كروت التوصيل، أو نشره أونلاين.
+                    بالإضافة لطاولات الصالة، يمتلك مطعمك رمز QR خاص بالتوصيل لبيت الزبون، ورمز QR خاص بالاستلام السفري من الفرع.
                   </p>
                 </div>
               </div>
 
-              <button
-                onClick={() => {
-                  setQrType('delivery');
-                  setActiveTab('qr');
-                }}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-              >
-                <QrCode className="w-4 h-4" />
-                <span>عرض وتحميل QR التوصيل</span>
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => {
+                    setQrType('delivery');
+                    setActiveTab('qr');
+                  }}
+                  className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>🛵 QR التوصيل</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setQrType('takeaway');
+                    setActiveTab('qr');
+                  }}
+                  className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>🛍️ QR السفري</span>
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
