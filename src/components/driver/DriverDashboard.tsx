@@ -24,6 +24,8 @@ export const DriverDashboard: React.FC = () => {
 
   const deliveryOrders = orders.filter(o =>
     o.order_type === 'delivery' &&
+    o.restaurant_id === activeRestaurant?.id &&
+    (!activeBranch?.id || o.branch_id === activeBranch.id) &&
     (o.status === 'ready' || o.status === 'out_for_delivery')
   );
 

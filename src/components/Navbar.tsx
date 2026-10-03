@@ -18,7 +18,9 @@ import {
   LogOut,
   Eye,
   KeyRound,
-  ArrowLeft
+  ArrowLeft,
+  User as UserIcon,
+  Lock
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -37,7 +39,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer, onOpenRegister, 
     orders,
     theme,
     toggleTheme,
-    activateRestaurantPlan
+    activateRestaurantPlan,
+    currentUser,
+    updateUser
   } = useApp();
 
   const [showRoleMenu, setShowRoleMenu] = useState(false);
@@ -46,6 +50,50 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer, onOpenRegister, 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeCode, setUpgradeCode] = useState('');
   const [upgradeMsg, setUpgradeMsg] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Profile / Password edit state
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [profileUsername, setProfileUsername] = useState('');
+  const [profilePassword, setProfilePassword] = useState('');
+  const [profilePin, setProfilePin] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profileMsg, setProfileMsg] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleOpenProfile = () => {
+    if (currentUser) {
+      setProfileName(currentUser.name);
+      setProfileUsername(currentUser.username);
+      setProfilePassword(currentUser.password || '');
+      setProfilePin(currentUser.pin_code || '');
+      setProfilePhone(currentUser.phone || '');
+    }
+    setProfileMsg(null);
+    setShowProfileModal(true);
+  };
+
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+    if (!profileUsername.trim()) {
+      setProfileMsg({ success: false, message: 'اسم المستخدم مطلوب' });
+      return;
+    }
+    const res = updateUser(currentUser.id, {
+      name: profileName.trim(),
+      username: profileUsername.trim().toLowerCase(),
+      password: profilePassword.trim(),
+      pin_code: profilePin.trim(),
+      phone: profilePhone.trim()
+    });
+    setProfileMsg(res);
+    if (res.success) {
+      setTimeout(() => {
+        setShowProfileModal(false);
+        setProfileMsg(null);
+      }, 1200);
+    }
+  };
 
   const activeOrdersCount = orders.filter(o => o.status === 'new' || o.status === 'preparing').length;
 
@@ -308,6 +356,23 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer, onOpenRegister, 
               </button>
             )}
 
+            {/* User Profile & Password Change Button */}
+            {currentUser && (
+              <button
+                onClick={handleOpenProfile}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700/80 text-slate-200 hover:text-amber-400 font-semibold text-xs rounded-lg border border-slate-700 hover:border-amber-500/40 transition-all cursor-pointer whitespace-nowrap shadow-sm"
+                title="تعديل اسم المستخدم وكلمة المرور والملف الشخصي"
+              >
+                <div className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-[10px]">
+                  {currentUser.name ? currentUser.name.slice(0, 1) : 'U'}
+                </div>
+                <span className="hidden sm:inline font-mono text-[11px] text-amber-300">
+                  {currentUser.username}
+                </span>
+                <KeyRound className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+            )}
+
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
@@ -345,6 +410,135 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer, onOpenRegister, 
           </div>
         </div>
       </header>
+
+      {/* Profile & Password Edit Modal */}
+      {showProfileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in font-cairo" dir="rtl">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-sm">تغيير اسم المستخدم والباسوورد</h3>
+                  <p className="text-[11px] text-slate-400">تحديث بيانات حسابك لتسجيل الدخول</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowProfileModal(false);
+                  setProfileMsg(null);
+                }}
+                className="w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {profileMsg && (
+              <div className={`p-2.5 rounded-xl text-xs flex items-center gap-2 ${
+                profileMsg.success ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' : 'bg-rose-500/10 border border-rose-500/30 text-rose-400'
+              }`}>
+                <span>{profileMsg.success ? '✅' : '⚠️'}</span>
+                <span>{profileMsg.message}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveProfile} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  الاسم الكامل
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={profileName}
+                  onChange={e => setProfileName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-xs text-white outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  اسم المستخدم (Username) <span className="text-amber-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={profileUsername}
+                  onChange={e => setProfileUsername(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-xs text-amber-300 font-mono outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  كلمة المرور الجديدة (Password) <span className="text-amber-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={profilePassword}
+                  onChange={e => setProfilePassword(e.target.value)}
+                  placeholder="أدخل كلمة المرور الجديدة"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-xs text-white font-mono outline-none transition-all"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    رمز الـ PIN السريع
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={profilePin}
+                    onChange={e => setProfilePin(e.target.value.replace(/\D/g, ''))}
+                    placeholder="1234"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-xs text-amber-400 font-mono text-center tracking-widest outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    رقم الهاتف
+                  </label>
+                  <input
+                    type="tel"
+                    value={profilePhone}
+                    onChange={e => setProfilePhone(e.target.value)}
+                    placeholder="07XXXXXXXXX"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-xs text-white font-mono outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileModal(false);
+                    setProfileMsg(null);
+                  }}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold rounded-xl shadow-lg shadow-amber-500/10 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>حفظ التعديلات</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Direct Upgrade Modal for Restaurant Owner */}
       {showUpgradeModal && (

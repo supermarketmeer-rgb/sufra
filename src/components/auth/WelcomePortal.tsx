@@ -30,7 +30,10 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
     activeRestaurant,
     setActiveRestaurant,
     activateRestaurantPlan,
-    createRestaurant
+    createRestaurant,
+    loginUser,
+    users,
+    branches
   } = useApp();
 
   const [viewMode, setViewMode] = useState<'main' | 'manager_login' | 'staff' | 'choose_signup' | 'signup_form' | 'activate'>('main');
@@ -38,6 +41,13 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
   // Manager login form state
   const [managerUsername, setManagerUsername] = useState('');
   const [managerPassword, setManagerPassword] = useState('');
+  const [managerLoginError, setManagerLoginError] = useState<string | null>(null);
+
+  // Staff login state
+  const [staffUsernameInput, setStaffUsernameInput] = useState('');
+  const [staffPasswordInput, setStaffPasswordInput] = useState('');
+  const [staffLoginError, setStaffLoginError] = useState<string | null>(null);
+  const [selectedStaffRestId, setSelectedStaffRestId] = useState<number>(restaurants[0]?.id || 1);
 
   // Signup method state
   const [signupMethod, setSignupMethod] = useState<'email' | 'username'>('email');
@@ -60,7 +70,20 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
   // Handle Manager Login
   const handleManagerLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setManagerLoginError(null);
     const u = managerUsername.trim().toLowerCase();
+    const p = managerPassword.trim();
+
+    if (!u) {
+      setManagerLoginError('يرجى إدخال اسم المستخدم أو البريد');
+      return;
+    }
+
+    const res = loginUser(u, p);
+    if (res.success) {
+      if (onClose) onClose();
+      return;
+    }
 
     // Direct super admin access if credentials indicate admin
     if (u === 'superadmin' || u === 'admin' || u.includes('super')) {
@@ -69,14 +92,32 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
       return;
     }
 
-    if (restaurants.length > 0) {
-      if (!activeRestaurant) {
-        setActiveRestaurant(restaurants[0]);
-      }
-      setCurrentRole('restaurant_owner');
+    setManagerLoginError(res.message);
+  };
+
+  const handleStaffLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setStaffLoginError(null);
+    if (!staffUsernameInput.trim() || !staffPasswordInput.trim()) {
+      setStaffLoginError('يرجى إدخال اسم المستخدم وكلمة المرور أو رمز الـ PIN');
+      return;
+    }
+
+    const res = loginUser(staffUsernameInput.trim(), staffPasswordInput.trim());
+    if (res.success) {
       if (onClose) onClose();
     } else {
-      setViewMode('choose_signup');
+      setStaffLoginError(res.message);
+    }
+  };
+
+  const handleQuickStaffLogin = (user: any) => {
+    setStaffLoginError(null);
+    const res = loginUser(user.username, user.password || user.pin_code || '1234');
+    if (res.success) {
+      if (onClose) onClose();
+    } else {
+      setStaffLoginError(res.message);
     }
   };
 
@@ -188,6 +229,13 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
 
           <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-[#e8e2d5] text-right">
             <form onSubmit={handleManagerLoginSubmit} className="space-y-4">
+              {managerLoginError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{managerLoginError}</span>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-bold text-stone-700 mb-1.5">
                   اسم المستخدم أو البريد الإلكترونيّ
@@ -196,9 +244,12 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
                   type="text"
                   required
                   value={managerUsername}
-                  onChange={e => setManagerUsername(e.target.value)}
-                  placeholder=""
-                  className="w-full bg-white border border-[#c8c1b4] rounded-2xl px-4 py-3.5 text-sm text-stone-900 focus:outline-none focus:border-[#9a3412] transition-colors"
+                  onChange={e => {
+                    setManagerUsername(e.target.value);
+                    setManagerLoginError(null);
+                  }}
+                  placeholder="admin أو owner_sufrah"
+                  className="w-full bg-white border border-[#c8c1b4] rounded-2xl px-4 py-3.5 text-sm text-stone-900 focus:outline-none focus:border-[#9a3412] transition-colors font-mono"
                 />
               </div>
 
@@ -210,8 +261,11 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
                   type="password"
                   required
                   value={managerPassword}
-                  onChange={e => setManagerPassword(e.target.value)}
-                  placeholder=""
+                  onChange={e => {
+                    setManagerPassword(e.target.value);
+                    setManagerLoginError(null);
+                  }}
+                  placeholder="••••••••"
                   className="w-full bg-white border border-[#c8c1b4] rounded-2xl px-4 py-3.5 text-sm text-stone-900 focus:outline-none focus:border-[#9a3412] transition-colors font-mono"
                 />
               </div>
@@ -264,30 +318,20 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
         </div>
       )}
 
-      {/* SCREEN 2: Staff Login (دخول الطاقم) - Matches Attachment 2 */}
+      {/* SCREEN 2: Staff Login (دخول الطاقم مع عزل المطاعم والفروع) */}
       {viewMode === 'staff' && (
-        <div className="w-full max-w-sm sm:max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-[#e8e2d5] text-center animate-fade-in relative">
-          {/* Top Globe Button */}
-          <div className="flex justify-end mb-4">
-            <button
-              type="button"
-              className="w-10 h-10 rounded-full border border-stone-300 text-stone-600 flex items-center justify-center hover:bg-stone-50 transition-colors shadow-sm cursor-pointer"
-            >
-              <Globe className="w-5 h-5 stroke-[1.5]" />
-            </button>
-          </div>
-
+        <div className="w-full max-w-md sm:max-w-lg bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-[#e8e2d5] text-center animate-fade-in relative max-h-[92vh] overflow-y-auto">
           {/* Logo */}
-          <div className="space-y-1 mb-6">
-            <div className="text-4xl sm:text-5xl font-black text-stone-950 leading-none">
+          <div className="space-y-1 mb-4">
+            <div className="text-3xl sm:text-4xl font-black text-stone-950 leading-none">
               <span>سُفرة</span>
             </div>
-            <p className="text-stone-500 text-sm font-medium mt-1">نظام الطلب من الطاولة</p>
+            <p className="text-stone-500 text-xs sm:text-sm font-medium">تسجيل دخول طاقم العمل والمحطات</p>
           </div>
 
           {/* Role Selection Header */}
-          <div className="flex items-center justify-between border-b border-stone-100 pb-2 mb-3 text-right">
-            <h3 className="font-bold text-stone-900 text-sm">اختر دورك في طاقم العمل:</h3>
+          <div className="flex items-center justify-between border-b border-stone-100 pb-2 mb-4 text-right">
+            <h3 className="font-bold text-stone-900 text-sm">تسجيل الدخول باسم المستخدم أو الـ PIN:</h3>
             <button
               onClick={() => setViewMode('main')}
               className="text-stone-400 hover:text-stone-600 text-xs font-semibold cursor-pointer"
@@ -296,87 +340,126 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
             </button>
           </div>
 
-          {/* Staff Cards matching Attachment 2 */}
+          {staffLoginError && (
+            <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 text-right">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{staffLoginError}</span>
+            </div>
+          )}
+
+          {/* Secure Login Form */}
+          <form onSubmit={handleStaffLoginSubmit} className="space-y-3 text-right bg-stone-50 p-4 rounded-2xl border border-stone-200 mb-5">
+            <div>
+              <label className="block text-xs font-bold text-stone-700 mb-1">
+                اسم المستخدم للموظف (Username)
+              </label>
+              <input
+                type="text"
+                required
+                value={staffUsernameInput}
+                onChange={e => {
+                  setStaffUsernameInput(e.target.value);
+                  setStaffLoginError(null);
+                }}
+                placeholder="مثال: cashier_sufrah أو chef_jwan"
+                className="w-full bg-white border border-[#c8c1b4] rounded-xl px-3.5 py-2.5 text-xs text-stone-900 focus:outline-none focus:border-[#9a3412] font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-stone-700 mb-1">
+                كلمة المرور أو رمز الـ PIN السريع
+              </label>
+              <input
+                type="password"
+                required
+                value={staffPasswordInput}
+                onChange={e => {
+                  setStaffPasswordInput(e.target.value);
+                  setStaffLoginError(null);
+                }}
+                placeholder="رمز PIN من 4 أرقام أو كلمة المرور"
+                className="w-full bg-white border border-[#c8c1b4] rounded-xl px-3.5 py-2.5 text-xs text-stone-900 focus:outline-none focus:border-[#9a3412] font-mono"
+              />
+            </div>
+
+            <button
+              type="submit"
+              style={{ color: '#ffffff' }}
+              className="w-full py-3 rounded-xl bg-[#9a3412] hover:bg-[#852d0f] text-white font-bold text-sm shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <Lock className="w-4 h-4" />
+              <span>دخول إلى محطة العمل المخصصة</span>
+            </button>
+          </form>
+
+          {/* Restaurant Quick Account Switcher (للتجربة السريعة والتمييز بين المطاعم) */}
           <div className="space-y-3 text-right">
-            {/* 1: Cashier (POS) */}
-            <button
-              onClick={() => {
-                setCurrentRole('cashier');
-                if (onClose) onClose();
-              }}
-              className="w-full p-4 rounded-2xl border border-stone-200 hover:border-stone-400 bg-white flex items-center justify-between transition-all shadow-sm cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4 text-stone-400" />
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <div className="font-bold text-sm text-stone-900">الكاشير ونقاط البيع (POS)</div>
-                  <div className="text-xs text-stone-500">إدخال الطلبات وإصدار الفواتير</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
-                  <Receipt className="w-5 h-5" />
-                </div>
-              </div>
-            </button>
+            <div className="flex items-center justify-between border-t border-stone-200 pt-3">
+              <span className="text-xs font-bold text-stone-700">حسابات الطاقم المتاحة حسب المطعم:</span>
+              <span className="text-[10px] text-stone-500">اختر للتسجيل الفوري</span>
+            </div>
 
-            {/* 2: Kitchen (KDS) */}
-            <button
-              onClick={() => {
-                setCurrentRole('kitchen');
-                if (onClose) onClose();
-              }}
-              className="w-full p-4 rounded-2xl border border-stone-200 hover:border-stone-400 bg-white flex items-center justify-between transition-all shadow-sm cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4 text-stone-400" />
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <div className="font-bold text-sm text-stone-900">شاشة المطبخ الذكية (KDS)</div>
-                  <div className="text-xs text-stone-500">متابعة تحضير الوجبات المباشرة</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
-                  <UtensilsCrossed className="w-5 h-5" />
-                </div>
-              </div>
-            </button>
+            {/* Restaurant Selector Tabs */}
+            <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-xl">
+              {restaurants.map(r => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setSelectedStaffRestId(r.id)}
+                  className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-lg transition-all truncate cursor-pointer ${
+                    selectedStaffRestId === r.id
+                      ? 'bg-white text-stone-900 shadow-sm border border-stone-200'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                >
+                  {r.name_ar}
+                </button>
+              ))}
+            </div>
 
-            {/* 3: Branch Manager */}
-            <button
-              onClick={() => {
-                setCurrentRole('branch_manager');
-                if (onClose) onClose();
-              }}
-              className="w-full p-4 rounded-2xl border border-stone-200 hover:border-stone-400 bg-white flex items-center justify-between transition-all shadow-sm cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4 text-stone-400" />
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <div className="font-bold text-sm text-stone-900">مدير الفرع والصالة</div>
-                  <div className="text-xs text-stone-500">إدارة الطاولات والحجوزات</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
-                  <Building2 className="w-5 h-5" />
-                </div>
-              </div>
-            </button>
+            {/* Staff Cards of Selected Restaurant */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-right">
+              {users
+                .filter(u => u.restaurant_id === selectedStaffRestId && u.role !== 'restaurant_owner' && u.role !== 'super_admin')
+                .map(u => {
+                  const roleConfig = (() => {
+                    switch (u.role) {
+                      case 'cashier':
+                        return { icon: <Receipt className="w-4 h-4" />, color: 'bg-blue-50 text-blue-700 border-blue-200', title: 'كاشير POS' };
+                      case 'kitchen':
+                        return { icon: <UtensilsCrossed className="w-4 h-4" />, color: 'bg-rose-50 text-rose-700 border-rose-200', title: 'شاشة المطبخ KDS' };
+                      case 'branch_manager':
+                        return { icon: <Building2 className="w-4 h-4" />, color: 'bg-indigo-50 text-indigo-700 border-indigo-200', title: 'مدير الفرع' };
+                      case 'driver':
+                        return { icon: <Bike className="w-4 h-4" />, color: 'bg-cyan-50 text-cyan-700 border-cyan-200', title: 'دليفري GPS' };
+                      default:
+                        return { icon: <User className="w-4 h-4" />, color: 'bg-stone-50 text-stone-700 border-stone-200', title: 'موظف' };
+                    }
+                  })();
 
-            {/* 4: Driver */}
-            <button
-              onClick={() => {
-                setCurrentRole('driver');
-                if (onClose) onClose();
-              }}
-              className="w-full p-4 rounded-2xl border border-stone-200 hover:border-stone-400 bg-white flex items-center justify-between transition-all shadow-sm cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4 text-stone-400" />
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <div className="font-bold text-sm text-stone-900">مندوب التوصيل الميداني (GPS)</div>
-                  <div className="text-xs text-stone-500">استلام وتسليم طلبات الدليفري</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center font-bold">
-                  <Bike className="w-5 h-5" />
-                </div>
-              </div>
-            </button>
+                  return (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => handleQuickStaffLogin(u)}
+                      className="p-2.5 rounded-xl border border-stone-200 hover:border-[#9a3412] hover:bg-stone-50/50 bg-white transition-all text-right shadow-xs cursor-pointer flex flex-col justify-between"
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${roleConfig.color}`}>
+                          {roleConfig.icon}
+                          <span>{roleConfig.title}</span>
+                        </span>
+                        <span className="text-[10px] font-mono text-stone-400 font-bold">
+                          PIN: {u.pin_code}
+                        </span>
+                      </div>
+                      <div className="text-xs font-bold text-stone-900 truncate">{u.name}</div>
+                      <div className="text-[11px] font-mono text-stone-500 mt-0.5">{u.username}</div>
+                    </button>
+                  );
+                })}
+            </div>
           </div>
         </div>
       )}

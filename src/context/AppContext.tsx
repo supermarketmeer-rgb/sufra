@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
+  User,
   UserRole,
   Restaurant,
   Branch,
@@ -16,6 +17,7 @@ import {
   OrderItem
 } from '../types';
 import {
+  INITIAL_USERS,
   INITIAL_RESTAURANTS,
   INITIAL_BRANCHES,
   INITIAL_TABLES,
@@ -68,6 +70,16 @@ interface AppContextType {
   plans: Plan[];
   coupons: Coupon[];
   activityLogs: ActivityLog[];
+  users: User[];
+  currentUser: User | null;
+  setCurrentUser: (user: User | null) => void;
+  
+  // User Authentication & Management
+  loginUser: (identifier: string, passwordOrPin: string) => { success: boolean; message: string; user?: User };
+  logoutUser: () => void;
+  updateUser: (userId: number, updates: Partial<User>) => { success: boolean; message: string };
+  createUser: (newUser: Omit<User, 'id'>) => { success: boolean; message: string; user?: User };
+  deleteUser: (userId: number) => { success: boolean; message: string };
   
   // Actions
   createOrder: (orderData: Partial<Order> & { items: OrderItem[] }) => Order;
@@ -192,6 +204,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() =>
     loadFromStorage('sufrah_v2_activity_logs', INITIAL_ACTIVITY_LOGS)
+  );
+  const [users, setUsers] = useState<User[]>(() =>
+    loadFromStorage('sufrah_v2_users', INITIAL_USERS)
+  );
+  const [currentUser, setCurrentUser] = useState<User | null>(() =>
+    loadFromStorage<User | null>('sufrah_v2_current_user', null)
   );
 
   // Web Audio Chime for live incoming orders
@@ -365,6 +383,196 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('sufrah_v2_activity_logs', JSON.stringify(activityLogs));
   }, [activityLogs]);
+
+  useEffect(() => {
+    localStorage.setItem('sufrah_v2_users', JSON.stringify(users));
+  }, [users]);
+
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('sufrah_v2_current_user', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('sufrah_v2_current_user');
+    }
+  }, [currentUser]);
+
+  const loginUser = (identifier: string, passwordOrPin: string): { success: boolean; message: string; user?: User } => {
+    const cleanId = identifier.trim().toLowerCase();
+    const cleanSecret = passwordOrPin.trim();
+
+    if (!cleanId || !cleanSecret) {
+      return { success: false, message: 'يرجى إدخال اسم المستخدم وكلمة المرور أو رمز الـ PIN' };
+    }
+
+    const found = users.find(u =>
+      (u.username.toLowerCase() === cleanId || u.email.toLowerCase() === cleanId) &&
+      u.is_active
+    );
+
+    if (!found) {
+      return { success: false, message: 'اسم المستخدم أو البريد الإلكتروني غير موجود أو أن الحساب معطل' };
+    }
+
+    const matchesPassword = found.password && found.password === cleanSecret;
+    const matchesPin = found.pin_code && found.pin_code === cleanSecret;
+
+    if (!matchesPassword && !matchesPin) {
+      return { success: false, message: 'كلمة المرور أو رمز الـ PIN غير صحيح، يرجى التحقق وإعادة المحاولة' };
+    }
+
+    // Success! Lock session to authenticated user
+    setCurrentUser(found);
+    setCurrentRole(found.role);
+
+    // Bind active restaurant & branch strictly to this user
+    if (found.restaurant_id) {
+      const targetRest = restaurants.find(r => r.id === found.restaurant_id);
+      if (targetRest) {
+        setActiveRestaurant(targetRest);
+        localStorage.setItem('sufrah_v2_active_restaurant_id', String(targetRest.id));
+      }
+    }
+
+    if (found.branch_id) {
+      const targetBranch = branches.find(b => b.id === found.branch_id);
+      if (targetBranch) {
+        setActiveBranch(targetBranch);
+      }
+    } else if (found.restaurant_id) {
+      const firstBranch = branches.find(b => b.restaurant_id === found.restaurant_id);
+      if (firstBranch) {
+        setActiveBranch(firstBranch);
+      }
+    }
+
+    const log: ActivityLog = {
+      id: Date.now(),
+      user_name: found.name,
+      role: found.role,
+      action: 'User Logged In',
+      description: `تم تسجيل دخول (${found.name}) بنجاح إلى منصة سُفرة`,
+      timestamp: 'الآن'
+    };
+    setActivityLogs(prev => [log, ...prev]);
+
+    return {
+      success: true,
+      message: `أهلاً بك يا ${found.name}! تم تسجيل الدخول بنجاح`,
+      user: found
+    };
+  };
+
+  const logoutUser = () => {
+    const prevUser = currentUser;
+    setCurrentUser(null);
+    setCurrentRole('customer');
+    localStorage.removeItem('sufrah_v2_current_user');
+    if (prevUser) {
+      const log: ActivityLog = {
+        id: Date.now(),
+        user_name: prevUser.name,
+        role: prevUser.role,
+        action: 'User Logged Out',
+        description: `قام المستخدم (${prevUser.name}) بتسجيل الخروج من النظام`,
+        timestamp: 'الآن'
+      };
+      setActivityLogs(prev => [log, ...prev]);
+    }
+  };
+
+  const updateUser = (userId: number, updates: Partial<User>): { success: boolean; message: string } => {
+    // Check if updated username is already taken by another user
+    if (updates.username) {
+      const cleanUsername = updates.username.trim().toLowerCase();
+      const conflict = users.find(u => u.id !== userId && u.username.toLowerCase() === cleanUsername);
+      if (conflict) {
+        return { success: false, message: 'اسم المستخدم هذا محجوز مسبقاً، يرجى اختيار اسم مستخدم آخر' };
+      }
+    }
+
+    // Check if updated email is already taken
+    if (updates.email) {
+      const cleanEmail = updates.email.trim().toLowerCase();
+      const conflict = users.find(u => u.id !== userId && u.email.toLowerCase() === cleanEmail);
+      if (conflict) {
+        return { success: false, message: 'البريد الإلكتروني هذا مستخدم مسبقاً' };
+      }
+    }
+
+    setUsers(prev => prev.map(u => {
+      if (u.id === userId) {
+        const updated = { ...u, ...updates };
+        if (currentUser?.id === userId) {
+          setCurrentUser(updated);
+        }
+        return updated;
+      }
+      return u;
+    }));
+
+    const log: ActivityLog = {
+      id: Date.now(),
+      user_name: currentUser?.name || 'النظام',
+      role: currentRole,
+      action: 'User Credentials Updated',
+      description: `تم تحديث بيانات المستخدم (معرف: ${userId}) وكلمة المرور/اسم المستخدم بنجاح`,
+      timestamp: 'الآن'
+    };
+    setActivityLogs(prev => [log, ...prev]);
+
+    return { success: true, message: 'تم حفظ وتحديث بيانات المستخدم وكلمة المرور بنجاح!' };
+  };
+
+  const createUser = (newUserData: Omit<User, 'id'>): { success: boolean; message: string; user?: User } => {
+    const cleanUsername = newUserData.username.trim().toLowerCase();
+    const conflict = users.find(u => u.username.toLowerCase() === cleanUsername);
+    if (conflict) {
+      return { success: false, message: 'اسم المستخدم موجود مسبقاً، يرجى اختيار اسم مستخدم بديل' };
+    }
+
+    const newUser: User = {
+      ...newUserData,
+      id: Date.now(),
+      created_at: new Date().toISOString().slice(0, 10),
+      is_active: newUserData.is_active ?? true
+    };
+
+    setUsers(prev => [...prev, newUser]);
+
+    const log: ActivityLog = {
+      id: Date.now(),
+      user_name: currentUser?.name || 'مدير النظام',
+      role: currentRole,
+      action: 'Staff User Created',
+      description: `تم إنشاء حساب مستخدم جديد (${newUser.name}) برتبة (${newUser.role})`,
+      timestamp: 'الآن'
+    };
+    setActivityLogs(prev => [log, ...prev]);
+
+    return { success: true, message: 'تم إنشاء حساب الموظف بنجاح!', user: newUser };
+  };
+
+  const deleteUser = (userId: number): { success: boolean; message: string } => {
+    if (currentUser?.id === userId) {
+      return { success: false, message: 'لا يمكن حذف الحساب الحالي المسجل دخولك به' };
+    }
+    const target = users.find(u => u.id === userId);
+    setUsers(prev => prev.filter(u => u.id !== userId));
+
+    if (target) {
+      const log: ActivityLog = {
+        id: Date.now(),
+        user_name: currentUser?.name || 'مدير النظام',
+        role: currentRole,
+        action: 'User Deleted',
+        description: `تم حذف حساب المستخدم (${target.name}) نهائياً`,
+        timestamp: 'الآن'
+      };
+      setActivityLogs(prev => [log, ...prev]);
+    }
+
+    return { success: true, message: 'تم حذف المستخدم بنجاح' };
+  };
 
   const handleSetActiveRestaurant = (restaurant: Restaurant | null) => {
     setActiveRestaurant(restaurant);
@@ -984,6 +1192,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         plans,
         coupons,
         activityLogs,
+        users,
+        currentUser,
+        setCurrentUser,
+        loginUser,
+        logoutUser,
+        updateUser,
+        createUser,
+        deleteUser,
         createOrder,
         updateOrderStatus,
         updateTableStatus,

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Restaurant } from '../../types';
+import { Restaurant, UserRole } from '../../types';
 import {
   Building2,
   DollarSign,
@@ -19,7 +19,11 @@ import {
   Pause,
   Play,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  KeyRound,
+  Eye,
+  EyeOff,
+  User as UserIcon
 } from 'lucide-react';
 
 export const SuperAdminDashboard: React.FC = () => {
@@ -33,14 +37,119 @@ export const SuperAdminDashboard: React.FC = () => {
     setCurrentRole,
     updatePlan,
     toggleRestaurantStatus,
-    deleteRestaurant
+    deleteRestaurant,
+    users,
+    updateUser,
+    createUser,
+    deleteUser,
+    branches
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'restaurants' | 'plans' | 'billing' | 'logs'>('restaurants');
+  const [activeTab, setActiveTab] = useState<'restaurants' | 'plans' | 'billing' | 'users' | 'logs'>('restaurants');
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [restaurantToDelete, setRestaurantToDelete] = useState<Restaurant | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // SuperAdmin User Management State
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [userFilterRole, setUserFilterRole] = useState<string>('all');
+  const [userFilterRestId, setUserFilterRestId] = useState<string>('all');
+  const [showAdminPwMap, setShowAdminPwMap] = useState<Record<string, boolean>>({});
+
+  // SuperAdmin User Add/Edit Modal
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [userModalName, setUserModalName] = useState('');
+  const [userModalUsername, setUserModalUsername] = useState('');
+  const [userModalPassword, setUserModalPassword] = useState('');
+  const [userModalPin, setUserModalPin] = useState('');
+  const [userModalRole, setUserModalRole] = useState<UserRole>('cashier');
+  const [userModalRestId, setUserModalRestId] = useState<number>(0);
+  const [userModalBranchId, setUserModalBranchId] = useState<number | undefined>(undefined);
+  const [userModalPhone, setUserModalPhone] = useState('');
+  const [userModalIsActive, setUserModalIsActive] = useState(true);
+  const [userModalMsg, setUserModalMsg] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleOpenAddUser = () => {
+    setEditingUser(null);
+    setUserModalName('');
+    setUserModalUsername('');
+    setUserModalPassword('123456');
+    setUserModalPin('1234');
+    setUserModalRole('cashier');
+    setUserModalRestId(restaurants[0]?.id || 1);
+    setUserModalBranchId(undefined);
+    setUserModalPhone('');
+    setUserModalIsActive(true);
+    setUserModalMsg(null);
+    setShowUserModal(true);
+  };
+
+  const handleOpenEditUser = (user: any) => {
+    setEditingUser(user);
+    setUserModalName(user.name);
+    setUserModalUsername(user.username);
+    setUserModalPassword(user.password || '');
+    setUserModalPin(user.pin_code || '');
+    setUserModalRole(user.role);
+    setUserModalRestId(user.restaurant_id || 0);
+    setUserModalBranchId(user.branch_id);
+    setUserModalPhone(user.phone || '');
+    setUserModalIsActive(user.is_active);
+    setUserModalMsg(null);
+    setShowUserModal(true);
+  };
+
+  const handleSaveUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userModalUsername.trim() || !userModalName.trim()) {
+      setUserModalMsg({ success: false, message: 'يرجى إدخال الاسم واسم المستخدم' });
+      return;
+    }
+
+    if (editingUser) {
+      const res = updateUser(editingUser.id, {
+        name: userModalName.trim(),
+        username: userModalUsername.trim().toLowerCase(),
+        password: userModalPassword.trim(),
+        pin_code: userModalPin.trim(),
+        role: userModalRole,
+        restaurant_id: userModalRestId || undefined,
+        branch_id: userModalBranchId || undefined,
+        phone: userModalPhone.trim(),
+        is_active: userModalIsActive
+      });
+      setUserModalMsg(res);
+      if (res.success) {
+        setTimeout(() => setShowUserModal(false), 1200);
+      }
+    } else {
+      const res = createUser({
+        name: userModalName.trim(),
+        username: userModalUsername.trim().toLowerCase(),
+        email: `${userModalUsername.trim().toLowerCase()}@sufra.menu`,
+        password: userModalPassword.trim() || '123456',
+        pin_code: userModalPin.trim() || '1234',
+        role: userModalRole,
+        restaurant_id: userModalRestId || undefined,
+        branch_id: userModalBranchId || undefined,
+        phone: userModalPhone.trim(),
+        is_active: userModalIsActive
+      });
+      setUserModalMsg(res);
+      if (res.success) {
+        setTimeout(() => setShowUserModal(false), 1200);
+      }
+    }
+  };
+
+  const handleDeleteUser = (user: any) => {
+    if (confirm(`هل أنت متأكد من حذف حساب (${user.name} - ${user.username})؟`)) {
+      const res = deleteUser(user.id);
+      alert(res.message);
+    }
+  };
 
   // Form state
   const [newRestNameAr, setNewRestNameAr] = useState('');
@@ -203,6 +312,14 @@ export const SuperAdminDashboard: React.FC = () => {
             }`}
           >
             سجل الفواتير والمدفوعات
+          </button>
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+              activeTab === 'users' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            المستخدمون وكلمات المرور ({users.length})
           </button>
           <button
             onClick={() => setActiveTab('logs')}
@@ -567,6 +684,215 @@ export const SuperAdminDashboard: React.FC = () => {
         </div>
       )}
 
+      {/* Tab 5: Users & Credentials Management (SuperAdmin) */}
+      {activeTab === 'users' && (
+        <div className="space-y-4">
+          {/* Filters Bar */}
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+            <div className="flex flex-wrap items-center gap-3 flex-1">
+              {/* Search */}
+              <div className="relative flex-1 min-w-[200px] max-w-xs">
+                <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="ابحث بالاسم أو اسم المستخدم..."
+                  value={userSearchTerm}
+                  onChange={e => setUserSearchTerm(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pr-9 pl-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Filter by Restaurant */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-slate-400 font-semibold whitespace-nowrap">المطعم:</span>
+                <select
+                  value={userFilterRestId}
+                  onChange={e => setUserFilterRestId(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500 cursor-pointer"
+                >
+                  <option value="all">كافة المطاعم</option>
+                  {restaurants.map(r => (
+                    <option key={r.id} value={r.id}>{r.name_ar}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter by Role */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-slate-400 font-semibold whitespace-nowrap">الدور:</span>
+                <select
+                  value={userFilterRole}
+                  onChange={e => setUserFilterRole(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500 cursor-pointer"
+                >
+                  <option value="all">كافة الأدوار</option>
+                  <option value="super_admin">سوبر أدمن المنصة</option>
+                  <option value="restaurant_owner">مالك مطعم (Owner)</option>
+                  <option value="branch_manager">مدير فرع</option>
+                  <option value="cashier">كاشير (POS)</option>
+                  <option value="kitchen">طاهي المطبخ (KDS)</option>
+                  <option value="driver">مندوب التوصيل</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              onClick={handleOpenAddUser}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>إضافة حساب مستخدم جديد</span>
+            </button>
+          </div>
+
+          {/* Users Table */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs">
+                <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
+                  <tr>
+                    <th className="py-3 px-4">المستخدم</th>
+                    <th className="py-3 px-4">الدور الوظيفي</th>
+                    <th className="py-3 px-4">المطعم والفرع</th>
+                    <th className="py-3 px-4">اسم المستخدم (Username)</th>
+                    <th className="py-3 px-4">كلمة المرور (Password)</th>
+                    <th className="py-3 px-4">رمز الـ PIN</th>
+                    <th className="py-3 px-4">الحالة</th>
+                    <th className="py-3 px-4 text-center">الإجراءات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {users
+                    .filter(u => {
+                      const matchSearch = u.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                        u.username.toLowerCase().includes(userSearchTerm.toLowerCase());
+                      const matchRest = userFilterRestId === 'all' || String(u.restaurant_id) === userFilterRestId;
+                      const matchRole = userFilterRole === 'all' || u.role === userFilterRole;
+                      return matchSearch && matchRest && matchRole;
+                    })
+                    .map(u => {
+                      const restObj = restaurants.find(r => r.id === u.restaurant_id);
+                      const branchObj = branches.find(b => b.id === u.branch_id);
+                      const isPwVisible = showAdminPwMap[u.id];
+
+                      const roleBadge = (() => {
+                        switch (u.role) {
+                          case 'super_admin':
+                            return { label: 'سوبر أدمن', color: 'bg-amber-500/10 text-amber-400 border-amber-500/30' };
+                          case 'restaurant_owner':
+                            return { label: 'مالك المطعم', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' };
+                          case 'branch_manager':
+                            return { label: 'مدير فرع', color: 'bg-blue-500/10 text-blue-400 border-blue-500/30' };
+                          case 'cashier':
+                            return { label: 'كاشير POS', color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30' };
+                          case 'kitchen':
+                            return { label: 'شيف KDS', color: 'bg-rose-500/10 text-rose-400 border-rose-500/30' };
+                          case 'driver':
+                            return { label: 'دليفري GPS', color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' };
+                          default:
+                            return { label: 'مستخدم', color: 'bg-slate-800 text-slate-300 border-slate-700' };
+                        }
+                      })();
+
+                      return (
+                        <tr key={u.id} className="hover:bg-slate-800/30 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-xl bg-slate-800 text-white font-bold flex items-center justify-center text-xs">
+                                {u.name.slice(0, 1)}
+                              </div>
+                              <div>
+                                <div className="font-bold text-white text-xs">{u.name}</div>
+                                {u.phone && <div className="text-[10px] text-slate-400 font-mono">{u.phone}</div>}
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-4">
+                            <span className={`px-2 py-0.5 rounded-lg border text-[11px] font-semibold ${roleBadge.color}`}>
+                              {roleBadge.label}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-4">
+                            {restObj ? (
+                              <div>
+                                <div className="font-bold text-slate-200">{restObj.name_ar}</div>
+                                <div className="text-[10px] text-slate-400">
+                                  {branchObj ? `فرع: ${branchObj.name_ar}` : 'كافة الفروع'}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-amber-400 font-mono text-[11px]">نظام المنصة العام</span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4 font-mono font-bold text-amber-300">
+                            {u.username}
+                          </td>
+
+                          <td className="py-3 px-4 font-mono">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-white">
+                                {isPwVisible ? (u.password || 'لا توجد') : '••••••••'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setShowAdminPwMap(prev => ({ ...prev, [u.id]: !prev[u.id] }))}
+                                className="p-1 text-slate-400 hover:text-white rounded transition-colors cursor-pointer"
+                                title={isPwVisible ? 'إخفاء' : 'عرض'}
+                              >
+                                {isPwVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-4 font-mono font-bold text-amber-400">
+                            {u.pin_code || '1234'}
+                          </td>
+
+                          <td className="py-3 px-4">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                              u.is_active
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                            }`}>
+                              {u.is_active ? 'نشط 🟢' : 'معطل 🔴'}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-4">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => handleOpenEditUser(u)}
+                                className="px-2.5 py-1 bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                                title="تعديل اسم المستخدم وكلمة المرور"
+                              >
+                                <KeyRound className="w-3 h-3" />
+                                <span>تعديل</span>
+                              </button>
+
+                              {u.role !== 'super_admin' && (
+                                <button
+                                  onClick={() => handleDeleteUser(u)}
+                                  className="p-1 text-slate-400 hover:text-rose-400 bg-slate-950 hover:bg-rose-950/40 rounded-lg border border-slate-800 transition-colors cursor-pointer"
+                                  title="حذف الحساب"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal: Add Restaurant */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
@@ -837,6 +1163,190 @@ export const SuperAdminDashboard: React.FC = () => {
                 <span>{isDeleting ? 'جاري الحذف...' : 'نعم، حذف المطعم نهائياً'}</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* SuperAdmin User Add/Edit Modal */}
+      {showUserModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md font-cairo" dir="rtl">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">
+                    {editingUser ? 'تعديل بيانات المستخدم وكلمة المرور' : 'إضافة مستخدم جديد للنظام'}
+                  </h3>
+                  <p className="text-xs text-slate-400">إدارة حسابات الدخول وصلاحيات المنصة والمطاعم</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowUserModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {userModalMsg && (
+              <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+                userModalMsg.success ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' : 'bg-rose-500/10 border border-rose-500/30 text-rose-400'
+              }`}>
+                <span>{userModalMsg.success ? '✅' : '⚠️'}</span>
+                <span>{userModalMsg.message}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveUser} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  الاسم الكامل <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="مثال: علي الكاشير"
+                  value={userModalName}
+                  onChange={e => setUserModalName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-sm text-white placeholder-slate-500 outline-none transition-all"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    الدور والصلاحية <span className="text-rose-400">*</span>
+                  </label>
+                  <select
+                    value={userModalRole}
+                    onChange={e => setUserModalRole(e.target.value as any)}
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-sm text-white outline-none cursor-pointer"
+                  >
+                    <option value="super_admin">سوبر أدمن (إدارة النظام)</option>
+                    <option value="restaurant_owner">مالك مطعم (Owner)</option>
+                    <option value="branch_manager">مدير فرع</option>
+                    <option value="cashier">كاشير المحاسبة (POS)</option>
+                    <option value="kitchen">شيف المطبخ (KDS)</option>
+                    <option value="driver">مندوب التوصيل (Driver)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    المطعم التابع له
+                  </label>
+                  <select
+                    value={userModalRestId}
+                    onChange={e => setUserModalRestId(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-sm text-white outline-none cursor-pointer"
+                  >
+                    <option value={0}>بدون ارتباط بمطعم (منصة عامة)</option>
+                    {restaurants.map(r => (
+                      <option key={r.id} value={r.id}>{r.name_ar}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-3">
+                <div className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                  <KeyRound className="w-4 h-4" />
+                  <span>بيانات تسجيل الدخول وتغيير الباسوورد:</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    اسم المستخدم (Username) <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="مثال: cashier_1"
+                    value={userModalUsername}
+                    onChange={e => setUserModalUsername(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
+                    className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-sm text-amber-300 font-mono outline-none transition-all"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      كلمة المرور الجديدة (Password) <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="كلمة المرور"
+                      value={userModalPassword}
+                      onChange={e => setUserModalPassword(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-sm text-white font-mono outline-none transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      رمز الـ PIN السريع <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      required
+                      placeholder="1234"
+                      value={userModalPin}
+                      onChange={e => setUserModalPin(e.target.value.replace(/\D/g, ''))}
+                      className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-sm text-amber-400 font-mono tracking-widest text-center outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    رقم الهاتف (اختياري)
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="07XXXXXXXXX"
+                    value={userModalPhone}
+                    onChange={e => setUserModalPhone(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-sm text-white outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="userActiveCheck"
+                  checked={userModalIsActive}
+                  onChange={e => setUserModalIsActive(e.target.checked)}
+                  className="w-4 h-4 accent-amber-500 cursor-pointer rounded"
+                />
+                <label htmlFor="userActiveCheck" className="text-xs text-slate-300 cursor-pointer">
+                  حساب نشط ومفعّل (يمكن لصاحبه تسجيل الدخول)
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowUserModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold rounded-xl shadow-lg cursor-pointer flex items-center gap-1.5"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  <span>{editingUser ? 'حفظ التعديلات' : 'إنشاء المستخدم'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

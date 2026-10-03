@@ -1,4 +1,4 @@
-import { Restaurant, Branch, DiningTable, Category, Product, Order, Reservation, Review, Plan, Coupon, ActivityLog } from '../types';
+import { User, Restaurant, Branch, DiningTable, Category, Product, Order, Reservation, Review, Plan, Coupon, ActivityLog } from '../types';
 
 export const INITIAL_RESTAURANTS: Restaurant[] = [
   {
@@ -350,5 +350,161 @@ export const INITIAL_ACTIVITY_LOGS: ActivityLog[] = [
     action: 'System Initialized',
     description: 'تم تجهيز منصة سُفرة السحابية بنجاح وربط قاعدة البيانات',
     timestamp: 'الآن'
+  }
+];
+
+export const INITIAL_USERS: User[] = [
+  // Super Admin
+  {
+    id: 1,
+    role: 'super_admin',
+    name: 'المدير العام للمنصة',
+    username: 'admin',
+    email: 'admin@sufrah.com',
+    password: 'admin123',
+    pin_code: '1234',
+    phone: '+9647700000000',
+    is_active: true,
+    created_at: '2026-01-01'
+  },
+  // Restaurant 1: مطعم السُفرة الأصيل
+  {
+    id: 2,
+    restaurant_id: 1,
+    role: 'restaurant_owner',
+    name: 'أحمد السامرائي (مالك السُفرة)',
+    username: 'owner_sufrah',
+    email: 'owner@sufrah.com',
+    password: 'owner123',
+    pin_code: '1111',
+    phone: '+9647701234567',
+    is_active: true,
+    created_at: '2026-01-01'
+  },
+  {
+    id: 3,
+    restaurant_id: 1,
+    branch_id: 1,
+    role: 'branch_manager',
+    name: 'عمر القيسي (مدير المنصور)',
+    username: 'manager_sufrah',
+    email: 'manager@sufrah.com',
+    password: 'manager123',
+    pin_code: '2222',
+    phone: '+9647701112222',
+    is_active: true,
+    created_at: '2026-01-01'
+  },
+  {
+    id: 4,
+    restaurant_id: 1,
+    branch_id: 1,
+    role: 'cashier',
+    name: 'سامر العلي (كاشير المنصور)',
+    username: 'cashier_sufrah',
+    email: 'cashier@sufrah.com',
+    password: 'cashier123',
+    pin_code: '3333',
+    phone: '+9647703334444',
+    is_active: true,
+    created_at: '2026-01-01'
+  },
+  {
+    id: 5,
+    restaurant_id: 1,
+    branch_id: 1,
+    role: 'kitchen',
+    name: 'الشيف حسن (مطبخ المنصور)',
+    username: 'chef_sufrah',
+    email: 'chef@sufrah.com',
+    password: 'chef123',
+    pin_code: '4444',
+    phone: '+9647705556666',
+    is_active: true,
+    created_at: '2026-01-01'
+  },
+  {
+    id: 6,
+    restaurant_id: 1,
+    branch_id: 1,
+    role: 'driver',
+    name: 'علي الكرخي (دليفري المنصور)',
+    username: 'driver_sufrah',
+    email: 'driver@sufrah.com',
+    password: 'driver123',
+    pin_code: '5555',
+    phone: '+9647707778888',
+    is_active: true,
+    created_at: '2026-01-01'
+  },
+  // Restaurant 2: مطعم جوان
+  {
+    id: 7,
+    restaurant_id: 2,
+    role: 'restaurant_owner',
+    name: 'جوان (مالك مطعم جوان)',
+    username: 'owner_jwan',
+    email: 'owner@jwan.com',
+    password: 'jwan123',
+    pin_code: '2026',
+    phone: '07810909577',
+    is_active: true,
+    created_at: '2026-01-01'
+  },
+  {
+    id: 8,
+    restaurant_id: 2,
+    branch_id: 2,
+    role: 'branch_manager',
+    name: 'مدير فرع جوان',
+    username: 'manager_jwan',
+    email: 'manager@jwan.com',
+    password: 'manager123',
+    pin_code: '9999',
+    phone: '07810909578',
+    is_active: true,
+    created_at: '2026-01-01'
+  },
+  {
+    id: 9,
+    restaurant_id: 2,
+    branch_id: 2,
+    role: 'cashier',
+    name: 'كاشير مطعم جوان',
+    username: 'cashier_jwan',
+    email: 'cashier@jwan.com',
+    password: 'cashier123',
+    pin_code: '7777',
+    phone: '07810909579',
+    is_active: true,
+    created_at: '2026-01-01'
+  },
+  {
+    id: 10,
+    restaurant_id: 2,
+    branch_id: 2,
+    role: 'kitchen',
+    name: 'الشيف جوان (مطبخ جوان)',
+    username: 'chef_jwan',
+    email: 'chef@jwan.com',
+    password: 'chef123',
+    pin_code: '8888',
+    phone: '07810909580',
+    is_active: true,
+    created_at: '2026-01-01'
+  },
+  {
+    id: 11,
+    restaurant_id: 2,
+    branch_id: 2,
+    role: 'driver',
+    name: 'مندوب توصيل جوان',
+    username: 'driver_jwan',
+    email: 'driver@jwan.com',
+    password: 'driver123',
+    pin_code: '6666',
+    phone: '07810909581',
+    is_active: true,
+    created_at: '2026-01-01'
   }
 ];

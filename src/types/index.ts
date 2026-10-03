@@ -14,8 +14,13 @@ export interface User {
   role: UserRole;
   name: string;
   email: string;
+  username: string;
+  password?: string;
+  pin_code?: string;
   phone?: string;
   avatar_url?: string;
+  is_active: boolean;
+  created_at?: string;
 }
 
 export interface Restaurant {

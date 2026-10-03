@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { useApp } from '../../context/AppContext';
-import { Product, ProductSize, ProductAddon, Category } from '../../types';
+import { Product, ProductSize, ProductAddon, Category, DiningTable, User, UserRole } from '../../types';
 import {
   UtensilsCrossed,
   QrCode,
@@ -21,6 +21,7 @@ import {
   Edit2,
   Trash2,
   Eye,
+  EyeOff,
   Sliders,
   AlertCircle,
   MessageCircle,
@@ -31,9 +32,13 @@ import {
   Image as ImageIcon,
   LayoutGrid,
   Users,
-  PlusCircle
+  PlusCircle,
+  KeyRound,
+  Lock,
+  ShieldCheck,
+  Bike,
+  Receipt
 } from 'lucide-react';
-import { DiningTable } from '../../types';
 
 export const OwnerDashboard: React.FC = () => {
   const {
@@ -51,6 +56,10 @@ export const OwnerDashboard: React.FC = () => {
     tables,
     orders,
     plans,
+    users,
+    updateUser,
+    createUser,
+    deleteUser,
     setCurrentRole,
     updateRestaurantWhatsApp,
     updateRestaurantBranding,
@@ -59,9 +68,25 @@ export const OwnerDashboard: React.FC = () => {
     deleteTable
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'branches' | 'tables' | 'qr' | 'ai' | 'reports' | 'branding'>('menu');
+  const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'branches' | 'tables' | 'staff' | 'qr' | 'ai' | 'reports' | 'branding'>('menu');
   const [ownerWhatsApp, setOwnerWhatsApp] = useState<string>(activeRestaurant?.whatsapp_number || '+9647701234567');
   const [savedWhatsAppSuccess, setSavedWhatsAppSuccess] = useState(false);
+
+  // Staff & User Management States
+  const [showStaffModal, setShowStaffModal] = useState(false);
+  const [editingStaffUser, setEditingStaffUser] = useState<User | null>(null);
+  const [staffName, setStaffName] = useState('');
+  const [staffRole, setStaffRole] = useState<UserRole>('cashier');
+  const [staffBranchId, setStaffBranchId] = useState<number>(branches[0]?.id || 1);
+  const [staffUsername, setStaffUsername] = useState('');
+  const [staffPassword, setStaffPassword] = useState('');
+  const [staffPin, setStaffPin] = useState('');
+  const [staffPhone, setStaffPhone] = useState('');
+  const [staffIsActive, setStaffIsActive] = useState(true);
+  const [staffMsg, setStaffMsg] = useState<{ success: boolean; message: string } | null>(null);
+  const [showPasswordMap, setShowPasswordMap] = useState<{ [key: number]: boolean }>({});
+  const [staffRoleFilter, setStaffRoleFilter] = useState<'all' | UserRole>('all');
+  const [staffBranchFilter, setStaffBranchFilter] = useState<number | 'all'>('all');
 
   // Table Management States
   const [showTableModal, setShowTableModal] = useState(false);
@@ -408,6 +433,84 @@ export const OwnerDashboard: React.FC = () => {
   const restaurantBranches = branches.filter(b => b.restaurant_id === activeRestaurant.id);
   const restaurantBranchIds = restaurantBranches.map(b => b.id);
   const restaurantTables = tables.filter(t => restaurantBranchIds.includes(t.branch_id));
+  const restaurantUsers = users.filter(u => u.restaurant_id === activeRestaurant.id);
+
+  const handleOpenAddStaff = () => {
+    setEditingStaffUser(null);
+    setStaffName('');
+    setStaffRole('cashier');
+    setStaffBranchId(restaurantBranches[0]?.id || 1);
+    setStaffUsername('');
+    setStaffPassword('123456');
+    setStaffPin(String(Math.floor(1000 + Math.random() * 9000)));
+    setStaffPhone('');
+    setStaffIsActive(true);
+    setStaffMsg(null);
+    setShowStaffModal(true);
+  };
+
+  const handleOpenEditStaff = (user: User) => {
+    setEditingStaffUser(user);
+    setStaffName(user.name);
+    setStaffRole(user.role);
+    setStaffBranchId(user.branch_id || restaurantBranches[0]?.id || 1);
+    setStaffUsername(user.username);
+    setStaffPassword(user.password || '');
+    setStaffPin(user.pin_code || '');
+    setStaffPhone(user.phone || '');
+    setStaffIsActive(user.is_active);
+    setStaffMsg(null);
+    setShowStaffModal(true);
+  };
+
+  const handleSaveStaff = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!staffUsername.trim() || !staffName.trim()) {
+      setStaffMsg({ success: false, message: 'يرجى إدخال الاسم الكامل واسم المستخدم' });
+      return;
+    }
+
+    if (editingStaffUser) {
+      const res = updateUser(editingStaffUser.id, {
+        name: staffName.trim(),
+        role: staffRole,
+        branch_id: staffBranchId,
+        username: staffUsername.trim().toLowerCase(),
+        password: staffPassword.trim(),
+        pin_code: staffPin.trim(),
+        phone: staffPhone.trim(),
+        is_active: staffIsActive
+      });
+      setStaffMsg(res);
+      if (res.success) {
+        setTimeout(() => setShowStaffModal(false), 1200);
+      }
+    } else {
+      const res = createUser({
+        restaurant_id: activeRestaurant.id,
+        branch_id: staffBranchId,
+        name: staffName.trim(),
+        role: staffRole,
+        username: staffUsername.trim().toLowerCase(),
+        email: `${staffUsername.trim().toLowerCase()}@${activeRestaurant.slug || 'sufrah'}.com`,
+        password: staffPassword.trim() || '123456',
+        pin_code: staffPin.trim() || '1234',
+        phone: staffPhone.trim(),
+        is_active: staffIsActive
+      });
+      setStaffMsg(res);
+      if (res.success) {
+        setTimeout(() => setShowStaffModal(false), 1200);
+      }
+    }
+  };
+
+  const handleDeleteStaff = (user: User) => {
+    if (confirm(`هل أنت متأكد من حذف حساب (${user.name} - ${user.username}) نهائياً؟`)) {
+      const res = deleteUser(user.id);
+      alert(res.message);
+    }
+  };
 
   const currentPlan = plans.find(p => p.name_ar === activeRestaurant.plan_name || activeRestaurant.plan_name.includes(p.name_en));
   const maxAllowedTables = currentPlan?.max_tables || (activeRestaurant.plan_name.includes('Starter') || activeRestaurant.plan_name.includes('مجانية') ? 10 : 60);
@@ -564,6 +667,7 @@ export const OwnerDashboard: React.FC = () => {
           {[
             { id: 'menu', label: 'إدارة المنيو والأصناف', icon: <UtensilsCrossed className="w-4 h-4" /> },
             { id: 'tables', label: `الطاولات والصالة (${restaurantTables.length}/${maxAllowedTables})`, icon: <LayoutGrid className="w-4 h-4" /> },
+            { id: 'staff', label: `طاقم العمل والمستخدمين (${restaurantUsers.length})`, icon: <Users className="w-4 h-4" /> },
             { id: 'branding', label: 'هوية وصور المطعم (اللوجو والغلاف)', icon: <Palette className="w-4 h-4" /> },
             { id: 'qr', label: 'استوديو رموز QR', icon: <QrCode className="w-4 h-4" /> },
             { id: 'branches', label: `الفروع (${branches.length})`, icon: <Building2 className="w-4 h-4" /> },
@@ -1288,6 +1392,232 @@ export const OwnerDashboard: React.FC = () => {
                 className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl"
               >
                 + إضافة طاولة الآن
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab: Staff & User Accounts Management */}
+      {activeTab === 'staff' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Header Card */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-slate-950 text-2xl shadow-lg shadow-amber-500/20 font-bold">
+                  👥
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white flex items-center gap-2">
+                    <span>إدارة طاقم العمل وحسابات الدخول</span>
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono font-bold">
+                      {restaurantUsers.length} حسابات موظفين
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    تعيين وتغيير اسم المستخدم، وكلمة المرور، ورمز الـ PIN المكوّن من 4 أرقام لكل محطة (الكاشير، الشيف، المدير، الدليفري) لمنع تداخل البيانات بين الفروع.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={handleOpenAddStaff}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all cursor-pointer shrink-0"
+              >
+                <Plus className="w-4 h-4 stroke-[3]" />
+                <span>إضافة موظف جديد لطاقم العمل</span>
+              </button>
+            </div>
+
+            {/* Filter pills */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+              {/* Role filter */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                {[
+                  { id: 'all', label: 'كافة الأدوار' },
+                  { id: 'cashier', label: '🧾 الكاشير (POS)' },
+                  { id: 'kitchen', label: '👨‍🍳 شيف المطبخ (KDS)' },
+                  { id: 'branch_manager', label: '🏢 مدير الفرع' },
+                  { id: 'driver', label: '🛵 مندوب التوصيل' },
+                  { id: 'restaurant_owner', label: '👑 مالك المطعم' },
+                ].map(r => (
+                  <button
+                    key={r.id}
+                    onClick={() => setStaffRoleFilter(r.id as any)}
+                    className={`px-3 py-1.5 rounded-xl font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                      staffRoleFilter === r.id
+                        ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                        : 'bg-slate-950 border border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Branch filter if multiple branches */}
+              {restaurantBranches.length > 1 && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-slate-400">تصفية حسب الفرع:</span>
+                  <select
+                    value={staffBranchFilter}
+                    onChange={e => setStaffBranchFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                    className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white"
+                  >
+                    <option value="all">كافة الفروع</option>
+                    {restaurantBranches.map(b => (
+                      <option key={b.id} value={b.id}>{b.name_ar}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Staff Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {restaurantUsers
+              .filter(u => staffRoleFilter === 'all' || u.role === staffRoleFilter)
+              .filter(u => staffBranchFilter === 'all' || !u.branch_id || u.branch_id === staffBranchFilter)
+              .map(user => {
+                const branchObj = branches.find(b => b.id === user.branch_id);
+                const isPasswordVisible = showPasswordMap[user.id];
+
+                const roleBadge = (() => {
+                  switch (user.role) {
+                    case 'kitchen':
+                      return { label: 'شيف المطبخ (KDS)', icon: '👨‍🍳', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20' };
+                    case 'cashier':
+                      return { label: 'الكاشير (POS)', icon: '🧾', color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' };
+                    case 'branch_manager':
+                      return { label: 'مدير الفرع والصالة', icon: '🏢', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' };
+                    case 'driver':
+                      return { label: 'مندوب التوصيل الميداني', icon: '🛵', color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' };
+                    case 'restaurant_owner':
+                      return { label: 'مالك المطعم (مدير)', icon: '👑', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' };
+                    default:
+                      return { label: 'موظف', icon: '👤', color: 'bg-slate-800 text-slate-300 border-slate-700' };
+                  }
+                })();
+
+                return (
+                  <div
+                    key={user.id}
+                    className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-3xl p-5 flex flex-col justify-between space-y-4 shadow-lg transition-all"
+                  >
+                    <div>
+                      {/* Top Row: Role & Status */}
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-xl border flex items-center gap-1.5 ${roleBadge.color}`}>
+                          <span>{roleBadge.icon}</span>
+                          <span>{roleBadge.label}</span>
+                        </span>
+
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                          user.is_active
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        }`}>
+                          {user.is_active ? 'حساب نشط 🟢' : 'معطل 🔴'}
+                        </span>
+                      </div>
+
+                      {/* User Info */}
+                      <div className="pt-3 space-y-2.5 text-xs">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-slate-800 text-white flex items-center justify-center font-bold text-sm shadow-inner shrink-0">
+                            {user.name.slice(0, 1)}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-white text-sm leading-tight">{user.name}</h4>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              {branchObj ? `فرع: ${branchObj.name_ar}` : 'كافة فروع المطعم'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Credentials Box */}
+                        <div className="p-3 bg-slate-950 rounded-2xl border border-slate-800/80 space-y-2 mt-3 font-mono">
+                          {/* Username */}
+                          <div className="flex items-center justify-between text-slate-300">
+                            <span className="text-[11px] text-slate-400 font-sans">اسم المستخدم:</span>
+                            <span className="font-bold text-amber-400">{user.username}</span>
+                          </div>
+
+                          {/* Password */}
+                          <div className="flex items-center justify-between text-slate-300">
+                            <span className="text-[11px] text-slate-400 font-sans">كلمة المرور:</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-white">
+                                {isPasswordVisible ? (user.password || 'لا توجد') : '••••••••'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setShowPasswordMap(prev => ({ ...prev, [user.id]: !prev[user.id] }))}
+                                className="p-1 text-slate-400 hover:text-white rounded transition-colors cursor-pointer"
+                                title={isPasswordVisible ? 'إخفاء كلمة المرور' : 'عرض كلمة المرور'}
+                              >
+                                {isPasswordVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* PIN Code */}
+                          <div className="flex items-center justify-between text-slate-300 pt-1 border-t border-slate-900">
+                            <span className="text-[11px] text-slate-400 font-sans">رمز الـ PIN السريع:</span>
+                            <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 font-black tracking-widest text-xs border border-amber-500/20">
+                              {user.pin_code || '1234'}
+                            </span>
+                          </div>
+
+                          {user.phone && (
+                            <div className="flex items-center justify-between text-slate-300 pt-1 border-t border-slate-900">
+                              <span className="text-[11px] text-slate-400 font-sans">رقم الهاتف:</span>
+                              <span className="text-slate-300 text-[11px]">{user.phone}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
+                      <button
+                        onClick={() => handleOpenEditStaff(user)}
+                        className="flex-1 py-2 bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <KeyRound className="w-3.5 h-3.5" />
+                        <span>تعديل الحساب وتغيير الباسوورد</span>
+                      </button>
+
+                      {user.role !== 'restaurant_owner' && (
+                        <button
+                          onClick={() => handleDeleteStaff(user)}
+                          className="p-2 text-slate-400 hover:text-rose-400 bg-slate-950 hover:bg-rose-950/40 rounded-xl border border-slate-800 transition-colors cursor-pointer"
+                          title="حذف حساب الموظف"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+
+          {restaurantUsers.length === 0 && (
+            <div className="text-center py-12 bg-slate-900 border border-slate-800 rounded-3xl p-8 space-y-3">
+              <Users className="w-12 h-12 text-slate-600 mx-auto" />
+              <h3 className="text-base font-bold text-white">لا يوجد موظفون مسجلون حالياً</h3>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                قم بإضافة حسابات لطاقم العمل في مطعمك (الكاشير، الشيف، المدير، مندوب التوصيل) ليتمكن كل موظف من الدخول لمحطته المخصصة.
+              </p>
+              <button
+                onClick={handleOpenAddStaff}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl"
+              >
+                + إضافة موظف الآن
               </button>
             </div>
           )}
@@ -2592,6 +2922,193 @@ export const OwnerDashboard: React.FC = () => {
                   className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold rounded-xl shadow-lg shadow-amber-500/10 transition-all cursor-pointer"
                 >
                   {editingTable ? 'حفظ التعديلات' : 'إضافة وتثبيت الطاولة'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Staff Add/Edit Modal (تعديل الحساب وتغيير الباسوورد) */}
+      {showStaffModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in font-cairo" dir="rtl">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">
+                    {editingStaffUser ? 'تعديل حساب الموظف وتغيير كلمة المرور' : 'إضافة حساب موظف جديد'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {editingStaffUser ? `تحديث بيانات (${editingStaffUser.name}) وكلمة المرور والـ PIN` : 'إنشاء حساب لطاقم العمل في المطعم'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowStaffModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {staffMsg && (
+              <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+                staffMsg.success ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' : 'bg-rose-500/10 border border-rose-500/30 text-rose-400'
+              }`}>
+                <span>{staffMsg.success ? '✅' : '⚠️'}</span>
+                <span>{staffMsg.message}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveStaff} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  الاسم الكامل للموظف <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="مثال: أحمد عبد الله"
+                  value={staffName}
+                  onChange={e => setStaffName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-3 text-sm text-white placeholder-slate-500 outline-none transition-all"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    الدور الوظيفي <span className="text-rose-400">*</span>
+                  </label>
+                  <select
+                    value={staffRole}
+                    onChange={e => setStaffRole(e.target.value as any)}
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-3 text-sm text-white outline-none transition-all cursor-pointer"
+                  >
+                    <option value="cashier">كاشير ونقاط البيع (POS)</option>
+                    <option value="kitchen">طاهي المطبخ (شاشة KDS)</option>
+                    <option value="branch_manager">مدير الفرع والصالة</option>
+                    <option value="driver">مندوب التوصيل (Delivery)</option>
+                    <option value="restaurant_owner">مالك المطعم (مدير عام)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    الفرع التابع له <span className="text-rose-400">*</span>
+                  </label>
+                  <select
+                    value={staffBranchId}
+                    onChange={e => setStaffBranchId(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-3 text-sm text-white outline-none transition-all cursor-pointer"
+                  >
+                    {restaurantBranches.map(b => (
+                      <option key={b.id} value={b.id}>
+                        {b.name_ar}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-3">
+                <div className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                  <KeyRound className="w-4 h-4" />
+                  <span>بيانات تسجيل الدخول وتغيير كلمة المرور:</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    اسم المستخدم (Username) <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="مثال: chef_sufrah أو cashier_1"
+                    value={staffUsername}
+                    onChange={e => setStaffUsername(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
+                    className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-sm text-amber-300 font-mono outline-none transition-all"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">يستخدم هذا الاسم لتسجيل دخول الموظف إلى محطته</p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      كلمة المرور الجديدة (Password) <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="كلمة المرور"
+                      value={staffPassword}
+                      onChange={e => setStaffPassword(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-sm text-white font-mono outline-none transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      رمز الـ PIN السريع (4 أرقام) <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      required
+                      placeholder="1234"
+                      value={staffPin}
+                      onChange={e => setStaffPin(e.target.value.replace(/\D/g, ''))}
+                      className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-sm text-amber-400 font-mono tracking-widest text-center outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    رقم الهاتف (اختياري)
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="07XXXXXXXXX"
+                    value={staffPhone}
+                    onChange={e => setStaffPhone(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-sm text-white outline-none transition-all font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="staffActiveToggle"
+                  checked={staffIsActive}
+                  onChange={e => setStaffIsActive(e.target.checked)}
+                  className="w-4 h-4 accent-amber-500 cursor-pointer rounded"
+                />
+                <label htmlFor="staffActiveToggle" className="text-xs text-slate-300 cursor-pointer">
+                  حساب الموظف مفعّل ونشط (يمكنه تسجيل الدخول للعمل)
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowStaffModal(false)}
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold rounded-xl shadow-lg shadow-amber-500/10 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  <span>{editingStaffUser ? 'حفظ التعديلات وكلمة المرور' : 'إنشاء حساب الموظف'}</span>
                 </button>
               </div>
             </form>

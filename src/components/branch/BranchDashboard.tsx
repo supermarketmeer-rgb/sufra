@@ -28,7 +28,9 @@ export const BranchDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'tables' | 'reservations'>('tables');
 
   const branchTables = tables.filter(t => t.branch_id === activeBranch?.id);
-  const branchReservations = reservations.filter(r => r.branch_id === activeBranch?.id);
+  const branchReservations = reservations.filter(r =>
+    r.restaurant_id === activeRestaurant?.id && (!activeBranch?.id || r.branch_id === activeBranch.id)
+  );
 
   const filteredTables = tableFilter === 'all'
     ? branchTables

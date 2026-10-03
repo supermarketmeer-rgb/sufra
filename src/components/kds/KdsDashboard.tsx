@@ -35,9 +35,10 @@ export const KdsDashboard: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Filter kitchen active orders (new, in_review, preparing)
+  // Filter kitchen active orders (strictly for current restaurant and current branch)
   const kitchenOrders = orders.filter(o =>
     o.restaurant_id === activeRestaurant?.id &&
+    (!activeBranch?.id || o.branch_id === activeBranch.id) &&
     (o.status === 'new' || o.status === 'in_review' || o.status === 'preparing') &&
     (filterType === 'all' || o.order_type === filterType)
   );
@@ -101,8 +102,11 @@ export const KdsDashboard: React.FC = () => {
             <UtensilsCrossed className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-white">شاشة المطبخ الذكية (Kitchen Display System - KDS)</h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base font-bold text-white">شاشة المطبخ الذكية (KDS)</h2>
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30">
+                {activeRestaurant?.name_ar || 'المطعم'}
+              </span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
                 {activeBranch?.name_ar || 'الفرع الرئيسي'}
               </span>

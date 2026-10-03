@@ -32,11 +32,15 @@ export const PosDashboard: React.FC = () => {
     setCurrentRole
   } = useApp();
 
+  const restaurantProducts = products.filter(p => p.restaurant_id === activeRestaurant?.id);
+  const restaurantCategories = categories.filter(c => c.restaurant_id === activeRestaurant?.id);
+  const branchTables = tables.filter(t => !activeBranch?.id || t.branch_id === activeBranch.id);
+
   const [selectedCatId, setSelectedCatId] = useState<number | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<OrderItem[]>([]);
   const [selectedOrderType, setSelectedOrderType] = useState<'dine_in' | 'takeaway' | 'delivery'>('dine_in');
-  const [selectedTable, setSelectedTable] = useState<DiningTable | null>(tables[0] || null);
+  const [selectedTable, setSelectedTable] = useState<DiningTable | null>(branchTables[0] || null);
   const [couponCode, setCouponCode] = useState('');
   const [discountAmount, setDiscountAmount] = useState(0);
 
@@ -48,7 +52,7 @@ export const PosDashboard: React.FC = () => {
   // Receipt Modal state
   const [completedOrderReceipt, setCompletedOrderReceipt] = useState<any | null>(null);
 
-  const filteredProducts = products.filter(p => {
+  const filteredProducts = restaurantProducts.filter(p => {
     const matchesCat = selectedCatId === 'all' || p.category_id === selectedCatId;
     const matchesSearch = p.name_ar.includes(searchQuery) ||
                           p.name_en.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -191,7 +195,7 @@ export const PosDashboard: React.FC = () => {
           >
             الكل
           </button>
-          {categories.map(cat => (
+          {restaurantCategories.map(cat => (
             <button
               key={cat.id}
               onClick={() => setSelectedCatId(cat.id)}
@@ -285,12 +289,12 @@ export const PosDashboard: React.FC = () => {
               <select
                 value={selectedTable?.id}
                 onChange={e => {
-                  const t = tables.find(tbl => tbl.id === Number(e.target.value));
+                  const t = branchTables.find(tbl => tbl.id === Number(e.target.value));
                   if (t) setSelectedTable(t);
                 }}
                 className="w-full bg-slate-900 border border-slate-800 text-xs text-white rounded-lg p-1.5 font-mono"
               >
-                {tables.map(tbl => (
+                {branchTables.map(tbl => (
                   <option key={tbl.id} value={tbl.id}>
                     {tbl.table_number} ({tbl.capacity} مقاعد) - {tbl.status}
                   </option>
