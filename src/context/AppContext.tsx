@@ -95,6 +95,8 @@ interface AppContextType {
   updateCategory: (categoryId: number, updates: Partial<Category>) => void;
   deleteCategory: (categoryId: number) => void;
   addBranch: (branchData: Partial<Branch>) => void;
+  updateBranch: (branchId: number, updates: Partial<Branch>) => { success: boolean; message: string };
+  deleteBranch: (branchId: number) => { success: boolean; message: string };
   addReservation: (res: Partial<Reservation>) => void;
   updateReservationStatus: (resId: number, status: 'pending' | 'confirmed' | 'cancelled') => void;
   addReview: (review: Partial<Review>) => void;
@@ -893,7 +895,94 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       manager_name: branchData.manager_name || 'مدير الفرع',
       is_active: true
     };
-    setBranches(prev => [...prev, newBranch]);
+    setBranches(prev => {
+      const next = [...prev, newBranch];
+      try {
+        localStorage.setItem('sufrah_v2_branches', JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+  };
+
+  const updateBranch = (branchId: number, updates: Partial<Branch>): { success: boolean; message: string } => {
+    const target = branches.find(b => b.id === branchId);
+    if (!target) return { success: false, message: 'الفرع غير موجود' };
+
+    setBranches(prev => {
+      const next = prev.map(b => b.id === branchId ? { ...b, ...updates } : b);
+      try {
+        localStorage.setItem('sufrah_v2_branches', JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+
+    if (activeBranch && activeBranch.id === branchId) {
+      setActiveBranch(prev => prev ? { ...prev, ...updates } : null);
+    }
+
+    const log: ActivityLog = {
+      id: Date.now(),
+      user_name: currentUser?.name || 'مدير النظام',
+      role: currentRole,
+      action: 'Branch Updated',
+      description: `تم تحديث بيانات الفرع (${updates.name_ar || target.name_ar})`,
+      timestamp: 'الآن'
+    };
+    setActivityLogs(prev => [log, ...prev]);
+
+    return { success: true, message: 'تم تحديث بيانات الفرع بنجاح' };
+  };
+
+  const deleteBranch = (branchId: number): { success: boolean; message: string } => {
+    const target = branches.find(b => b.id === branchId);
+    if (!target) return { success: false, message: 'الفرع غير موجود' };
+
+    const restBranches = branches.filter(b => b.restaurant_id === target.restaurant_id);
+    if (restBranches.length <= 1) {
+      return {
+        success: false,
+        message: 'لا يمكن حذف الفرع الوحيد للمطعم، يجب أن يتوفر فرع واحد على الأقل.'
+      };
+    }
+
+    const updatedBranches = branches.filter(b => b.id !== branchId);
+    setBranches(updatedBranches);
+    try {
+      localStorage.setItem('sufrah_v2_branches', JSON.stringify(updatedBranches));
+    } catch (e) {
+      console.error(e);
+    }
+
+    if (activeBranch && activeBranch.id === branchId) {
+      const remainingForRest = updatedBranches.filter(b => b.restaurant_id === target.restaurant_id);
+      setActiveBranch(remainingForRest.length > 0 ? remainingForRest[0] : null);
+    }
+
+    setTables(prev => {
+      const next = prev.filter(t => t.branch_id !== branchId);
+      try {
+        localStorage.setItem('sufrah_v2_tables', JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+
+    const log: ActivityLog = {
+      id: Date.now(),
+      user_name: currentUser?.name || 'مدير النظام',
+      role: currentRole,
+      action: 'Branch Deleted',
+      description: `تم حذف الفرع (${target.name_ar})`,
+      timestamp: 'الآن'
+    };
+    setActivityLogs(prev => [log, ...prev]);
+
+    return { success: true, message: `تم حذف الفرع "${target.name_ar}" بنجاح` };
   };
 
   const addReservation = (res: Partial<Reservation>) => {
@@ -1227,6 +1316,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateCategory,
         deleteCategory,
         addBranch,
+        updateBranch,
+        deleteBranch,
         addReservation,
         updateReservationStatus,
         addReview,

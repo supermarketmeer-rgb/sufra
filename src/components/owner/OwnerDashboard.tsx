@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { useApp } from '../../context/AppContext';
-import { Product, ProductSize, ProductAddon, Category, DiningTable, User, UserRole } from '../../types';
+import { Product, ProductSize, ProductAddon, Category, DiningTable, User, UserRole, Branch } from '../../types';
 import {
   UtensilsCrossed,
   QrCode,
@@ -45,6 +45,8 @@ export const OwnerDashboard: React.FC = () => {
     activeRestaurant,
     branches,
     addBranch,
+    updateBranch,
+    deleteBranch,
     categories,
     addCategory,
     updateCategory,
@@ -237,11 +239,19 @@ export const OwnerDashboard: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  // New branch form
+  // Branch management states
+  const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
+  const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null);
+  const [branchDeleteNotice, setBranchDeleteNotice] = useState<{ success: boolean; message: string } | null>(null);
+  const [isDeletingBranch, setIsDeletingBranch] = useState(false);
   const [branchNameAr, setBranchNameAr] = useState('');
+  const [branchNameEn, setBranchNameEn] = useState('');
   const [branchPhone, setBranchPhone] = useState('');
   const [branchAddress, setBranchAddress] = useState('');
   const [branchManager, setBranchManager] = useState('');
+  const [branchOpeningTime, setBranchOpeningTime] = useState('10:00');
+  const [branchClosingTime, setBranchClosingTime] = useState('00:00');
+  const [branchFormMsg, setBranchFormMsg] = useState<{ success: boolean; message: string } | null>(null);
 
   // QR Studio states
   const [qrType, setQrType] = useState<'restaurant' | 'branch' | 'table' | 'delivery' | 'takeaway'>('delivery');
@@ -387,22 +397,95 @@ export const OwnerDashboard: React.FC = () => {
     setProdDescAr('');
   };
 
-  const handleCreateBranch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!branchNameAr) return;
-
-    addBranch({
-      name_ar: branchNameAr,
-      phone: branchPhone,
-      address: branchAddress,
-      manager_name: branchManager
-    });
-
-    setShowAddBranchModal(false);
+  const handleOpenAddBranch = () => {
+    setEditingBranch(null);
     setBranchNameAr('');
+    setBranchNameEn('');
     setBranchPhone('');
     setBranchAddress('');
     setBranchManager('');
+    setBranchOpeningTime('10:00');
+    setBranchClosingTime('00:00');
+    setBranchFormMsg(null);
+    setShowAddBranchModal(true);
+  };
+
+  const handleOpenEditBranch = (b: Branch) => {
+    setEditingBranch(b);
+    setBranchNameAr(b.name_ar);
+    setBranchNameEn(b.name_en || '');
+    setBranchPhone(b.phone || '');
+    setBranchAddress(b.address || '');
+    setBranchManager(b.manager_name || '');
+    setBranchOpeningTime(b.opening_time || '10:00');
+    setBranchClosingTime(b.closing_time || '00:00');
+    setBranchFormMsg(null);
+    setShowAddBranchModal(true);
+  };
+
+  const handleSaveBranch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!branchNameAr.trim()) {
+      setBranchFormMsg({ success: false, message: 'يرجى إدخال اسم الفرع بالعربية' });
+      return;
+    }
+
+    if (editingBranch) {
+      const res = updateBranch(editingBranch.id, {
+        name_ar: branchNameAr.trim(),
+        name_en: branchNameEn.trim() || branchNameAr.trim(),
+        phone: branchPhone.trim(),
+        address: branchAddress.trim(),
+        manager_name: branchManager.trim(),
+        opening_time: branchOpeningTime,
+        closing_time: branchClosingTime
+      });
+      setBranchFormMsg(res);
+      if (res.success) {
+        setTimeout(() => {
+          setShowAddBranchModal(false);
+          setEditingBranch(null);
+          setBranchFormMsg(null);
+        }, 1000);
+      }
+    } else {
+      addBranch({
+        name_ar: branchNameAr.trim(),
+        name_en: branchNameEn.trim() || branchNameAr.trim(),
+        phone: branchPhone.trim(),
+        address: branchAddress.trim(),
+        manager_name: branchManager.trim(),
+        opening_time: branchOpeningTime,
+        closing_time: branchClosingTime
+      });
+      setBranchFormMsg({ success: true, message: 'تمت إضافة الفرع الجديد بنجاح' });
+      setTimeout(() => {
+        setShowAddBranchModal(false);
+        setBranchFormMsg(null);
+      }, 1000);
+    }
+  };
+
+  const handleDeleteBranch = (b: Branch) => {
+    setBranchToDelete(b);
+    setBranchDeleteNotice(null);
+  };
+
+  const handleConfirmDeleteBranch = () => {
+    if (!branchToDelete) return;
+    setIsDeletingBranch(true);
+    const res = deleteBranch(branchToDelete.id);
+    if (!res.success) {
+      setBranchDeleteNotice(res);
+      setIsDeletingBranch(false);
+    } else {
+      setBranchDeleteNotice(res);
+      setTimeout(() => {
+        setBranchToDelete(null);
+        setBranchDeleteNotice(null);
+        setIsDeletingBranch(false);
+      }, 1000);
+    }
   };
 
   if (!activeRestaurant) {
@@ -671,7 +754,7 @@ export const OwnerDashboard: React.FC = () => {
             { id: 'staff', label: `طاقم العمل والمستخدمين (${restaurantUsers.length})`, icon: <Users className="w-4 h-4" /> },
             { id: 'branding', label: 'هوية وصور المطعم (اللوجو والغلاف)', icon: <Palette className="w-4 h-4" /> },
             { id: 'qr', label: 'استوديو رموز QR', icon: <QrCode className="w-4 h-4" /> },
-            { id: 'branches', label: `الفروع (${branches.length})`, icon: <Building2 className="w-4 h-4" /> },
+            { id: 'branches', label: `الفروع (${restaurantBranches.length})`, icon: <Building2 className="w-4 h-4" /> },
             { id: 'overview', label: 'المبيعات والطلبات', icon: <TrendingUp className="w-4 h-4" /> },
             { id: 'ai', label: 'تحليلات AI الذكية', icon: <Sparkles className="w-4 h-4" /> },
             { id: 'reports', label: 'التقارير المالية وتصدير Excel', icon: <FileSpreadsheet className="w-4 h-4" /> },
@@ -1631,8 +1714,8 @@ export const OwnerDashboard: React.FC = () => {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-white">فروع المطعم ونقاط الخدمة</h3>
             <button
-              onClick={() => setShowAddBranchModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold rounded-xl"
+              onClick={handleOpenAddBranch}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold rounded-xl cursor-pointer shadow-md transition-all"
             >
               <Plus className="w-4 h-4" />
               <span>إضافة فرع جديد</span>
@@ -1640,16 +1723,34 @@ export const OwnerDashboard: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {branches.map(b => (
-              <div key={b.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+            {restaurantBranches.map(b => (
+              <div key={b.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3 hover:border-slate-700 transition-all shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-bold text-white text-base">{b.name_ar}</h4>
                     <p className="text-xs text-slate-400">{b.name_en}</p>
                   </div>
-                  <span className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    فرع نشط
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      فرع نشط
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditBranch(b)}
+                      title="تعديل الفرع"
+                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-amber-400 rounded-lg transition-colors cursor-pointer border border-slate-700/60"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteBranch(b)}
+                      title="حذف الفرع"
+                      className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg transition-colors cursor-pointer border border-rose-500/20"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-1.5 text-xs text-slate-300">
@@ -1671,10 +1772,29 @@ export const OwnerDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
+                <div className="pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditBranch(b)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer"
+                    >
+                      <Edit2 className="w-3.5 h-3.5 text-amber-400" />
+                      <span>تعديل</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteBranch(b)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold rounded-lg border border-rose-500/20 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>حذف</span>
+                    </button>
+                  </div>
                   <button
+                    type="button"
                     onClick={() => setCurrentRole('branch_manager')}
-                    className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-semibold rounded-lg border border-blue-500/20"
+                    className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-semibold rounded-lg border border-blue-500/20 transition-colors cursor-pointer"
                   >
                     دخول لوحة الفرع
                   </button>
@@ -2744,74 +2864,218 @@ export const OwnerDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Add Branch Modal */}
+      {/* Add / Edit Branch Modal */}
       {showAddBranchModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in font-cairo" dir="rtl">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-white">إضافة فرع جديد للمطعم</h3>
-              <button onClick={() => setShowAddBranchModal(false)} className="text-slate-400 hover:text-white">✕</button>
-            </div>
-            <form onSubmit={handleCreateBranch} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-slate-400 mb-1">اسم الفرع *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="مثال: فرع زيونة"
-                  value={branchNameAr}
-                  onChange={e => setBranchNameAr(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white"
-                />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">
+                    {editingBranch ? 'تعديل بيانات الفرع' : 'إضافة فرع جديد للمطعم'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {editingBranch ? `تحديث تفاصيل الفرع (${editingBranch.name_ar})` : 'إنشاء وتفعيل نقطة خدمة جديدة'}
+                  </p>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddBranchModal(false);
+                  setEditingBranch(null);
+                  setBranchFormMsg(null);
+                }}
+                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {branchFormMsg && (
+              <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+                branchFormMsg.success ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' : 'bg-rose-500/10 border border-rose-500/30 text-rose-400'
+              }`}>
+                <span>{branchFormMsg.success ? '✅' : '⚠️'}</span>
+                <span>{branchFormMsg.message}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveBranch} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">اسم الفرع بالعربية <span className="text-rose-400">*</span></label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="مثال: فرع الكرادة"
+                    value={branchNameAr}
+                    onChange={e => setBranchNameAr(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-white outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">اسم الفرع بالإنجليزية</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Karrada Branch"
+                    value={branchNameEn}
+                    onChange={e => setBranchNameEn(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-white outline-none transition-all"
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="block text-slate-400 mb-1">العنوان التفصيلي</label>
+                <label className="block text-slate-300 font-semibold mb-1">العنوان وموقع الفرع</label>
                 <input
                   type="text"
-                  placeholder="شارع الربيعي، مقابل المول"
+                  placeholder="شارع 14 رمضان، مقابل المركز التجاري"
                   value={branchAddress}
                   onChange={e => setBranchAddress(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-white outline-none transition-all"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1">هاتف الفرع</label>
+                  <label className="block text-slate-300 font-semibold mb-1">هاتف الفرع للتواصل</label>
                   <input
                     type="text"
                     value={branchPhone}
                     onChange={e => setBranchPhone(e.target.value)}
                     placeholder="+964 770 000 0000"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-white outline-none transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1">اسم مدير الفرع</label>
+                  <label className="block text-slate-300 font-semibold mb-1">اسم مدير الفرع</label>
                   <input
                     type="text"
                     value={branchManager}
                     onChange={e => setBranchManager(e.target.value)}
                     placeholder="اسم المسؤول"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-white outline-none transition-all"
                   />
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">وقت بدء العمل</label>
+                  <input
+                    type="time"
+                    value={branchOpeningTime}
+                    onChange={e => setBranchOpeningTime(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-white outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">وقت الإغلاق</label>
+                  <input
+                    type="time"
+                    value={branchClosingTime}
+                    onChange={e => setBranchClosingTime(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-2.5 text-white outline-none transition-all"
+                  />
+                </div>
+              </div>
+
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setShowAddBranchModal(false)}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl"
+                  onClick={() => {
+                    setShowAddBranchModal(false);
+                    setEditingBranch(null);
+                    setBranchFormMsg(null);
+                  }}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl cursor-pointer transition-all"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl cursor-pointer shadow-lg shadow-amber-500/10 transition-all flex items-center gap-1.5"
                 >
-                  حفظ وتفعيل الفرع
+                  <Building2 className="w-4 h-4" />
+                  <span>{editingBranch ? 'حفظ التعديلات' : 'حفظ وتفعيل الفرع'}</span>
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Branch Confirmation Modal */}
+      {branchToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in font-cairo" dir="rtl">
+          <div className="bg-slate-900 border border-rose-500/30 w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">تأكيد حذف الفرع</h3>
+                <p className="text-xs text-slate-400">إجراء حساس لا يمكن التراجع عنه</p>
+              </div>
+            </div>
+
+            {branchDeleteNotice && (
+              <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+                branchDeleteNotice.success ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' : 'bg-rose-500/10 border border-rose-500/30 text-rose-400'
+              }`}>
+                <span>{branchDeleteNotice.success ? '✅' : '⚠️'}</span>
+                <span>{branchDeleteNotice.message}</span>
+              </div>
+            )}
+
+            <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400">اسم الفرع:</span>
+                <span className="font-bold text-white text-xs">{branchToDelete.name_ar}</span>
+              </div>
+              {branchToDelete.address && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">العنوان:</span>
+                  <span className="text-slate-300 text-xs">{branchToDelete.address}</span>
+                </div>
+              )}
+              {branchToDelete.phone && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">الهاتف:</span>
+                  <span className="font-mono text-amber-400 text-xs">{branchToDelete.phone}</span>
+                </div>
+              )}
+              <p className="text-xs text-rose-300/80 pt-2 border-t border-slate-800/80 leading-relaxed">
+                هل أنت متأكد من رغبتك في حذف هذا الفرع نهائياً؟ سيتم إلغاء ارتباط الطاولات التابعة له فوراً.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                disabled={isDeletingBranch}
+                onClick={() => {
+                  setBranchToDelete(null);
+                  setBranchDeleteNotice(null);
+                }}
+                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingBranch}
+                onClick={handleConfirmDeleteBranch}
+                className="px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-500/20 cursor-pointer flex items-center gap-1.5 transition-all disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isDeletingBranch ? 'جارٍ الحذف...' : 'نعم، حذف الفرع'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
