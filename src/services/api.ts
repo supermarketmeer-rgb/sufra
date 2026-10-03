@@ -409,5 +409,19 @@ export const api = {
         es = null;
       }
     };
+  },
+
+  async updateUser(userId: number, updates: Partial<User>): Promise<boolean> {
+    try {
+      const res = await fetch('/api/users/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userId, ...updates })
+      });
+      return res.ok;
+    } catch (err) {
+      console.error('Failed to update user via API:', err);
+      return false;
+    }
   }
 };

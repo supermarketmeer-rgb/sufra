@@ -414,10 +414,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('sufrah_v2_current_user', JSON.stringify(currentUser));
+      if (currentUser.restaurant_id) {
+        const rest = restaurants.find(r => r.id === currentUser.restaurant_id) || INITIAL_RESTAURANTS.find(r => r.id === currentUser.restaurant_id);
+        if (rest && activeRestaurant?.id !== rest.id) {
+          setActiveRestaurant(rest);
+          localStorage.setItem('sufrah_v2_active_restaurant_id', String(rest.id));
+        }
+      }
+      if (currentUser.branch_id) {
+        const branch = branches.find(b => b.id === currentUser.branch_id) || INITIAL_BRANCHES.find(b => b.id === currentUser.branch_id);
+        if (branch && activeBranch?.id !== branch.id) {
+          setActiveBranch(branch);
+        }
+      }
     } else {
       localStorage.removeItem('sufrah_v2_current_user');
     }
-  }, [currentUser]);
+  }, [currentUser, restaurants, branches]);
 
   const loginUser = (identifier: string, passwordOrPin: string, restaurantId?: number): { success: boolean; message: string; user?: User } => {
     const rawId = normalizeDigits(identifier || '').trim().toLowerCase();
@@ -447,7 +460,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     });
 
-    // 2. Substring username match (e.g. "jwan" -> "owner_jwan", "sufrah" -> "owner_sufrah")
+    // 2. Exact match for 'ali' or 'علي' -> strictly matches Owner of Jwan (User 7)
+    if (!found && (rawId === 'ali' || rawId === 'علي' || cleanIdNoSep === 'علي' || cleanIdNoSep === 'ali')) {
+      found = users.find(u => u.restaurant_id === 2 && u.role === 'restaurant_owner') || users.find(u => u.id === 7);
+    }
+
+    // 3. Substring username match (e.g. "jwan" -> "owner_jwan", "sufrah" -> "owner_sufrah")
     if (!found) {
       found = users.find(u => {
         if (!u.is_active) return false;
@@ -456,16 +474,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     }
 
-    // 3. Match by User Display Name in Arabic (e.g. "جوان" matches "جوان (مالك مطعم جوان)")
+    // 4. Match by User Display Name in Arabic - PRIORITIZE RESTAURANT OWNER OVER STAFF!
     if (!found) {
-      found = users.find(u => {
+      // Find candidate matches
+      const candidates = users.filter(u => {
         if (!u.is_active) return false;
         const uName = (u.name || '').toLowerCase();
-        return uName.includes(rawId) || rawId.includes(uName.split(' ')[0]);
+        const firstName = uName.split(/[\s()]+/)[0];
+        return firstName === rawId || uName.startsWith(rawId) || uName.includes(rawId);
       });
+
+      if (candidates.length > 0) {
+        // Sort: restaurant_owner first, then branch_manager, then staff
+        candidates.sort((a, b) => {
+          const score = (role: UserRole) => {
+            if (role === 'restaurant_owner') return 1;
+            if (role === 'super_admin') return 2;
+            if (role === 'branch_manager') return 3;
+            return 4;
+          };
+          return score(a.role) - score(b.role);
+        });
+        found = candidates[0];
+      }
     }
 
-    // 4. Match by Restaurant Name or Slug (e.g. "مطعم جوان", "جوان", "السفرة", "مطعم السفرة", "jwan-restaurant")
+    // 5. Match by Restaurant Name or Slug (e.g. "مطعم جوان", "جوان", "السفرة", "مطعم السفرة", "jwan-restaurant")
     if (!found) {
       const matchedRest = restaurants.find(r => {
         const rName = r.name_ar.toLowerCase();
@@ -487,7 +521,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
-    // 5. Match by role keywords ("admin", "superadmin", "مدير", "المدير العام", "owner", "مالك")
+    // 6. Match by role keywords ("admin", "superadmin", "مدير", "المدير العام", "owner", "مالك")
     if (!found) {
       if (rawId.includes('admin') || rawId.includes('super') || rawId === 'مدير' || rawId === 'المدير' || rawId === 'المدير العام') {
         found = users.find(u => u.role === 'super_admin');
@@ -533,7 +567,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Bind active restaurant & branch strictly to this user
     const targetRestId = found.restaurant_id || (found.role === 'super_admin' ? (restaurantId || activeRestaurant?.id || restaurants[0]?.id) : null);
     if (targetRestId) {
-      const targetRest = restaurants.find(r => r.id === targetRestId);
+      const targetRest = restaurants.find(r => r.id === targetRestId) || INITIAL_RESTAURANTS.find(r => r.id === targetRestId);
       if (targetRest) {
         setActiveRestaurant(targetRest);
         localStorage.setItem('sufrah_v2_active_restaurant_id', String(targetRest.id));
@@ -541,12 +575,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     if (found.branch_id) {
-      const targetBranch = branches.find(b => b.id === found.branch_id);
+      const targetBranch = branches.find(b => b.id === found.branch_id) || INITIAL_BRANCHES.find(b => b.id === found.branch_id);
       if (targetBranch) {
         setActiveBranch(targetBranch);
       }
     } else if (targetRestId) {
-      const firstBranch = branches.find(b => b.restaurant_id === targetRestId);
+      const firstBranch = branches.find(b => b.restaurant_id === targetRestId) || INITIAL_BRANCHES.find(b => b.restaurant_id === targetRestId);
       if (firstBranch) {
         setActiveBranch(firstBranch);
       }
@@ -641,6 +675,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: 'الآن'
     };
     setActivityLogs(prev => [log, ...prev]);
+
+    // Persist to Cloud MySQL
+    api.updateUser(userId, updates);
 
     return { success: true, message: 'تم حفظ وتحديث بيانات المستخدم وكلمة المرور بنجاح!' };
   };

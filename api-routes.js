@@ -994,3 +994,31 @@ apiRouter.post('/auth/login', async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
+// Update user credentials in MySQL
+apiRouter.post('/users/update', async (req, res) => {
+  if (!dbPool) return res.status(503).json({ error: 'DB not available' });
+
+  try {
+    const { id, name, username, password, pin_code, phone } = req.body;
+    if (!id) return res.status(400).json({ success: false, message: 'Missing user id' });
+
+    const updates = [];
+    const values = [];
+
+    if (name) { updates.push('name = ?'); values.push(name); }
+    if (username) { updates.push('username = ?'); values.push(username.toLowerCase().trim()); }
+    if (password) { updates.push('password_hash = ?'); values.push(password.trim()); }
+    if (pin_code) { updates.push('pin_code = ?'); values.push(pin_code.trim()); }
+    if (phone) { updates.push('phone = ?'); values.push(phone.trim()); }
+
+    if (updates.length > 0) {
+      values.push(id);
+      await dbPool.query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, values);
+    }
+
+    res.json({ success: true, message: 'User updated successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
