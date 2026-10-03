@@ -79,7 +79,7 @@ export const INITIAL_TABLES: DiningTable[] = Array.from({ length: 10 }, (_, i) =
   branch_id: 1,
   table_number: `طاولة ${i + 1}`,
   capacity: i < 4 ? 4 : (i < 8 ? 6 : 8),
-  status: 'available',
+  status: 'available' as const,
   qr_token: `TBL-MAN-${i + 1}`
 })).concat(
   Array.from({ length: 5 }, (_, i) => ({
@@ -87,7 +87,7 @@ export const INITIAL_TABLES: DiningTable[] = Array.from({ length: 10 }, (_, i) =
     branch_id: 2,
     table_number: `طاولة ${i + 1}`,
     capacity: 4,
-    status: 'available',
+    status: 'available' as const,
     qr_token: `TBL-JWAN-${i + 1}`
   }))
 );

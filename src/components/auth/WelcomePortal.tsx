@@ -466,16 +466,18 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
             {/* Staff Cards of Selected Restaurant */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-right">
               {users
-                .filter(u => u.restaurant_id === selectedStaffRestId && u.role !== 'restaurant_owner' && u.role !== 'super_admin')
+                .filter(u => u.restaurant_id === selectedStaffRestId && u.role !== 'super_admin')
                 .map(u => {
                   const roleConfig = (() => {
                     switch (u.role) {
+                      case 'restaurant_owner':
+                        return { icon: <Store className="w-4 h-4" />, color: 'bg-emerald-50 text-emerald-700 border-emerald-200', title: '👑 مالك / مدير المطعم' };
+                      case 'branch_manager':
+                        return { icon: <Building2 className="w-4 h-4" />, color: 'bg-indigo-50 text-indigo-700 border-indigo-200', title: 'مدير الفرع والصالة' };
                       case 'cashier':
                         return { icon: <Receipt className="w-4 h-4" />, color: 'bg-blue-50 text-blue-700 border-blue-200', title: 'كاشير POS' };
                       case 'kitchen':
                         return { icon: <UtensilsCrossed className="w-4 h-4" />, color: 'bg-rose-50 text-rose-700 border-rose-200', title: 'شاشة المطبخ KDS' };
-                      case 'branch_manager':
-                        return { icon: <Building2 className="w-4 h-4" />, color: 'bg-indigo-50 text-indigo-700 border-indigo-200', title: 'مدير الفرع' };
                       case 'driver':
                         return { icon: <Bike className="w-4 h-4" />, color: 'bg-cyan-50 text-cyan-700 border-cyan-200', title: 'دليفري GPS' };
                       default:
