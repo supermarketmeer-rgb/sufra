@@ -122,8 +122,8 @@ export const KdsDashboard: React.FC = () => {
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base font-bold text-white">شاشة المطبخ الذكية (KDS)</h2>
               
-              {/* Restaurant Selector for Kitchen */}
-              {restaurants.length > 1 ? (
+              {/* Restaurant Selector for Kitchen (Super Admin Only) */}
+              {currentUser?.role === 'super_admin' && restaurants.length > 1 ? (
                 <div className="relative">
                   <button
                     type="button"

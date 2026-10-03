@@ -90,13 +90,15 @@ body.light-mode .bg-slate-900\/95 {
 }
 
 body.light-mode .bg-slate-950\/60,
-body.light-mode .bg-slate-950\/80 {
-  background-color: #e2e8f0 !important;
-  border-color: #cbd5e1 !important;
+body.light-mode .bg-slate-950\/70,
+body.light-mode .bg-slate-950\/80,
+body.light-mode .bg-slate-950\/90 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
 }
 
 body.light-mode .bg-slate-800 {
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
   color: #1e293b !important;
   border-color: #e2e8f0 !important;
 }
@@ -117,19 +119,50 @@ body.light-mode .border-slate-700,
 body.light-mode .border-slate-700\/60,
 body.light-mode .divide-slate-800,
 body.light-mode .divide-slate-800\/80,
-body.light-mode .divide-slate-800\/60 {
+body.light-mode .divide-slate-800\/60,
+body.light-mode .divide-slate-700 {
   border-color: #e2e8f0 !important;
 }
 
 /* Hover States */
 body.light-mode .hover\:bg-slate-800:hover,
 body.light-mode .hover\:bg-slate-700:hover {
-  background-color: #e2e8f0 !important;
+  background-color: #f1f5f9 !important;
 }
 
 body.light-mode .hover\:bg-slate-800\/40:hover,
 body.light-mode .hover\:bg-slate-800\/30:hover {
-  background-color: #f1f5f9 !important;
+  background-color: #fefce8 !important; /* gentle amber tint on hover */
+}
+
+/* All Table Rows and Records in Light Mode must have pure white background */
+body.light-mode table,
+body.light-mode table tbody,
+body.light-mode table tbody tr,
+body.light-mode table tbody td,
+body.light-mode tbody,
+body.light-mode tbody tr,
+body.light-mode tbody td,
+body.light-mode .bg-slate-900\/40,
+body.light-mode .bg-slate-900\/60,
+body.light-mode .bg-slate-900\/70,
+body.light-mode .bg-slate-900\/80,
+body.light-mode .bg-slate-950\/70 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+body.light-mode table thead,
+body.light-mode table thead tr,
+body.light-mode table thead th {
+  background-color: #f8fafc !important;
+  color: #334155 !important;
+  border-color: #e2e8f0 !important;
+}
+
+body.light-mode table tbody tr:hover,
+body.light-mode table tbody tr:hover td {
+  background-color: #fefce8 !important;
 }
 
 /* Typography in Light Mode */
@@ -244,6 +277,16 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
 }
 
 @media print {
+  @page {
+    size: 80mm auto;
+    margin: 0mm;
+  }
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
   body * {
     visibility: hidden;
   }
@@ -254,10 +297,16 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
     position: absolute;
     left: 0;
     top: 0;
-    width: 80mm;
-    margin: 0;
-    padding: 10px;
-    background: white;
-    color: black;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 3mm 4mm !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-family: 'Courier New', Courier, monospace, 'Cairo' !important;
+    font-size: 9.5pt !important;
+    line-height: 1.2 !important;
   }
 }

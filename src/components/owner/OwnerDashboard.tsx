@@ -108,6 +108,7 @@ export const OwnerDashboard: React.FC = () => {
   const [newCoverUrl, setNewCoverUrl] = useState(activeRestaurant?.cover_url || '');
   const [newRestName, setNewRestName] = useState(activeRestaurant?.name_ar || '');
   const [newRestDesc, setNewRestDesc] = useState(activeRestaurant?.description_ar || '');
+  const [newDeliveryFee, setNewDeliveryFee] = useState<number>(activeRestaurant?.delivery_fee_base ?? 0);
   const [savedBrandingSuccess, setSavedBrandingSuccess] = useState(false);
 
   useEffect(() => {
@@ -116,6 +117,7 @@ export const OwnerDashboard: React.FC = () => {
       setNewCoverUrl(activeRestaurant.cover_url || '');
       setNewRestName(activeRestaurant.name_ar || '');
       setNewRestDesc(activeRestaurant.description_ar || '');
+      setNewDeliveryFee(activeRestaurant.delivery_fee_base ?? 0);
       setOwnerWhatsApp((activeRestaurant.whatsapp_number || '07810909577').replace(/^\+964/, '0').replace(/^00964/, '0'));
     }
   }, [activeRestaurant]);
@@ -152,7 +154,8 @@ export const OwnerDashboard: React.FC = () => {
       cover_url: newCoverUrl || activeRestaurant.cover_url,
       name_ar: newRestName || activeRestaurant.name_ar,
       description_ar: newRestDesc || activeRestaurant.description_ar,
-      whatsapp_number: ownerWhatsApp || activeRestaurant.whatsapp_number
+      whatsapp_number: ownerWhatsApp || activeRestaurant.whatsapp_number,
+      delivery_fee_base: Number(newDeliveryFee) || 0
     });
     setSavedBrandingSuccess(true);
     setTimeout(() => {
@@ -2125,7 +2128,7 @@ export const OwnerDashboard: React.FC = () => {
             {/* Box 3: Restaurant Info */}
             <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-5 space-y-4">
               <h3 className="text-sm font-bold text-white">معلومات المطعم الأساسية</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 mb-1">اسم المطعم بالعربية</label>
                   <input
@@ -2155,6 +2158,19 @@ export const OwnerDashboard: React.FC = () => {
                     placeholder="07XXXXXXXXX"
                     className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 text-right"
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">مبلغ التوصيل (د.ع) - اختياري</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="250"
+                    value={newDeliveryFee || ''}
+                    onChange={e => setNewDeliveryFee(Math.max(0, Number(e.target.value)))}
+                    placeholder="0 (مجاني - لا يظهر بالفاتورة)"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-amber-400 font-mono font-bold focus:outline-none focus:border-amber-500 text-right"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">إذا كان صفراً لن يظهر في فاتورة البيع</p>
                 </div>
               </div>
             </div>
@@ -2283,6 +2299,24 @@ export const OwnerDashboard: React.FC = () => {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Delivery Fee Field */}
+              <div className="pt-2 border-t border-slate-800">
+                <label className="block text-slate-300 font-bold mb-1">مبلغ التوصيل الافتراضي (د.ع) - اختياري</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    step="250"
+                    value={newDeliveryFee || ''}
+                    onChange={e => setNewDeliveryFee(Math.max(0, Number(e.target.value)))}
+                    placeholder="0 (مجاني - إذا كان صفراً لن يظهر في الفاتورة)"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-amber-400 font-mono font-bold focus:outline-none focus:border-amber-500 text-right"
+                  />
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">د.ع</span>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">إذا كان المبلغ 0 فلن يظهر سطر التوصيل في فاتورة البيع الحرارية.</p>
               </div>
             </div>
 
