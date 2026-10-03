@@ -15,10 +15,11 @@ export default defineConfig(({ command }) => {
     plugins.push({
       name: 'api-middleware',
       async configureServer(server: any) {
+        const expressModule = (await import('express')).default;
+        const app = expressModule();
         const { apiRouter } = await import('./api-routes.js');
-        server.middlewares.use('/api', (req: any, res: any, next: any) => {
-          apiRouter(req, res, next);
-        });
+        app.use(apiRouter);
+        server.middlewares.use('/api', app);
       }
     });
   }
