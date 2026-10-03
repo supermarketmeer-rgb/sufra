@@ -96,7 +96,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer, onOpenRegister, 
     }
   };
 
-  const activeOrdersCount = orders.filter(o => o.status === 'new' || o.status === 'preparing').length;
+  const activeRestId = Number(activeRestaurant?.id || currentUser?.restaurant_id || 0);
+  const activeOrdersCount = orders.filter(o => {
+    const isSameRest = activeRestId === 0 || Number(o.restaurant_id) === activeRestId;
+    return isSameRest && o.status === 'preparing';
+  }).length;
 
   const roleDefinitions: { role: UserRole; titleAr: string; icon: React.ReactNode; color: string }[] = [
     { role: 'super_admin', titleAr: 'Super Admin (المنصة)', icon: <ShieldCheck className="w-4 h-4" />, color: 'text-amber-400' },

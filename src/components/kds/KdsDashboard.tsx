@@ -10,12 +10,17 @@ import {
   Flame,
   AlertTriangle,
   RotateCcw,
-  Sparkles
+  Sparkles,
+  Store,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 
 export const KdsDashboard: React.FC = () => {
   const {
     activeRestaurant,
+    setActiveRestaurant,
+    restaurants,
     activeBranch,
     branches,
     orders,
@@ -27,6 +32,8 @@ export const KdsDashboard: React.FC = () => {
 
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [filterType, setFilterType] = useState<'all' | 'dine_in' | 'delivery' | 'takeaway'>('all');
+  const [viewScope, setViewScope] = useState<'current' | 'all'>('current');
+  const [showRestPicker, setShowRestPicker] = useState(false);
   const [currentTime, setCurrentTime] = useState<number>(Date.now());
 
   // Tick elapsed time every 2 seconds
@@ -39,13 +46,25 @@ export const KdsDashboard: React.FC = () => {
 
   const currRestId = Number(activeRestaurant?.id || currentUser?.restaurant_id || 1);
 
-  // Filter kitchen active orders: ONLY show orders confirmed by cashier for preparation ('preparing')
-  const kitchenOrders = orders.filter(o => {
+  // Orders being prepared for the current restaurant
+  const currentRestPreparing = orders.filter(o => {
     const isSameRest = Number(o.restaurant_id) === currRestId;
     const isPreparing = o.status === 'preparing';
     const matchesType = filterType === 'all' || o.order_type === filterType;
     return isSameRest && isPreparing && matchesType;
   });
+
+  // All orders being prepared across all restaurants
+  const allSystemPreparing = orders.filter(o => {
+    const isPreparing = o.status === 'preparing';
+    const matchesType = filterType === 'all' || o.order_type === filterType;
+    return isPreparing && matchesType;
+  });
+
+  const otherRestPreparingCount = Math.max(0, allSystemPreparing.length - currentRestPreparing.length);
+
+  // Displayed orders based on scope
+  const kitchenOrders = viewScope === 'all' ? allSystemPreparing : currentRestPreparing;
 
   // Orders awaiting cashier review & confirmation
   const pendingCashierOrdersCount = orders.filter(o => {
@@ -115,9 +134,51 @@ export const KdsDashboard: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base font-bold text-white">شاشة المطبخ الذكية (KDS)</h2>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30">
-                {activeRestaurant?.name_ar || 'المطعم'}
-              </span>
+              
+              {/* Restaurant Selector for Kitchen */}
+              {restaurants.length > 1 ? (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowRestPicker(!showRestPicker)}
+                    className="text-xs px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-rose-300 font-bold border border-rose-500/30 flex items-center gap-1.5 transition-all cursor-pointer"
+                    title="تغيير المطعم النشط للمطبخ"
+                  >
+                    <Store className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{activeRestaurant?.name_ar || 'المطعم'}</span>
+                    <ChevronDown className="w-3 h-3 text-slate-400" />
+                  </button>
+                  {showRestPicker && (
+                    <div className="absolute top-full mt-1.5 right-0 w-60 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1.5 z-50 animate-fade-in font-cairo">
+                      <div className="px-3 py-1 text-[11px] font-bold text-slate-400 border-b border-slate-800">
+                        المطعم النشط للمطبخ
+                      </div>
+                      {restaurants.map(rest => (
+                        <button
+                          key={rest.id}
+                          type="button"
+                          onClick={() => {
+                            setActiveRestaurant(rest);
+                            setShowRestPicker(false);
+                          }}
+                          className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-right hover:bg-slate-800 transition-colors cursor-pointer ${
+                            rest.id === activeRestaurant?.id ? 'bg-rose-500/10 text-rose-400 font-bold' : 'text-slate-200'
+                          }`}
+                        >
+                          <Store className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate flex-1">{rest.name_ar}</span>
+                          {rest.id === activeRestaurant?.id && <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30">
+                  {activeRestaurant?.name_ar || 'المطعم'}
+                </span>
+              )}
+
               <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
                 {activeBranch?.name_ar || 'الفرع الرئيسي'}
               </span>
@@ -135,7 +196,31 @@ export const KdsDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Scope Selector: Current Restaurant vs All Restaurants */}
+          {restaurants.length > 1 && (
+            <div className="flex items-center gap-1 p-1 bg-slate-950 rounded-xl border border-slate-800 text-xs">
+              <button
+                type="button"
+                onClick={() => setViewScope('current')}
+                className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
+                  viewScope === 'current' ? 'bg-rose-500 text-white font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {activeRestaurant?.name_ar?.split(' ')[1] || 'مطعمي'} ({currentRestPreparing.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewScope('all')}
+                className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
+                  viewScope === 'all' ? 'bg-rose-500 text-white font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                جميع المطاعم ({allSystemPreparing.length})
+              </button>
+            </div>
+          )}
+
           {/* Filter Pills */}
           <div className="flex items-center gap-1 p-1 bg-slate-950 rounded-xl border border-slate-800 text-xs">
             <button
@@ -183,6 +268,39 @@ export const KdsDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Cross-restaurant notification banner when other branches have active orders */}
+      {otherRestPreparingCount > 0 && viewScope === 'current' && (
+        <div className="bg-gradient-to-r from-amber-500/15 via-rose-500/10 to-amber-500/15 border border-amber-500/30 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs flex-wrap animate-fade-in">
+          <div className="flex items-center gap-2 text-amber-300">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+            <span>
+              يوجد <strong>{otherRestPreparingCount}</strong> طلبات قيد التحضير في مطعم آخر (مطعم جوان).
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setViewScope('all')}
+              className="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl transition-all shadow-sm cursor-pointer"
+            >
+              عرض جميع المطاعم ({allSystemPreparing.length})
+            </button>
+            {restaurants.find(r => r.id !== currRestId) && (
+              <button
+                type="button"
+                onClick={() => {
+                  const target = restaurants.find(r => r.id !== currRestId);
+                  if (target) setActiveRestaurant(target);
+                }}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition-all cursor-pointer"
+              >
+                التحويل إلى {restaurants.find(r => r.id !== currRestId)?.name_ar}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Ticket Grid */}
       {kitchenOrders.length === 0 ? (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-16 text-center space-y-3">
@@ -199,6 +317,7 @@ export const KdsDashboard: React.FC = () => {
           {kitchenOrders.map(order => {
             const minutesElapsed = getElapsedMinutes(order.created_at);
             const urgency = getUrgencyConfig(minutesElapsed);
+            const orderRest = restaurants.find(r => r.id === order.restaurant_id);
 
             return (
               <div
@@ -209,8 +328,13 @@ export const KdsDashboard: React.FC = () => {
                   {/* Ticket Header */}
                   <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                     <div>
-                      <div className="font-black text-white text-base font-mono flex items-center gap-2">
+                      <div className="font-black text-white text-base font-mono flex items-center gap-1.5 flex-wrap">
                         <span>{order.order_number}</span>
+                        {restaurants.length > 1 && orderRest && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-800 text-amber-300 border border-slate-700 font-sans">
+                            {orderRest.name_ar}
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs text-amber-400 font-bold mt-0.5">
                         {order.order_type === 'dine_in'
