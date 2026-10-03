@@ -485,17 +485,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       if (candidates.length > 0) {
-        // Sort: restaurant_owner first, then branch_manager, then staff
-        candidates.sort((a, b) => {
-          const score = (role: UserRole) => {
-            if (role === 'restaurant_owner') return 1;
-            if (role === 'super_admin') return 2;
-            if (role === 'branch_manager') return 3;
-            return 4;
-          };
-          return score(a.role) - score(b.role);
-        });
-        found = candidates[0];
+        // If an active restaurant is selected or target restaurantId provided, prefer that restaurant
+        const preferredRestId = restaurantId || activeRestaurant?.id;
+        if (preferredRestId) {
+          const restCandidate = candidates.find(u => u.restaurant_id === preferredRestId);
+          if (restCandidate) {
+            found = restCandidate;
+          }
+        }
+
+        if (!found) {
+          // Sort: restaurant_owner first, then branch_manager, then staff
+          candidates.sort((a, b) => {
+            const score = (role: UserRole) => {
+              if (role === 'restaurant_owner') return 1;
+              if (role === 'super_admin') return 2;
+              if (role === 'branch_manager') return 3;
+              return 4;
+            };
+            return score(a.role) - score(b.role);
+          });
+          found = candidates[0];
+        }
       }
     }
 

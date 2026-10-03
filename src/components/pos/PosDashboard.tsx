@@ -26,12 +26,16 @@ import {
   X,
   AlertCircle,
   Bike,
-  Eye
+  Eye,
+  Store,
+  ChevronDown
 } from 'lucide-react';
 
 export const PosDashboard: React.FC = () => {
   const {
     activeRestaurant,
+    setActiveRestaurant,
+    restaurants,
     activeBranch,
     branches,
     categories,
@@ -46,6 +50,8 @@ export const PosDashboard: React.FC = () => {
     setCurrentRole,
     currentUser
   } = useApp();
+
+  const [showRestPicker, setShowRestPicker] = useState(false);
 
   const restaurantProducts = products.filter(p => p.restaurant_id === activeRestaurant?.id);
   const restaurantCategories = categories.filter(c => c.restaurant_id === activeRestaurant?.id);
@@ -64,14 +70,29 @@ export const PosDashboard: React.FC = () => {
   const [selectedIncomingOrder, setSelectedIncomingOrder] = useState<Order | null>(null);
   const [incomingSuccessMsg, setIncomingSuccessMsg] = useState<string | null>(null);
 
-  // Filter pending incoming orders for this restaurant (matches exactly how OwnerDashboard sees them)
-  const incomingOrders = orders.filter(o => {
+  // Filter pending incoming orders with high tolerance & cross-restaurant visibility
+  const isPendingStatus = (st: any) => {
+    const s = String(st || '').toLowerCase().trim();
+    return s === 'new' || s === 'in_review';
+  };
+
+  const currRestId = Number(activeRestaurant?.id || currentUser?.restaurant_id || 0);
+
+  // Orders specifically matching the active restaurant
+  const currentRestPending = orders.filter(o => {
     const orderRestId = Number(o.restaurant_id);
-    const currRestId = Number(activeRestaurant?.id || currentUser?.restaurant_id || 1);
-    const isSameRest = orderRestId === currRestId;
-    const isPending = o.status === 'new' || o.status === 'in_review';
-    return isSameRest && isPending;
+    const isSameRest = currRestId === 0 || orderRestId === currRestId;
+    return isSameRest && isPendingStatus(o.status);
   });
+
+  // All pending orders across the entire restaurant system
+  const allSystemPending = orders.filter(o => isPendingStatus(o.status));
+
+  // If the active restaurant has pending orders, show them.
+  // If active restaurant has 0 orders but other restaurants have pending orders,
+  // show all pending orders so the cashier NEVER misses a customer order!
+  const incomingOrders = currentRestPending.length > 0 ? currentRestPending : allSystemPending;
+  const isViewingOtherRestOrders = currentRestPending.length === 0 && allSystemPending.length > 0;
 
   // Sound alert on new incoming order
   const prevIncomingCount = useRef(incomingOrders.length);
@@ -231,9 +252,9 @@ export const PosDashboard: React.FC = () => {
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[calc(100vh-120px)] relative">
       {/* Products & Fast Sale Grid (8 Cols) */}
       <div className="lg:col-span-7 xl:col-span-8 space-y-4">
-        {/* POS Top Action Bar: Search + Incoming Online Orders Alert Button */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="bg-slate-900 border border-slate-800 p-2.5 rounded-2xl flex items-center gap-3 flex-1 shadow-sm">
+        {/* POS Top Action Bar: Search + Restaurant Switcher + Incoming Online Orders Alert Button */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          <div className="bg-slate-900 border border-slate-800 p-2 rounded-2xl flex items-center gap-3 flex-1 shadow-sm">
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
               <input
@@ -249,6 +270,49 @@ export const PosDashboard: React.FC = () => {
               <span>Barcode Ready</span>
             </div>
           </div>
+
+          {/* Restaurant Switcher for Cashier */}
+          {restaurants.length > 1 && (
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowRestPicker(!showRestPicker)}
+                className="flex items-center gap-2 px-3 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 rounded-2xl text-xs font-bold text-white transition-all shadow-sm cursor-pointer"
+                title="تغيير المطعم الحالي لشاشة الكاشير"
+              >
+                <Store className="w-4 h-4 text-amber-400" />
+                <span className="truncate max-w-[110px]">{activeRestaurant?.name_ar || 'اختر المطعم'}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+              {showRestPicker && (
+                <div className="absolute top-full mt-1.5 right-0 w-60 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl py-1.5 z-50 animate-fade-in font-cairo">
+                  <div className="px-3.5 py-1.5 text-[11px] font-bold text-slate-400 border-b border-slate-800 flex items-center justify-between">
+                    <span>المطعم النشط للكاشير</span>
+                    <span className="text-[10px] text-amber-400 font-mono">({restaurants.length})</span>
+                  </div>
+                  <div className="max-h-56 overflow-y-auto py-1">
+                    {restaurants.map(rest => (
+                      <button
+                        key={rest.id}
+                        type="button"
+                        onClick={() => {
+                          setActiveRestaurant(rest);
+                          setShowRestPicker(false);
+                        }}
+                        className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-right hover:bg-slate-800 transition-colors cursor-pointer ${
+                          rest.id === activeRestaurant?.id ? 'bg-amber-500/10 text-amber-400 font-bold' : 'text-slate-200'
+                        }`}
+                      >
+                        <Store className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate flex-1">{rest.name_ar}</span>
+                        {rest.id === activeRestaurant?.id && <Check className="w-4 h-4 text-amber-400 shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Dedicated Incoming Online Orders Alert Button (Non-intrusive) */}
           <button
@@ -705,6 +769,37 @@ export const PosDashboard: React.FC = () => {
               </div>
             )}
 
+            {/* Cross-restaurant warning/helper banner */}
+            {isViewingOtherRestOrders && (
+              <div className="m-4 mb-0 p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/30 text-slate-200 text-xs space-y-2 animate-fade-in">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 text-amber-400 font-bold">
+                    <Store className="w-4 h-4 shrink-0" />
+                    <span>تم جلب ({allSystemPending.length}) طلبات معلقة من: {restaurants.find(r => r.id === allSystemPending[0]?.restaurant_id)?.name_ar || 'مطعم آخر'}</span>
+                  </div>
+                  {restaurants.find(r => r.id === allSystemPending[0]?.restaurant_id) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = restaurants.find(r => r.id === allSystemPending[0]?.restaurant_id);
+                        if (target) {
+                          setActiveRestaurant(target);
+                          setIncomingSuccessMsg(`✅ تم تحويل شاشة الكاشير إلى: ${target.name_ar}`);
+                          setTimeout(() => setIncomingSuccessMsg(null), 3000);
+                        }
+                      }}
+                      className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-[11px] rounded-lg transition-all shadow-sm cursor-pointer"
+                    >
+                      التحويل للمطعم
+                    </button>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-300">
+                  شاشة الكاشير مضبوطة حالياً على: <span className="font-bold text-white">"{activeRestaurant?.name_ar || 'غير محدد'}"</span>. يمكنك تأكيد هذه الطلبات وإرسالها للمطبخ فوراً من هنا.
+                </p>
+              </div>
+            )}
+
             {/* Orders List Content */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
               {incomingOrders.length === 0 ? (
@@ -722,6 +817,7 @@ export const PosDashboard: React.FC = () => {
                   const isDelivery = order.order_type === 'delivery';
                   const isTakeaway = order.order_type === 'takeaway';
                   const isDineIn = order.order_type === 'dine_in';
+                  const orderRest = restaurants.find(r => r.id === order.restaurant_id);
 
                   return (
                     <div
@@ -729,8 +825,14 @@ export const PosDashboard: React.FC = () => {
                       className="bg-slate-950/70 border border-slate-800 hover:border-amber-500/40 rounded-2xl p-4 space-y-3 shadow-lg transition-all"
                     >
                       {/* Top Badges */}
-                      <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {restaurants.length > 1 && orderRest && (
+                            <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-amber-300 border border-slate-700">
+                              <Store className="w-3 h-3 text-amber-400" />
+                              <span>{orderRest.name_ar}</span>
+                            </span>
+                          )}
                           {isDelivery && (
                             <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                               <Bike className="w-3 h-3" />

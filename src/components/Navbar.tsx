@@ -200,8 +200,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer, onOpenRegister, 
               </div>
             )}
 
-            {/* Restaurant Switcher (Super Admin or Restaurant Owner) */}
-            {(isSuperAdmin || (restaurants.length > 1 && isOwner)) && (
+            {/* Restaurant Switcher (Super Admin, Owner, or Cashier/Staff when multiple restaurants exist) */}
+            {(isSuperAdmin || restaurants.length > 1) && (
               <div className="relative ml-2">
                 <button
                   onClick={() => setShowRestMenu(!showRestMenu)}
