@@ -228,6 +228,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadFromStorage<User | null>('sufrah_v2_current_user', null)
   );
 
+  const activeRestaurantRef = useRef<Restaurant | null>(activeRestaurant);
+  const currentUserRef = useRef<User | null>(currentUser);
+  useEffect(() => {
+    activeRestaurantRef.current = activeRestaurant;
+  }, [activeRestaurant]);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
   // Web Audio Chime for live incoming orders
   const playNotificationSound = () => {
     try {
@@ -305,7 +314,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (prev.some(o => o.id === payload.id || o.order_number === payload.order_number)) {
             return prev;
           }
-          playNotificationSound();
+          // Only play sound if order is for this user's active restaurant
+          const activeId = activeRestaurantRef.current ? Number(activeRestaurantRef.current.id) : Number(currentUserRef.current?.restaurant_id || 0);
+          if (!activeId || Number(payload.restaurant_id) === activeId) {
+            playNotificationSound();
+          }
           return [payload, ...prev];
         });
       } else if (type === 'order_status_updated') {

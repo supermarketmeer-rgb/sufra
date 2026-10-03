@@ -70,29 +70,15 @@ export const PosDashboard: React.FC = () => {
   const [selectedIncomingOrder, setSelectedIncomingOrder] = useState<Order | null>(null);
   const [incomingSuccessMsg, setIncomingSuccessMsg] = useState<string | null>(null);
 
-  // Filter pending incoming orders with high tolerance & cross-restaurant visibility
-  const isPendingStatus = (st: any) => {
-    const s = String(st || '').toLowerCase().trim();
-    return s === 'new' || s === 'in_review';
-  };
+  const currRestId = Number(activeRestaurant?.id || currentUser?.restaurant_id || 1);
 
-  const currRestId = Number(activeRestaurant?.id || currentUser?.restaurant_id || 0);
-
-  // Orders specifically matching the active restaurant
-  const currentRestPending = orders.filter(o => {
+  // Strictly filter pending incoming orders for the active restaurant ONLY
+  const incomingOrders = orders.filter(o => {
     const orderRestId = Number(o.restaurant_id);
-    const isSameRest = currRestId === 0 || orderRestId === currRestId;
-    return isSameRest && isPendingStatus(o.status);
+    const isSameRest = orderRestId === currRestId;
+    const s = String(o.status || '').toLowerCase().trim();
+    return isSameRest && (s === 'new' || s === 'in_review');
   });
-
-  // All pending orders across the entire restaurant system
-  const allSystemPending = orders.filter(o => isPendingStatus(o.status));
-
-  // If the active restaurant has pending orders, show them.
-  // If active restaurant has 0 orders but other restaurants have pending orders,
-  // show all pending orders so the cashier NEVER misses a customer order!
-  const incomingOrders = currentRestPending.length > 0 ? currentRestPending : allSystemPending;
-  const isViewingOtherRestOrders = currentRestPending.length === 0 && allSystemPending.length > 0;
 
   // Sound alert on new incoming order
   const prevIncomingCount = useRef(incomingOrders.length);
@@ -769,37 +755,6 @@ export const PosDashboard: React.FC = () => {
               </div>
             )}
 
-            {/* Cross-restaurant warning/helper banner */}
-            {isViewingOtherRestOrders && (
-              <div className="m-4 mb-0 p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/30 text-slate-200 text-xs space-y-2 animate-fade-in">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2 text-amber-400 font-bold">
-                    <Store className="w-4 h-4 shrink-0" />
-                    <span>تم جلب ({allSystemPending.length}) طلبات معلقة من: {restaurants.find(r => r.id === allSystemPending[0]?.restaurant_id)?.name_ar || 'مطعم آخر'}</span>
-                  </div>
-                  {restaurants.find(r => r.id === allSystemPending[0]?.restaurant_id) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const target = restaurants.find(r => r.id === allSystemPending[0]?.restaurant_id);
-                        if (target) {
-                          setActiveRestaurant(target);
-                          setIncomingSuccessMsg(`✅ تم تحويل شاشة الكاشير إلى: ${target.name_ar}`);
-                          setTimeout(() => setIncomingSuccessMsg(null), 3000);
-                        }
-                      }}
-                      className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-[11px] rounded-lg transition-all shadow-sm cursor-pointer"
-                    >
-                      التحويل للمطعم
-                    </button>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-300">
-                  شاشة الكاشير مضبوطة حالياً على: <span className="font-bold text-white">"{activeRestaurant?.name_ar || 'غير محدد'}"</span>. يمكنك تأكيد هذه الطلبات وإرسالها للمطبخ فوراً من هنا.
-                </p>
-              </div>
-            )}
-
             {/* Orders List Content */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
               {incomingOrders.length === 0 ? (
@@ -817,7 +772,6 @@ export const PosDashboard: React.FC = () => {
                   const isDelivery = order.order_type === 'delivery';
                   const isTakeaway = order.order_type === 'takeaway';
                   const isDineIn = order.order_type === 'dine_in';
-                  const orderRest = restaurants.find(r => r.id === order.restaurant_id);
 
                   return (
                     <div
@@ -827,12 +781,6 @@ export const PosDashboard: React.FC = () => {
                       {/* Top Badges */}
                       <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5 flex-wrap">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          {restaurants.length > 1 && orderRest && (
-                            <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-amber-300 border border-slate-700">
-                              <Store className="w-3 h-3 text-amber-400" />
-                              <span>{orderRest.name_ar}</span>
-                            </span>
-                          )}
                           {isDelivery && (
                             <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                               <Bike className="w-3 h-3" />

@@ -32,7 +32,6 @@ export const KdsDashboard: React.FC = () => {
 
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [filterType, setFilterType] = useState<'all' | 'dine_in' | 'delivery' | 'takeaway'>('all');
-  const [viewScope, setViewScope] = useState<'current' | 'all'>('current');
   const [showRestPicker, setShowRestPicker] = useState(false);
   const [currentTime, setCurrentTime] = useState<number>(Date.now());
 
@@ -46,27 +45,15 @@ export const KdsDashboard: React.FC = () => {
 
   const currRestId = Number(activeRestaurant?.id || currentUser?.restaurant_id || 1);
 
-  // Orders being prepared for the current restaurant
-  const currentRestPreparing = orders.filter(o => {
+  // Strictly filter kitchen active orders for the active restaurant ONLY ('preparing')
+  const kitchenOrders = orders.filter(o => {
     const isSameRest = Number(o.restaurant_id) === currRestId;
     const isPreparing = o.status === 'preparing';
     const matchesType = filterType === 'all' || o.order_type === filterType;
     return isSameRest && isPreparing && matchesType;
   });
 
-  // All orders being prepared across all restaurants
-  const allSystemPreparing = orders.filter(o => {
-    const isPreparing = o.status === 'preparing';
-    const matchesType = filterType === 'all' || o.order_type === filterType;
-    return isPreparing && matchesType;
-  });
-
-  const otherRestPreparingCount = Math.max(0, allSystemPreparing.length - currentRestPreparing.length);
-
-  // Displayed orders based on scope
-  const kitchenOrders = viewScope === 'all' ? allSystemPreparing : currentRestPreparing;
-
-  // Orders awaiting cashier review & confirmation
+  // Orders awaiting cashier review & confirmation for the active restaurant ONLY
   const pendingCashierOrdersCount = orders.filter(o => {
     const isSameRest = Number(o.restaurant_id) === currRestId;
     const isPending = o.status === 'new' || o.status === 'in_review';
@@ -197,30 +184,6 @@ export const KdsDashboard: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Scope Selector: Current Restaurant vs All Restaurants */}
-          {restaurants.length > 1 && (
-            <div className="flex items-center gap-1 p-1 bg-slate-950 rounded-xl border border-slate-800 text-xs">
-              <button
-                type="button"
-                onClick={() => setViewScope('current')}
-                className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
-                  viewScope === 'current' ? 'bg-rose-500 text-white font-bold' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {activeRestaurant?.name_ar?.split(' ')[1] || 'مطعمي'} ({currentRestPreparing.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewScope('all')}
-                className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
-                  viewScope === 'all' ? 'bg-rose-500 text-white font-bold' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                جميع المطاعم ({allSystemPreparing.length})
-              </button>
-            </div>
-          )}
-
           {/* Filter Pills */}
           <div className="flex items-center gap-1 p-1 bg-slate-950 rounded-xl border border-slate-800 text-xs">
             <button
@@ -268,39 +231,6 @@ export const KdsDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Cross-restaurant notification banner when other branches have active orders */}
-      {otherRestPreparingCount > 0 && viewScope === 'current' && (
-        <div className="bg-gradient-to-r from-amber-500/15 via-rose-500/10 to-amber-500/15 border border-amber-500/30 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs flex-wrap animate-fade-in">
-          <div className="flex items-center gap-2 text-amber-300">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
-            <span>
-              يوجد <strong>{otherRestPreparingCount}</strong> طلبات قيد التحضير في مطعم آخر (مطعم جوان).
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setViewScope('all')}
-              className="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl transition-all shadow-sm cursor-pointer"
-            >
-              عرض جميع المطاعم ({allSystemPreparing.length})
-            </button>
-            {restaurants.find(r => r.id !== currRestId) && (
-              <button
-                type="button"
-                onClick={() => {
-                  const target = restaurants.find(r => r.id !== currRestId);
-                  if (target) setActiveRestaurant(target);
-                }}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition-all cursor-pointer"
-              >
-                التحويل إلى {restaurants.find(r => r.id !== currRestId)?.name_ar}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Ticket Grid */}
       {kitchenOrders.length === 0 ? (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-16 text-center space-y-3">
@@ -328,13 +258,8 @@ export const KdsDashboard: React.FC = () => {
                   {/* Ticket Header */}
                   <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                     <div>
-                      <div className="font-black text-white text-base font-mono flex items-center gap-1.5 flex-wrap">
+                      <div className="font-black text-white text-base font-mono">
                         <span>{order.order_number}</span>
-                        {restaurants.length > 1 && orderRest && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-800 text-amber-300 border border-slate-700 font-sans">
-                            {orderRest.name_ar}
-                          </span>
-                        )}
                       </div>
                       <div className="text-xs text-amber-400 font-bold mt-0.5">
                         {order.order_type === 'dine_in'
