@@ -15,6 +15,7 @@ import {
   Sparkles,
   Phone,
   Lock,
+  User,
   Mail,
   LogIn,
   Eye,
