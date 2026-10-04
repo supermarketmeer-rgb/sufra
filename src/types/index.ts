@@ -199,6 +199,7 @@ export interface Plan {
   has_delivery_gps: boolean;
   has_ai_analytics: boolean;
   has_custom_domain: boolean;
+  trial_days?: number;
   features: string[];
 }
 

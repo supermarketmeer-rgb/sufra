@@ -168,6 +168,11 @@ export const SuperAdminDashboard: React.FC = () => {
   const [planMaxBranches, setPlanMaxBranches] = useState<number>(1);
   const [planMaxTables, setPlanMaxTables] = useState<number>(10);
   const [planMaxProducts, setPlanMaxProducts] = useState<number>(50);
+  const [planHasPos, setPlanHasPos] = useState<boolean>(true);
+  const [planHasKds, setPlanHasKds] = useState<boolean>(true);
+  const [planHasDeliveryGps, setPlanHasDeliveryGps] = useState<boolean>(false);
+  const [planHasAiAnalytics, setPlanHasAiAnalytics] = useState<boolean>(false);
+  const [planTrialDays, setPlanTrialDays] = useState<number>(14);
 
   const handleOpenEditPlan = (plan: any) => {
     setEditingPlan(plan);
@@ -176,6 +181,11 @@ export const SuperAdminDashboard: React.FC = () => {
     setPlanMaxBranches(plan.max_branches);
     setPlanMaxTables(plan.max_tables);
     setPlanMaxProducts(plan.max_products);
+    setPlanHasPos(plan.has_pos ?? (plan.slug === 'free' ? true : false));
+    setPlanHasKds(plan.has_kds ?? (plan.slug === 'free' ? true : false));
+    setPlanHasDeliveryGps(plan.has_delivery_gps ?? false);
+    setPlanHasAiAnalytics(plan.has_ai_analytics ?? false);
+    setPlanTrialDays(plan.trial_days ?? (plan.price_monthly === 0 ? 14 : 0));
   };
 
   const handleSavePlan = (e: React.FormEvent) => {
@@ -186,7 +196,12 @@ export const SuperAdminDashboard: React.FC = () => {
       price_yearly: planPriceYearly,
       max_branches: planMaxBranches,
       max_tables: planMaxTables,
-      max_products: planMaxProducts
+      max_products: planMaxProducts,
+      has_pos: planHasPos,
+      has_kds: planHasKds,
+      has_delivery_gps: planHasDeliveryGps,
+      has_ai_analytics: planHasAiAnalytics,
+      trial_days: planTrialDays > 0 ? planTrialDays : undefined
     });
     setEditingPlan(null);
   };
@@ -530,6 +545,11 @@ export const SuperAdminDashboard: React.FC = () => {
                       الأكثر طلباً
                     </span>
                   )}
+                  {(plan.trial_days || plan.slug === 'free') && (
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                      تجربة {plan.trial_days || 14} يوم
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-slate-400 mt-1">{plan.name_en}</p>
 
@@ -537,6 +557,11 @@ export const SuperAdminDashboard: React.FC = () => {
                   <span className="text-2xl font-black font-mono-numbers text-white">
                     {plan.price_monthly === 0 ? 'مجاناً' : `${plan.price_monthly.toLocaleString()} د.ع`}
                   </span>
+                  {plan.price_monthly === 0 && (
+                    <span className="text-xs text-emerald-400 font-semibold mr-1">
+                      (فترة تجريبية {plan.trial_days || 14} يوم)
+                    </span>
+                  )}
                   {plan.price_monthly > 0 && (
                     <span className="text-xs text-slate-400">
                       / شهرياً ({plan.price_yearly.toLocaleString()} د.ع سنوياً)
@@ -1091,6 +1116,59 @@ export const SuperAdminDashboard: React.FC = () => {
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-amber-500"
                   />
                 </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-800 space-y-2">
+                <label className="block text-slate-400 font-semibold mb-1">الأنظمة والخصائص المشمولة:</label>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <label className="flex items-center gap-2 p-2 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer hover:border-amber-500/40 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={planHasPos}
+                      onChange={e => setPlanHasPos(e.target.checked)}
+                      className="rounded text-amber-500 focus:ring-0"
+                    />
+                    <span className="text-slate-200 font-semibold">نظام الكاشير (POS)</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-2 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer hover:border-amber-500/40 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={planHasKds}
+                      onChange={e => setPlanHasKds(e.target.checked)}
+                      className="rounded text-amber-500 focus:ring-0"
+                    />
+                    <span className="text-slate-200 font-semibold">شاشة المطبخ (KDS)</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-2 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer hover:border-amber-500/40 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={planHasDeliveryGps}
+                      onChange={e => setPlanHasDeliveryGps(e.target.checked)}
+                      className="rounded text-amber-500 focus:ring-0"
+                    />
+                    <span className="text-slate-200 font-semibold">تتبع السائقين GPS</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-2 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer hover:border-amber-500/40 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={planHasAiAnalytics}
+                      onChange={e => setPlanHasAiAnalytics(e.target.checked)}
+                      className="rounded text-amber-500 focus:ring-0"
+                    />
+                    <span className="text-slate-200 font-semibold">تحليلات الذكاء الاصطناعي</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1">مدة الفترة التجريبية (بالأيام - 0 إن لم تكن تجريبية):</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={planTrialDays}
+                  onChange={e => setPlanTrialDays(Number(e.target.value))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-amber-500"
+                />
               </div>
 
               <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">

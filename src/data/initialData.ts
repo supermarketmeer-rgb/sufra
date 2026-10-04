@@ -288,21 +288,29 @@ export const INITIAL_COUPONS: Coupon[] = [];
 export const SAAS_PLANS: Plan[] = [
   {
     id: 1,
-    name_ar: 'الباقة المجانية (Starter)',
-    name_en: 'Free Starter Plan',
+    name_ar: 'الباقة المجانية (تجريبية 14 يوم)',
+    name_en: 'Free 14-Day Trial',
     slug: 'free',
     price_monthly: 0,
     price_yearly: 0,
     currency: 'IQD',
     max_branches: 1,
     max_tables: 10,
-    max_products: 40,
-    has_pos: false,
-    has_kds: false,
+    max_products: 50,
+    has_pos: true,
+    has_kds: true,
     has_delivery_gps: false,
     has_ai_analytics: false,
     has_custom_domain: false,
-    features: ['منيو إلكتروني QR تفاعلي', 'رمز QR رئيسي واحد', 'إدارة الأصناف والصور', 'دعم فني عبر البريد']
+    trial_days: 14,
+    features: [
+      'فترة تجريبية مجانية لمدة 14 يوم',
+      'منيو إلكتروني QR تفاعلي',
+      'نظام الكاشير وتسجيل الطلبات (POS)',
+      'شاشة المطبخ KDS مع التنبيهات',
+      'إدارة الأصناف والصور',
+      'دعم فني مباشر'
+    ]
   },
   {
     id: 2,
