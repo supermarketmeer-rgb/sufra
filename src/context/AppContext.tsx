@@ -320,9 +320,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.orders.length > 0) setOrders(data.orders);
       if (data.reservations.length > 0) setReservations(data.reservations);
       if (data.reviews.length > 0) setReviews(data.reviews);
-      if (data.coupons.length > 0) setCoupons(data.coupons);
-      if (data.plans.length > 0) setPlans(data.plans);
-      if (data.activityLogs.length > 0) setActivityLogs(data.activityLogs);
+      if (data.plans.length > 0) {
+        setPlans(data.plans.map(p => {
+          if (p.slug === 'free' || p.id === 1 || p.price_monthly === 0) {
+            return {
+              ...p,
+              name_ar: 'الباقة المجانية (تجريبية 14 يوم)',
+              name_en: 'Free 14-Day Trial',
+              has_pos: true,
+              has_kds: true,
+              trial_days: 14,
+              features: [
+                'فترة تجريبية مجانية لمدة 14 يوم',
+                'منيو إلكتروني QR تفاعلي',
+                'نظام الكاشير وتسجيل الطلبات (POS)',
+                'شاشة المطبخ KDS مع التنبيهات',
+                'إدارة الأصناف والصور',
+                'دعم فني مباشر'
+              ]
+            };
+          }
+          return p;
+        }));
+      }
       if (data.users && data.users.length > 0) setUsers(data.users);
     });
 

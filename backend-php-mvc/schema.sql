@@ -614,7 +614,7 @@ INSERT INTO `roles` (`id`, `name`, `display_name_ar`, `display_name_en`, `descri
 (7, 'customer', 'زبون / عميل', 'Customer', 'Browses digital QR menu, places orders, reservations, reviews');
 
 INSERT INTO `plans` (`id`, `name_ar`, `name_en`, `slug`, `price_monthly`, `price_yearly`, `currency`, `max_branches`, `max_tables`, `max_products`, `has_pos`, `has_kds`, `has_delivery_gps`, `has_ai_analytics`, `has_custom_domain`) VALUES
-(1, 'الباقة المجانية (الأساسية)', 'Free Starter Plan', 'free', 0.00, 0.00, 'IQD', 1, 10, 50, 0, 0, 0, 0, 0),
+(1, 'الباقة المجانية (تجريبية 14 يوم)', 'Free 14-Day Trial', 'free', 0.00, 0.00, 'IQD', 1, 10, 50, 1, 1, 0, 0, 0),
 (2, 'الباقة الاحترافية (Pro)', 'Professional Plan', 'pro', 65000.00, 650000.00, 'IQD', 3, 50, 300, 1, 1, 0, 1, 0),
 (3, 'الباقة المؤسسية (Enterprise)', 'Enterprise Multi-Branch', 'enterprise', 150000.00, 1500000.00, 'IQD', 99, 500, 2000, 1, 1, 1, 1, 1);
 

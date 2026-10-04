@@ -318,10 +318,11 @@ apiRouter.get(['/data', '/bootstrap'], async (req, res) => {
           features = typeof pl.features === 'string' ? JSON.parse(pl.features) : pl.features;
         }
       } catch {}
+      const isFree = pl.slug === 'free' || pl.id === 1 || Number(pl.price_monthly) === 0;
       return {
         id: pl.id,
-        name_ar: pl.name_ar,
-        name_en: pl.name_en,
+        name_ar: isFree ? 'الباقة المجانية (تجريبية 14 يوم)' : pl.name_ar,
+        name_en: isFree ? 'Free 14-Day Trial' : pl.name_en,
         slug: pl.slug,
         price_monthly: Number(pl.price_monthly),
         price_yearly: Number(pl.price_yearly),
@@ -329,12 +330,20 @@ apiRouter.get(['/data', '/bootstrap'], async (req, res) => {
         max_branches: Number(pl.max_branches),
         max_tables: Number(pl.max_tables),
         max_products: Number(pl.max_products),
-        has_pos: Boolean(pl.has_pos),
-        has_kds: Boolean(pl.has_kds),
+        has_pos: isFree ? true : Boolean(pl.has_pos),
+        has_kds: isFree ? true : Boolean(pl.has_kds),
         has_delivery_gps: Boolean(pl.has_delivery_gps),
         has_ai_analytics: Boolean(pl.has_ai_analytics),
         has_custom_domain: Boolean(pl.has_custom_domain),
-        features: features.length > 0 ? features : ['منيو إلكتروني تفاعلي', 'إدارة الأصناف والصور', 'دعم فني مباشر']
+        trial_days: isFree ? 14 : Number(pl.trial_days || 0),
+        features: isFree ? [
+          'فترة تجريبية مجانية لمدة 14 يوم',
+          'منيو إلكتروني QR تفاعلي',
+          'نظام الكاشير وتسجيل الطلبات (POS)',
+          'شاشة المطبخ KDS مع التنبيهات',
+          'إدارة الأصناف والصور',
+          'دعم فني مباشر'
+        ] : (features.length > 0 ? features : ['منيو إلكتروني تفاعلي', 'إدارة الأصناف والصور', 'دعم فني مباشر'])
       };
     });
 
