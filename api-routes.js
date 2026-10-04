@@ -871,20 +871,25 @@ apiRouter.delete('/restaurants/:id', async (req, res) => {
     const [rows] = await conn.query(`SELECT name_ar FROM restaurants WHERE id = ?`, [id]);
     const restName = rows[0]?.name_ar || `مطعم #${id}`;
 
-    // Delete cascading references
+    // Disable FK checks to avoid constraint issues during cascade delete
+    await conn.query(`SET FOREIGN_KEY_CHECKS = 0`);
+
+    // Delete cascading references (order_details BEFORE products to avoid FK error)
     await conn.query(`DELETE FROM restaurant_settings WHERE restaurant_id = ?`, [id]);
     await conn.query(`DELETE FROM subscriptions WHERE restaurant_id = ?`, [id]);
+    await conn.query(`DELETE FROM order_details WHERE order_id IN (SELECT id FROM orders WHERE restaurant_id = ?)`, [id]);
+    await conn.query(`DELETE FROM orders WHERE restaurant_id = ?`, [id]);
     await conn.query(`DELETE FROM products WHERE restaurant_id = ?`, [id]);
     await conn.query(`DELETE FROM categories WHERE restaurant_id = ?`, [id]);
     await conn.query(`DELETE FROM tables WHERE branch_id IN (SELECT id FROM branches WHERE restaurant_id = ?)`, [id]);
     await conn.query(`DELETE FROM branches WHERE restaurant_id = ?`, [id]);
-    await conn.query(`DELETE FROM order_details WHERE order_id IN (SELECT id FROM orders WHERE restaurant_id = ?)`, [id]);
-    await conn.query(`DELETE FROM orders WHERE restaurant_id = ?`, [id]);
     await conn.query(`DELETE FROM coupons WHERE restaurant_id = ?`, [id]);
     await conn.query(`DELETE FROM reservations WHERE restaurant_id = ?`, [id]);
     await conn.query(`DELETE FROM reviews WHERE restaurant_id = ?`, [id]);
     await conn.query(`DELETE FROM users WHERE restaurant_id = ?`, [id]);
     await conn.query(`DELETE FROM restaurants WHERE id = ?`, [id]);
+
+    await conn.query(`SET FOREIGN_KEY_CHECKS = 1`);
 
     await conn.query(`
       INSERT INTO activity_logs (restaurant_id, action, description)
@@ -897,6 +902,7 @@ apiRouter.delete('/restaurants/:id', async (req, res) => {
     res.json({ success: true, id, message: `تم حذف مطعم ${restName} بنجاح` });
   } catch (err) {
     await conn.rollback();
+    await conn.query(`SET FOREIGN_KEY_CHECKS = 1`).catch(() => {});
     res.status(500).json({ success: false, message: err.message });
   } finally {
     conn.release();

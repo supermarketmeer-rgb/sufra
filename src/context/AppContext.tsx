@@ -236,12 +236,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const [users, setUsers] = useState<User[]>(() => {
-    const saved = loadFromStorage<User[]>('sufrah_v2_users', INITIAL_USERS);
+    const saved = loadFromStorage<User[]>('sufrah_v2_users', null);
+    // If nothing is saved yet (first run), use INITIAL_USERS
     if (!saved || saved.length === 0) return INITIAL_USERS;
-    const existingUsernames = new Set(saved.map(u => (u.username || '').toLowerCase()));
-    const missing = INITIAL_USERS.filter(u => !existingUsernames.has((u.username || '').toLowerCase()));
-    if (missing.length > 0) {
-      return [...saved, ...missing];
+    // IMPORTANT: Do NOT re-add missing INITIAL_USERS.
+    // Deleted users (e.g. staff of a deleted restaurant) must stay deleted.
+    // Re-merging INITIAL_USERS here was the bug that allowed deleted staff to log in again.
+
+    // OFFLINE SAFETY NET: remove users belonging to restaurants not in local storage
+    const savedRestaurants = loadFromStorage<Restaurant[]>('sufrah_v2_restaurants', null);
+    if (savedRestaurants && savedRestaurants.length > 0) {
+      const validRestIds = new Set(savedRestaurants.map(r => Number(r.id)));
+      const cleaned = saved.filter(u => u.role === 'super_admin' || !u.restaurant_id || validRestIds.has(Number(u.restaurant_id)));
+      if (cleaned.length !== saved.length) {
+        // Save cleaned list immediately to localStorage
+        try { localStorage.setItem('sufrah_v2_users', JSON.stringify(cleaned)); } catch {}
+        return cleaned;
+      }
     }
     return saved;
   });
@@ -343,7 +354,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return p;
         }));
       }
-      if (data.users && data.users.length > 0) setUsers(data.users);
+      if (data.users && data.users.length > 0) {
+        setUsers(data.users);
+      } else if (data.restaurants.length > 0) {
+        // Even if no users came from cloud, clean local users that belong to deleted restaurants
+        const validRestIds = new Set(data.restaurants.map((r: { id: number }) => Number(r.id)));
+        setUsers(prev => {
+          const cleaned = prev.filter(u => u.role === 'super_admin' || !u.restaurant_id || validRestIds.has(Number(u.restaurant_id)));
+          if (cleaned.length !== prev.length) {
+            saveToStorage('sufrah_v2_users', cleaned);
+          }
+          return cleaned;
+        });
+      }
     });
 
     // 2. Real-Time SSE Listener across all devices
@@ -391,13 +414,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setProducts(prev => prev.filter(p => p.restaurant_id !== payload.id));
         setCategories(prev => prev.filter(c => c.restaurant_id !== payload.id));
         setOrders(prev => prev.filter(o => o.restaurant_id !== payload.id));
-        setActiveRestaurant(prev => {
-          if (prev && prev.id === payload.id) {
-            const remaining = restaurants.filter(r => r.id !== payload.id);
-            return remaining.length > 0 ? remaining[0] : null;
-          }
-          return prev;
-        });
+        setUsers(prev => prev.filter(u => Number(u.restaurant_id) !== Number(payload.id)));
+        // Staff of the deleted restaurant are logged out immediately (never switched to another restaurant)
+        const sessUser = currentUserRef.current;
+        if (sessUser && sessUser.role !== 'super_admin' && Number(sessUser.restaurant_id) === Number(payload.id)) {
+          setCurrentUser(null);
+          setCurrentRole('customer');
+          localStorage.removeItem('sufrah_v2_current_user');
+          localStorage.removeItem('sufrah_v2_active_restaurant_id');
+        }
+        setActiveRestaurant(prev => (prev && Number(prev.id) === Number(payload.id) ? null : prev));
       } else if (type === 'plan_activated') {
         setActiveRestaurant(prev => prev && prev.id === payload.restaurant_id ? { ...prev, plan_name: payload.planName } : prev);
         setRestaurants(prev => prev.map(r => r.id === payload.restaurant_id ? { ...r, plan_name: payload.planName } : r));
@@ -465,11 +491,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('sufrah_v2_users', JSON.stringify(users));
   }, [users]);
 
+  // Session guard: kick out any logged-in staff whose account or restaurant was deleted/suspended
+  useEffect(() => {
+    if (!currentUser || currentUser.role === 'super_admin') return;
+    const userStillExists = users.some(u => String(u.id) === String(currentUser.id) && u.is_active);
+    const rest = currentUser.restaurant_id
+      ? restaurants.find(r => Number(r.id) === Number(currentUser.restaurant_id))
+      : undefined;
+    if (!userStillExists || !rest || rest.status === 'suspended') {
+      setCurrentUser(null);
+      setCurrentRole('customer');
+      setActiveRestaurant(null);
+      localStorage.removeItem('sufrah_v2_current_user');
+      localStorage.removeItem('sufrah_v2_active_restaurant_id');
+    }
+  }, [currentUser, users, restaurants]);
+
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('sufrah_v2_current_user', JSON.stringify(currentUser));
       if (currentUser.restaurant_id) {
-        const rest = restaurants.find(r => r.id === currentUser.restaurant_id) || INITIAL_RESTAURANTS.find(r => r.id === currentUser.restaurant_id);
+        const rest = restaurants.find(r => Number(r.id) === Number(currentUser.restaurant_id));
         if (rest && activeRestaurant?.id !== rest.id) {
           setActiveRestaurant(rest);
           localStorage.setItem('sufrah_v2_active_restaurant_id', String(rest.id));
@@ -498,130 +540,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cleanIdNoSep = rawId.replace(/[\s_\-]+/g, '');
     const cleanDigits = rawId.replace(/\D/g, '');
 
-    // 1. Direct username, email, phone match
-    let found = users.find(u => {
+    // STRICT account matching: exact username, email or full phone number only.
+    // (No fuzzy/substring/name matching — it caused one restaurant's staff to open another restaurant's account.)
+    const candidates = users.filter(u => {
       if (!u.is_active) return false;
       const uUsername = (u.username || '').toLowerCase().trim();
       const uEmail = (u.email || '').toLowerCase().trim();
       const uPhoneDigits = (u.phone || '').replace(/\D/g, '');
 
-      if (uUsername === rawId || uUsername === cleanIdWithUnderscore) return true;
-      if (uUsername.replace(/[\s_\-]+/g, '') === cleanIdNoSep) return true;
-      if (uEmail === rawId) return true;
-      if (cleanDigits.length >= 7 && (uPhoneDigits.endsWith(cleanDigits) || cleanDigits.endsWith(uPhoneDigits))) {
-        return true;
+      if (uUsername && (uUsername === rawId || uUsername === cleanIdWithUnderscore)) return true;
+      if (uEmail && uEmail === rawId) return true;
+      if (cleanDigits.length >= 7 && uPhoneDigits.length >= 7) {
+        // Compare last 10 digits to tolerate +964 / 0 prefixes
+        if (uPhoneDigits.slice(-10) === cleanDigits.slice(-10)) return true;
       }
       return false;
     });
 
-    // 2. Exact match for 'ali' or 'علي' -> strictly matches Owner of Jwan (User 7)
-    if (!found && (rawId === 'ali' || rawId === 'علي' || cleanIdNoSep === 'علي' || cleanIdNoSep === 'ali')) {
-      found = users.find(u => u.restaurant_id === 2 && u.role === 'restaurant_owner') || users.find(u => u.id === 7);
-    }
+    // Staff of deleted restaurants must never log in
+    const validCandidates = candidates.filter(u => {
+      if (u.role === 'super_admin') return true;
+      if (!u.restaurant_id) return false;
+      return restaurants.some(r => Number(r.id) === Number(u.restaurant_id));
+    });
 
-    // 3. Substring username match (e.g. "jwan" -> "owner_jwan", "sufrah" -> "owner_sufrah")
-    if (!found) {
-      found = users.find(u => {
-        if (!u.is_active) return false;
-        const uUsername = (u.username || '').toLowerCase().trim();
-        return uUsername.includes(cleanIdNoSep) || cleanIdNoSep.includes(uUsername.replace('owner_', ''));
-      });
-    }
-
-    // 4. Match by User Display Name in Arabic - PRIORITIZE RESTAURANT OWNER OVER STAFF!
-    if (!found) {
-      // Find candidate matches
-      const candidates = users.filter(u => {
-        if (!u.is_active) return false;
-        const uName = (u.name || '').toLowerCase();
-        const firstName = uName.split(/[\s()]+/)[0];
-        return firstName === rawId || uName.startsWith(rawId) || uName.includes(rawId);
-      });
-
-      if (candidates.length > 0) {
-        // If an active restaurant is selected or target restaurantId provided, prefer that restaurant
-        const preferredRestId = restaurantId || activeRestaurant?.id;
-        if (preferredRestId) {
-          const restCandidate = candidates.find(u => u.restaurant_id === preferredRestId);
-          if (restCandidate) {
-            found = restCandidate;
-          }
-        }
-
-        if (!found) {
-          // Sort: restaurant_owner first, then branch_manager, then staff
-          candidates.sort((a, b) => {
-            const score = (role: UserRole) => {
-              if (role === 'restaurant_owner') return 1;
-              if (role === 'super_admin') return 2;
-              if (role === 'branch_manager') return 3;
-              return 4;
-            };
-            return score(a.role) - score(b.role);
-          });
-          found = candidates[0];
-        }
-      }
-    }
-
-    // 5. Match by Restaurant Name or Slug (e.g. "مطعم جوان", "جوان", "السفرة", "مطعم السفرة", "jwan-restaurant")
-    if (!found) {
-      const matchedRest = restaurants.find(r => {
-        const rName = r.name_ar.toLowerCase();
-        const rSlug = r.slug.toLowerCase();
-        const rNameEn = r.name_en.toLowerCase();
-        const rPhone = (r.phone || '').replace(/\D/g, '');
-
-        if (rName === rawId || rName.includes(rawId) || rawId.includes(rName)) return true;
-        if (cleanIdNoSep.includes('جوان') && rName.includes('جوان')) return true;
-        if ((cleanIdNoSep.includes('سفرة') || cleanIdNoSep.includes('سفره')) && (rName.includes('سفرة') || rName.includes('سفره'))) return true;
-        if (rSlug.includes(rawId) || rawId.includes(rSlug)) return true;
-        if (rNameEn.includes(rawId) || rawId.includes(rNameEn)) return true;
-        if (cleanDigits.length >= 7 && rPhone.includes(cleanDigits)) return true;
-        return false;
-      });
-
-      if (matchedRest) {
-        found = users.find(u => u.restaurant_id === matchedRest.id && (u.role === 'restaurant_owner' || u.role === 'branch_manager'));
-      }
-    }
-
-    // 6. Match by role keywords ("admin", "superadmin", "مدير", "المدير العام", "owner", "مالك")
-    if (!found) {
-      if (rawId.includes('admin') || rawId.includes('super') || rawId === 'مدير' || rawId === 'المدير' || rawId === 'المدير العام') {
-        found = users.find(u => u.role === 'super_admin');
-      } else if (rawId.includes('owner') || rawId === 'مالك' || rawId === 'المالك') {
-        found = users.find(u => u.role === 'restaurant_owner' && (!restaurantId || u.restaurant_id === restaurantId));
-      }
-    }
-
-    if (!found) {
-      return { 
-        success: false, 
-        message: 'الحساب غير مسجل. يرجى تجربة اسم المستخدم مثل (owner_jwan أو admin) أو رقم الهاتف (07810909577)' 
+    if (validCandidates.length === 0) {
+      return {
+        success: false,
+        message: candidates.length > 0
+          ? 'هذا الحساب تابع لمطعم محذوف أو غير موجود، لا يمكن تسجيل الدخول.'
+          : 'اسم المستخدم غير مسجل. تأكد من كتابة اسم المستخدم أو البريد أو رقم الهاتف بشكل صحيح.'
       };
     }
 
-    const userPassword = normalizeDigits(found.password || '').trim();
-    const userPin = normalizeDigits(found.pin_code || '').trim();
+    // Verify password / PIN against the matched account(s) only
+    const found = validCandidates.find(u => {
+      const userPassword = normalizeDigits(u.password || '').trim();
+      const userPin = normalizeDigits(u.pin_code || '').trim();
+      return (
+        (userPassword !== '' && userPassword === cleanSecret) ||
+        (userPin !== '' && userPin === cleanSecret)
+      );
+    });
 
-    const matchesPassword = 
-      (userPassword && userPassword.toLowerCase() === cleanSecret.toLowerCase()) ||
-      (userPin && userPin === cleanSecret) ||
-      cleanSecret === '123456' ||
-      cleanSecret === '1234' ||
-      cleanSecret === 'admin123' ||
-      cleanSecret === 'admin' ||
-      cleanSecret === 'jwan123' ||
-      cleanSecret === 'jwan' ||
-      cleanSecret === '2026' ||
-      cleanSecret === 'owner123' ||
-      cleanSecret === (found.username || '').toLowerCase();
+    if (!found) {
+      return {
+        success: false,
+        message: 'كلمة المرور أو رمز PIN غير صحيح.'
+      };
+    }
 
-    if (!matchesPassword) {
-      return { 
-        success: false, 
-        message: `كلمة المرور غير صحيحة. يمكنك الدخول فوراً بكلمة المرور (${userPassword || '123456'}) أو رمز PIN (${userPin || '1234'})` 
+    const foundRest = found.restaurant_id ? restaurants.find(r => Number(r.id) === Number(found.restaurant_id)) : undefined;
+    if (found.role !== 'super_admin' && foundRest && foundRest.status === 'suspended') {
+      return {
+        success: false,
+        message: 'تم إيقاف هذا المطعم مؤقتاً من قبل إدارة المنصة. يرجى التواصل مع الدعم.'
       };
     }
 
@@ -1465,13 +1438,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setProducts(prev => prev.filter(p => p.restaurant_id !== restaurantId));
     setCategories(prev => prev.filter(c => c.restaurant_id !== restaurantId));
     setOrders(prev => prev.filter(o => o.restaurant_id !== restaurantId));
-
-    if (activeRestaurant && activeRestaurant.id === restaurantId) {
-      const remaining = restaurants.filter(r => r.id !== restaurantId);
-      setActiveRestaurant(remaining.length > 0 ? remaining[0] : null);
-      const remainingBranch = branches.filter(b => b.restaurant_id !== restaurantId);
-      setActiveBranch(remainingBranch.length > 0 ? remainingBranch[0] : null);
+    const deletedBranchIds = new Set(branches.filter(b => b.restaurant_id === restaurantId).map(b => b.id));
+    setTables(prev => prev.filter(t => !deletedBranchIds.has(t.branch_id)));
+    setUsers(prev => prev.filter(u => Number(u.restaurant_id) !== Number(restaurantId)));
+    if (currentUser && currentUser.role !== 'super_admin' && Number(currentUser.restaurant_id) === Number(restaurantId)) {
+      setCurrentUser(null);
+      setCurrentRole('customer');
+      localStorage.removeItem('sufrah_v2_current_user');
+      localStorage.removeItem('sufrah_v2_active_restaurant_id');
     }
+    const remaining = restaurants.filter(r => r.id !== restaurantId);
+    setActiveRestaurant(remaining.length > 0 ? remaining[0] : null);
+    const remainingBranch = branches.filter(b => b.restaurant_id !== restaurantId);
+    setActiveBranch(remainingBranch.length > 0 ? remainingBranch[0] : null);
 
     const log: ActivityLog = {
       id: Date.now(),
