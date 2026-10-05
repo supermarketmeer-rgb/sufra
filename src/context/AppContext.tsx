@@ -1355,68 +1355,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       qr_token: `TBL-${slug}-${i + 1}`
     }));
 
-    // Auto create starter categories
-    const baseCatId = categories.length > 0 ? Math.max(...categories.map(c => c.id)) : 0;
-    const starterCategories: Category[] = [
-      { id: baseCatId + 1, restaurant_id: newRest.id, name_ar: 'الأطباق الرئيسية', name_en: 'Main Dishes', slug: 'main', icon_name: 'Flame', sort_order: 1 },
-      { id: baseCatId + 2, restaurant_id: newRest.id, name_ar: 'المقبلات والسلطات', name_en: 'Appetizers', slug: 'appetizers', icon_name: 'Salad', sort_order: 2 },
-      { id: baseCatId + 3, restaurant_id: newRest.id, name_ar: 'المشروبات المنعشة', name_en: 'Drinks', slug: 'drinks', icon_name: 'Coffee', sort_order: 3 },
-    ];
-
-    // Auto create starter products
-    const baseProdId = products.length > 0 ? Math.max(...products.map(p => p.id)) : 0;
-    const starterProducts: Product[] = [
-      {
-        id: baseProdId + 1,
-        restaurant_id: newRest.id,
-        category_id: starterCategories[0].id,
-        name_ar: 'مشاوي مشكلة فاخرة',
-        name_en: 'Mixed Grills Platter',
-        description_ar: 'مشكل كباب ولحم تكا وشيش طاووق مع الخبز الحار والخضار المشوية',
-        base_price: 18000,
-        discount_price: 16000,
-        image_url: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80',
-        calories: 650,
-        prep_time_minutes: 15,
-        is_available: true,
-        is_featured: true,
-        sizes: [],
-        addons: []
-      },
-      {
-        id: baseProdId + 2,
-        restaurant_id: newRest.id,
-        category_id: starterCategories[1].id,
-        name_ar: 'مقبلات حمص بيروتي باللحمة',
-        name_en: 'Hummus with Meat',
-        description_ar: 'حمص ناعم بزيت الزيتون البكر مع لحم مفروم محموس وصنوبر محمص',
-        base_price: 5500,
-        image_url: 'https://images.unsplash.com/photo-1574484284002-952d92456975?auto=format&fit=crop&w=600&q=80',
-        calories: 380,
-        prep_time_minutes: 8,
-        is_available: true,
-        is_featured: false,
-        sizes: [],
-        addons: []
-      },
-      {
-        id: baseProdId + 3,
-        restaurant_id: newRest.id,
-        category_id: starterCategories[2].id,
-        name_ar: 'عصير ليمون بالنعناع منعش',
-        name_en: 'Fresh Lemon Mint',
-        description_ar: 'عصير ليمون طبيعي مع أوراق النعناع الطازجة والثلج المجروش',
-        base_price: 3500,
-        image_url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80',
-        calories: 120,
-        prep_time_minutes: 5,
-        is_available: true,
-        is_featured: false,
-        sizes: [],
-        addons: []
-      }
-    ];
-
     // Auto-create owner user for this restaurant so they can log in
     const nextUserId = users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1;
     const phoneClean = (data.owner_phone || newRest.phone || '').replace(/\D/g, '');
@@ -1438,8 +1376,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRestaurants(prev => [...prev, newRest]);
     setBranches(prev => [...prev, mainBranch]);
     setTables(prev => [...prev, ...newTables]);
-    setCategories(prev => [...prev, ...starterCategories]);
-    setProducts(prev => [...prev, ...starterProducts]);
     setUsers(prev => [...prev, ownerUser]);
     setActiveRestaurant(newRest);
     setActiveBranch(mainBranch);

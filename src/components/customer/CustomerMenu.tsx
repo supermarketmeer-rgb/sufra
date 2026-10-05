@@ -686,32 +686,34 @@ export const CustomerMenu: React.FC = () => {
               />
             </div>
 
-            {/* Category horizontal scroll */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
-              <button
-                onClick={() => setSelectedCategory('all')}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
-                  selectedCategory === 'all'
-                    ? 'bg-amber-500 text-slate-950 font-bold'
-                    : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                جميع الأقسام ({products.length})
-              </button>
-              {categories.map(cat => (
+            {/* Category horizontal scroll (only when categories exist) */}
+            {categories.length > 0 && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
                 <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
+                  onClick={() => setSelectedCategory('all')}
                   className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
-                    selectedCategory === cat.id
+                    selectedCategory === 'all'
                       ? 'bg-amber-500 text-slate-950 font-bold'
                       : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
                   }`}
                 >
-                  {cat.name_ar}
+                  جميع الأقسام ({products.length})
                 </button>
-              ))}
-            </div>
+                {categories.map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+                      selectedCategory === cat.id
+                        ? 'bg-amber-500 text-slate-950 font-bold'
+                        : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {cat.name_ar}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Product Items List */}
