@@ -1034,9 +1034,9 @@ apiRouter.post('/auth/login', async (req, res) => {
       SELECT u.*, r.name as role_name
       FROM users u
       LEFT JOIN roles r ON r.id = u.role_id
-      WHERE (LOWER(u.email) = ? OR LOWER(u.phone) = ?)
+      WHERE (LOWER(u.username) = ? OR LOWER(u.email) = ? OR LOWER(u.phone) = ?)
       LIMIT 1;
-    `, [ident, ident]);
+    `, [ident, ident, ident]);
 
     if (users.length > 0) {
       const u = users[0];
