@@ -166,9 +166,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const list = loadFromStorage<Restaurant[]>('sufrah_v2_restaurants', INITIAL_RESTAURANTS);
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      const restParam = params.get('restaurant');
-      if (restParam && list.length > 0) {
-        const found = list.find(r => String(r.id) === restParam || r.slug === restParam.toLowerCase());
+      const rawParam = params.get('restaurant') || params.get('r');
+      if (rawParam && list.length > 0) {
+        const decoded = decodeURIComponent(rawParam).trim().toLowerCase();
+        const found = list.find(r => 
+          String(r.id) === decoded || 
+          r.slug.toLowerCase() === decoded ||
+          r.name_ar.toLowerCase().includes(decoded) ||
+          r.name_en.toLowerCase().includes(decoded)
+        );
         if (found) return found;
       }
       const savedActiveId = localStorage.getItem('sufrah_v2_active_restaurant_id');
@@ -309,10 +315,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setActiveRestaurant(prev => {
           if (typeof window !== 'undefined') {
             const params = new URLSearchParams(window.location.search);
-            const restParam = params.get('restaurant') || params.get('r');
-            if (restParam) {
+            const rawParam = params.get('restaurant') || params.get('r');
+            if (rawParam) {
+              const decoded = decodeURIComponent(rawParam).trim().toLowerCase();
               const matchedParam = data.restaurants.find(
-                r => String(r.id) === restParam || r.slug === restParam.toLowerCase() || r.name_ar.includes(restParam)
+                r => String(r.id) === decoded || 
+                     r.slug.toLowerCase() === decoded || 
+                     r.name_ar.toLowerCase().includes(decoded) ||
+                     r.name_en.toLowerCase().includes(decoded)
               );
               if (matchedParam) return matchedParam;
             }
@@ -432,6 +442,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else if (type === 'plan_activated') {
         setActiveRestaurant(prev => prev && prev.id === payload.restaurant_id ? { ...prev, plan_name: payload.planName } : prev);
         setRestaurants(prev => prev.map(r => r.id === payload.restaurant_id ? { ...r, plan_name: payload.planName } : r));
+      } else if (type === 'user_created') {
+        setUsers(prev => {
+          const exists = prev.some(u => u.id === payload.id || u.username === payload.username);
+          if (exists) {
+            return prev.map(u => (u.id === payload.id || u.username === payload.username) ? { ...u, ...payload } : u);
+          }
+          return [...prev, payload];
+        });
       } else if (type === 'user_deleted') {
         setUsers(prev => {
           const updated = prev.filter(u => String(u.id) !== String(payload.id));
@@ -496,30 +514,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('sufrah_v2_users', JSON.stringify(users));
   }, [users]);
 
-  // Auto-heal: Ensure every restaurant has a dedicated restaurant_owner user account so the owner can always log in
+  // Link or ensure every restaurant has a dedicated restaurant_owner user account
   useEffect(() => {
     let changed = false;
     const nextUsers = [...users];
     restaurants.forEach(r => {
       const hasOwner = nextUsers.some(u => Number(u.restaurant_id) === Number(r.id) && u.role === 'restaurant_owner');
       if (!hasOwner) {
-        changed = true;
-        const nextId = nextUsers.length > 0 ? Math.max(...nextUsers.map(u => u.id)) + 1 : 1;
-        const phoneClean = (r.phone || '').replace(/\D/g, '');
-        const autoOwner: User = {
-          id: nextId,
-          restaurant_id: r.id,
-          role: 'restaurant_owner',
-          name: `مالك ${r.name_ar}`,
-          username: (r.slug || `owner_${r.id}`).toLowerCase().trim(),
-          email: r.email || `owner@${r.slug || r.id}.com`,
-          phone: r.phone || '',
-          password: '123456',
-          pin_code: phoneClean.length >= 4 ? phoneClean.slice(-4) : '1234',
-          is_active: true,
-          created_at: r.created_at || new Date().toISOString().slice(0, 10)
-        };
-        nextUsers.push(autoOwner);
+        // First check if an existing user matches this restaurant by phone, email, or username
+        const rPhoneClean = (r.phone || '').replace(/\D/g, '');
+        const matchedUserIndex = nextUsers.findIndex(u => {
+          const uPhoneClean = (u.phone || '').replace(/\D/g, '');
+          const matchPhone = rPhoneClean.length >= 7 && uPhoneClean.length >= 7 && rPhoneClean.slice(-10) === uPhoneClean.slice(-10);
+          const matchEmail = u.email && r.email && u.email.toLowerCase() === r.email.toLowerCase();
+          const matchUsername = u.username && r.slug && u.username.toLowerCase() === r.slug.toLowerCase();
+          return matchPhone || matchEmail || matchUsername;
+        });
+
+        if (matchedUserIndex !== -1) {
+          changed = true;
+          nextUsers[matchedUserIndex] = {
+            ...nextUsers[matchedUserIndex],
+            restaurant_id: r.id,
+            role: 'restaurant_owner'
+          };
+        } else {
+          // Only create if really no matching user exists at all
+          changed = true;
+          const nextId = nextUsers.length > 0 ? Math.max(...nextUsers.map(u => u.id)) + 1 : 1;
+          const autoOwner: User = {
+            id: nextId,
+            restaurant_id: r.id,
+            role: 'restaurant_owner',
+            name: `مالك ${r.name_ar}`,
+            username: (r.slug || `owner_${r.id}`).toLowerCase().trim(),
+            email: r.email || `owner@${r.slug || r.id}.com`,
+            phone: r.phone || '',
+            password: '123456',
+            pin_code: rPhoneClean.length >= 4 ? rPhoneClean.slice(-4) : '1234',
+            is_active: true,
+            created_at: r.created_at || new Date().toISOString().slice(0, 10)
+          };
+          nextUsers.push(autoOwner);
+        }
       }
     });
     if (changed) {
@@ -1326,6 +1363,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       { id: baseCatId + 3, restaurant_id: newRest.id, name_ar: 'المشروبات المنعشة', name_en: 'Drinks', slug: 'drinks', icon_name: 'Coffee', sort_order: 3 },
     ];
 
+    // Auto create starter products
+    const baseProdId = products.length > 0 ? Math.max(...products.map(p => p.id)) : 0;
+    const starterProducts: Product[] = [
+      {
+        id: baseProdId + 1,
+        restaurant_id: newRest.id,
+        category_id: starterCategories[0].id,
+        name_ar: 'مشاوي مشكلة فاخرة',
+        name_en: 'Mixed Grills Platter',
+        description_ar: 'مشكل كباب ولحم تكا وشيش طاووق مع الخبز الحار والخضار المشوية',
+        base_price: 18000,
+        discount_price: 16000,
+        image_url: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80',
+        calories: 650,
+        prep_time_minutes: 15,
+        is_available: true,
+        is_featured: true,
+        sizes: [],
+        addons: []
+      },
+      {
+        id: baseProdId + 2,
+        restaurant_id: newRest.id,
+        category_id: starterCategories[1].id,
+        name_ar: 'مقبلات حمص بيروتي باللحمة',
+        name_en: 'Hummus with Meat',
+        description_ar: 'حمص ناعم بزيت الزيتون البكر مع لحم مفروم محموس وصنوبر محمص',
+        base_price: 5500,
+        image_url: 'https://images.unsplash.com/photo-1574484284002-952d92456975?auto=format&fit=crop&w=600&q=80',
+        calories: 380,
+        prep_time_minutes: 8,
+        is_available: true,
+        is_featured: false,
+        sizes: [],
+        addons: []
+      },
+      {
+        id: baseProdId + 3,
+        restaurant_id: newRest.id,
+        category_id: starterCategories[2].id,
+        name_ar: 'عصير ليمون بالنعناع منعش',
+        name_en: 'Fresh Lemon Mint',
+        description_ar: 'عصير ليمون طبيعي مع أوراق النعناع الطازجة والثلج المجروش',
+        base_price: 3500,
+        image_url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80',
+        calories: 120,
+        prep_time_minutes: 5,
+        is_available: true,
+        is_featured: false,
+        sizes: [],
+        addons: []
+      }
+    ];
+
     // Auto-create owner user for this restaurant so they can log in
     const nextUserId = users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1;
     const phoneClean = (data.owner_phone || newRest.phone || '').replace(/\D/g, '');
@@ -1348,6 +1439,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setBranches(prev => [...prev, mainBranch]);
     setTables(prev => [...prev, ...newTables]);
     setCategories(prev => [...prev, ...starterCategories]);
+    setProducts(prev => [...prev, ...starterProducts]);
     setUsers(prev => [...prev, ownerUser]);
     setActiveRestaurant(newRest);
     setActiveBranch(mainBranch);
@@ -1362,7 +1454,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setActivityLogs(prev => [log, ...prev]);
 
-    api.createRestaurant({ ...newRest, ...data }).catch(console.error);
+    api.createRestaurant({ ...newRest, ...data }).then(res => {
+      if (res && res.restaurant) {
+        const sRest = res.restaurant;
+        const sUser = res.user;
+        setRestaurants(prev => prev.map(r => r.id === newRest.id ? sRest : r));
+        setActiveRestaurant(prev => prev && prev.id === newRest.id ? sRest : prev);
+        if (sUser) {
+          setUsers(prev => prev.map(u => (u.id === ownerUser.id || (u.restaurant_id === newRest.id && u.role === 'restaurant_owner')) ? sUser : u));
+        }
+      }
+    }).catch(console.error);
 
     return newRest;
   };

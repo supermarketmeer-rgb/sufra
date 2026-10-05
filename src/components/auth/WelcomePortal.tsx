@@ -749,9 +749,15 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
               <span className="text-stone-500">اسم المستخدم / الهاتف:</span>
               <span className="font-mono font-bold text-stone-800" dir="ltr">{registeredPendingInfo.identifier}</span>
             </div>
-            <div className="flex justify-between py-1">
+            <div className="flex justify-between py-1 border-b border-stone-200/60">
               <span className="text-stone-500">كلمة المرور:</span>
               <span className="font-mono font-bold text-stone-800" dir="ltr">{registeredPendingInfo.pass}</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="text-stone-500">رابط منيو المطعم:</span>
+              <span className="font-mono font-bold text-[#9a3412] text-[11px]" dir="ltr">
+                {window.location.origin}/?restaurant={encodeURIComponent(registeredPendingInfo.name)}
+              </span>
             </div>
           </div>
 

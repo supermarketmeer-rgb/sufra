@@ -24,8 +24,8 @@ const MainContent: React.FC = () => {
     if (typeof window !== 'undefined') {
       const p = window.location.pathname.toLowerCase();
       const s = window.location.search.toLowerCase();
-      // If explicit role is specified (e.g. ?role=customer) or table/restaurant query, don't show portal
-      if (s.includes('role=') || s.includes('table=') || s.includes('restaurant=')) return false;
+      // If explicit role is specified or table/restaurant query, don't show portal
+      if (s.includes('role=') || s.includes('table=') || s.includes('restaurant=') || s.includes('r=')) return false;
       if (p.includes('signup') || s.includes('signup')) return false;
       // Default to showing the Welcome Portal directly for mobile & new visitors!
       return true;
@@ -41,7 +41,7 @@ const MainContent: React.FC = () => {
     return false;
   });
 
-  if (showPortal) {
+  if (showPortal && currentRole === 'customer') {
     return (
       <div className="min-h-screen bg-[#fbf9f4] text-stone-800 flex flex-col font-cairo" dir="rtl">
         <WelcomePortal onClose={() => setShowPortal(false)} />

@@ -183,7 +183,7 @@ export const api = {
   },
 
   // 6. Restaurant Registration & Plan Activation
-  async createRestaurant(data: Partial<Restaurant>): Promise<Restaurant | null> {
+  async createRestaurant(data: any): Promise<{ restaurant: Restaurant; user?: User } | null> {
     try {
       const res = await fetch('/api/restaurants', {
         method: 'POST',
@@ -191,7 +191,9 @@ export const api = {
         body: JSON.stringify(data)
       });
       const json = await res.json();
-      if (json.success && json.restaurant) return json.restaurant;
+      if (json.success && json.restaurant) {
+        return { restaurant: json.restaurant, user: json.user };
+      }
     } catch (err) {
       console.error('Failed to create restaurant via API:', err);
     }

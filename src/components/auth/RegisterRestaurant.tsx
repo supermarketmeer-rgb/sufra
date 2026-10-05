@@ -30,12 +30,13 @@ export const RegisterRestaurant: React.FC<RegisterRestaurantProps> = ({ onClose,
   const [slug, setSlug] = useState('');
   const [phone, setPhone] = useState('');
   const [ownerName, setOwnerName] = useState('');
-  const [password, setPassword] = useState('123456');
+  const [ownerUsername, setOwnerUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [city, setCity] = useState('بغداد');
   const [restaurantType, setRestaurantType] = useState('مطعم شرقي وغربي');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreated, setIsCreated] = useState(false);
-  const [createdInfo, setCreatedInfo] = useState<{ name: string; phone: string; slug: string; pass: string } | null>(null);
+  const [createdInfo, setCreatedInfo] = useState<{ name: string; username: string; phone: string; slug: string; pass: string } | null>(null);
 
   // Auto-generate slug when Arabic name changes if slug is empty or matches previous auto-slug
   const handleNameArChange = (val: string) => {
@@ -69,9 +70,10 @@ export const RegisterRestaurant: React.FC<RegisterRestaurantProps> = ({ onClose,
       .toLowerCase()
       .trim()
       .replace(/[\s_]+/g, '-')
-      .replace(/[^a-z0-9-]/g, '');
+      .replace(/[^a-z0-9-]/g, '') || `rest-${Date.now().toString().slice(-4)}`;
 
     const finalPass = password.trim() || '123456';
+    const finalUsername = (ownerUsername.trim() || phone.trim() || cleanSlug).toLowerCase().replace(/[\s\-]+/g, '_');
 
     createRestaurant({
       name_ar: restaurantNameAr.trim(),
@@ -87,7 +89,7 @@ export const RegisterRestaurant: React.FC<RegisterRestaurantProps> = ({ onClose,
       tax_percentage: 0,
       status: 'inactive', // غير مفعل حتى يتم التفعيل من قبل السوبر آدمن
       owner_name: ownerName.trim() || `مالك ${restaurantNameAr.trim()}`,
-      owner_username: cleanSlug || phone.trim(),
+      owner_username: finalUsername,
       owner_phone: phone.trim(),
       owner_email: `info@${cleanSlug}.com`,
       owner_password: finalPass
@@ -104,6 +106,7 @@ export const RegisterRestaurant: React.FC<RegisterRestaurantProps> = ({ onClose,
     setIsSubmitting(false);
     setCreatedInfo({
       name: restaurantNameAr.trim(),
+      username: finalUsername,
       phone: phone.trim(),
       slug: cleanSlug,
       pass: finalPass
@@ -153,16 +156,22 @@ export const RegisterRestaurant: React.FC<RegisterRestaurantProps> = ({ onClose,
                 <span className="text-[10px] text-amber-400 font-mono">احفظ هذه البيانات</span>
               </div>
               <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-400">رقم الهاتف / الدخول:</span>
+                <span className="text-slate-400">اسم المستخدم (Username):</span>
+                <span className="text-amber-400 font-mono font-bold text-sm" dir="ltr">{createdInfo.username}</span>
+              </div>
+              <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400">رقم الهاتف للدخول:</span>
                 <span className="text-white font-mono font-bold text-sm" dir="ltr">{createdInfo.phone}</span>
               </div>
               <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
                 <span className="text-slate-400">كلمة المرور:</span>
-                <span className="text-amber-400 font-mono font-bold text-sm" dir="ltr">{createdInfo.pass}</span>
+                <span className="text-emerald-400 font-mono font-bold text-sm" dir="ltr">{createdInfo.pass}</span>
               </div>
               <div className="flex items-center justify-between py-1">
-                <span className="text-slate-400">رابط المنيو الفرعي:</span>
-                <span className="text-emerald-400 font-mono text-[11px]">{createdInfo.slug}.sufrah.menu</span>
+                <span className="text-slate-400">رابط المنيو الفعّال:</span>
+                <span className="text-amber-400 font-mono text-[11px] truncate max-w-[200px]" dir="ltr">
+                  {window.location.origin}/?restaurant={createdInfo.slug}
+                </span>
               </div>
             </div>
 
@@ -289,6 +298,40 @@ export const RegisterRestaurant: React.FC<RegisterRestaurantProps> = ({ onClose,
                 </div>
               </div>
 
+              {/* Owner Name & Username */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    اسم مالك المطعم / المدير
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="مثال: علي السعدي"
+                      value={ownerName}
+                      onChange={e => setOwnerName(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                    />
+                    <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    اسم المستخدم للدخول (Username) <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    dir="ltr"
+                    placeholder="e.g. ali_sufra or phone"
+                    value={ownerUsername}
+                    onChange={e => setOwnerUsername(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs font-mono text-amber-400 placeholder-slate-500 focus:outline-none focus:border-amber-500 text-left"
+                  />
+                </div>
+              </div>
+
               {/* Phone / WhatsApp & Password */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -302,7 +345,13 @@ export const RegisterRestaurant: React.FC<RegisterRestaurantProps> = ({ onClose,
                       dir="ltr"
                       placeholder="07XXXXXXXXX"
                       value={phone}
-                      onChange={e => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                      onChange={e => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setPhone(val);
+                        if (!ownerUsername || ownerUsername.startsWith('07')) {
+                          setOwnerUsername(val);
+                        }
+                      }}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-left font-mono"
                     />
                     <Phone className="w-4 h-4 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2" />

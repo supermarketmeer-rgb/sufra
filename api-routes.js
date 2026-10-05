@@ -793,13 +793,33 @@ apiRouter.post('/restaurants', async (req, res) => {
       `, [branchId, `طاولة ${i}`, `TBL-${slug.slice(0, 3).toUpperCase()}-${i}`]);
     }
 
-    await conn.query(`
+    const [cat1Res] = await conn.query(`
       INSERT INTO categories (restaurant_id, name_ar, name_en, slug, icon_name, sort_order, is_active)
-      VALUES 
-        (?, 'الأطباق الرئيسية', 'Main Courses', 'main', 'Flame', 1, 1),
-        (?, 'المقبلات والسلطات', 'Appetizers', 'appetizers', 'Salad', 2, 1),
-        (?, 'المشروبات المنعشة', 'Drinks', 'drinks', 'Coffee', 3, 1)
-    `, [restaurantId, restaurantId, restaurantId]);
+      VALUES (?, 'الأطباق الرئيسية', 'Main Courses', 'main', 'Flame', 1, 1)
+    `, [restaurantId]);
+    const cat1Id = cat1Res.insertId;
+
+    const [cat2Res] = await conn.query(`
+      INSERT INTO categories (restaurant_id, name_ar, name_en, slug, icon_name, sort_order, is_active)
+      VALUES (?, 'المقبلات والسلطات', 'Appetizers', 'appetizers', 'Salad', 2, 1)
+    `, [restaurantId]);
+    const cat2Id = cat2Res.insertId;
+
+    const [cat3Res] = await conn.query(`
+      INSERT INTO categories (restaurant_id, name_ar, name_en, slug, icon_name, sort_order, is_active)
+      VALUES (?, 'المشروبات المنعشة', 'Drinks', 'drinks', 'Coffee', 3, 1)
+    `, [restaurantId]);
+    const cat3Id = cat3Res.insertId;
+
+    // Seed 3 starter products so the restaurant's menu immediately has items
+    await conn.query(`
+      INSERT INTO products (
+        restaurant_id, category_id, name_ar, name_en, description_ar, image_url, base_price, discount_price, prep_time_minutes, calories, is_available, is_featured, sort_order
+      ) VALUES 
+        (?, ?, 'مشاوي مشكلة فاخرة', 'Mixed Grills Platter', 'مشكل كباب ولحم تكا وشيش طاووق مع الخبز الحار والخضار المشوية', 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80', 18000, 16000, 15, 650, 1, 1, 1),
+        (?, ?, 'مقبلات حمص بيروتي باللحمة', 'Hummus with Meat', 'حمص ناعم بزيت الزيتون البكر مع لحم مفروم محموس وصنوبر محمص', 'https://images.unsplash.com/photo-1574484284002-952d92456975?auto=format&fit=crop&w=600&q=80', 5500, NULL, 8, 380, 1, 0, 2),
+        (?, ?, 'عصير ليمون بالنعناع منعش', 'Fresh Lemon Mint', 'عصير ليمون طبيعي مع أوراق النعناع الطازجة والثلج المجروش', 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80', 3500, NULL, 5, 120, 1, 0, 3)
+    `, [restaurantId, cat1Id, restaurantId, cat2Id, restaurantId, cat3Id]);
 
     await conn.query(`
       INSERT INTO activity_logs (restaurant_id, action, description)
@@ -815,11 +835,12 @@ apiRouter.post('/restaurants', async (req, res) => {
     const cleanDigits = ownerPhone.replace(/\D/g, '');
     const pinCode = cleanDigits.length >= 4 ? cleanDigits.slice(-4) : '1234';
 
-    await conn.query(`
+    const [userRes] = await conn.query(`
       INSERT INTO users (
         restaurant_id, branch_id, role_id, name, username, email, phone, password_hash, pin_code, status
       ) VALUES (?, ?, 2, ?, ?, ?, ?, ?, ?, 'active')
     `, [restaurantId, branchId, ownerName, ownerUsername, ownerEmail, ownerPhone, ownerPassword, pinCode]);
+    const ownerUserId = userRes.insertId;
 
     await conn.commit();
 
@@ -844,8 +865,27 @@ apiRouter.post('/restaurants', async (req, res) => {
       whatsapp_number: data.whatsapp_number || data.phone || ''
     };
 
+    const createdOwner = {
+      id: ownerUserId,
+      restaurant_id: restaurantId,
+      branch_id: branchId,
+      role: 'restaurant_owner',
+      name: ownerName,
+      username: ownerUsername,
+      email: ownerEmail,
+      phone: ownerPhone,
+      password: ownerPassword,
+      pin_code: pinCode,
+      is_active: true
+    };
+
     broadcastEvent('restaurant_created', createdRestaurant);
-    res.status(201).json({ success: true, restaurant: createdRestaurant });
+    broadcastEvent('user_created', createdOwner);
+    res.status(201).json({
+      success: true,
+      restaurant: createdRestaurant,
+      user: createdOwner
+    });
   } catch (err) {
     await conn.rollback();
     res.status(500).json({ success: false, message: err.message });
