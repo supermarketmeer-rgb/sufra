@@ -228,6 +228,7 @@ export const SuperAdminDashboard: React.FC = () => {
       phone: newRestPhone,
       email: newRestEmail,
       plan_name: newRestPlan,
+      status: 'active',
       theme_primary_color: '#f59e0b'
     });
 
@@ -449,7 +450,12 @@ export const SuperAdminDashboard: React.FC = () => {
                         <div className="text-[11px] text-slate-400">{rest.email}</div>
                       </td>
                       <td className="py-3.5 px-4">
-                        {rest.status === 'suspended' || rest.status === 'inactive' ? (
+                        {rest.status === 'inactive' ? (
+                          <span className="inline-flex items-center gap-1.5 text-amber-400 font-bold px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/30 text-xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+                            غير مفعل (بانتظار التفعيل)
+                          </span>
+                        ) : rest.status === 'suspended' ? (
                           <span className="inline-flex items-center gap-1.5 text-rose-400 font-semibold px-2.5 py-1 rounded-md bg-rose-500/10 border border-rose-500/20 text-xs">
                             <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
                             موقوف مؤقتاً
@@ -467,16 +473,29 @@ export const SuperAdminDashboard: React.FC = () => {
                           <button
                             onClick={() => toggleRestaurantStatus(rest.id)}
                             className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
-                              rest.status === 'suspended' || rest.status === 'inactive'
+                              rest.status === 'inactive'
+                                ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40 shadow-emerald-500/10'
+                                : rest.status === 'suspended'
                                 ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border-emerald-500/30'
                                 : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border-amber-500/30'
                             }`}
-                            title={rest.status === 'suspended' || rest.status === 'inactive' ? 'تفعيل المطعم واستئناف العمل' : 'إيقاف نشاط المطعم مؤقتاً'}
+                            title={
+                              rest.status === 'inactive'
+                                ? 'تفعيل واعتماد هذا المطعم الجديد لبدء نشاطه'
+                                : rest.status === 'suspended'
+                                ? 'استئناف تشغيل المطعم'
+                                : 'إيقاف نشاط المطعم مؤقتاً'
+                            }
                           >
-                            {rest.status === 'suspended' || rest.status === 'inactive' ? (
+                            {rest.status === 'inactive' ? (
                               <>
                                 <Play className="w-3.5 h-3.5 fill-current" />
-                                <span>تفعيل</span>
+                                <span>تفعيل المطعم</span>
+                              </>
+                            ) : rest.status === 'suspended' ? (
+                              <>
+                                <Play className="w-3.5 h-3.5 fill-current" />
+                                <span>استئناف</span>
                               </>
                             ) : (
                               <>

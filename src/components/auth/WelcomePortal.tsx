@@ -41,7 +41,15 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
     branches
   } = useApp();
 
-  const [viewMode, setViewMode] = useState<'main' | 'manager_login' | 'staff' | 'choose_signup' | 'signup_form' | 'activate'>('main');
+  const [viewMode, setViewMode] = useState<'main' | 'manager_login' | 'staff' | 'choose_signup' | 'signup_form' | 'activate' | 'registered_pending'>('main');
+
+  // Registered pending activation state
+  const [registeredPendingInfo, setRegisteredPendingInfo] = useState<{
+    name: string;
+    identifier: string;
+    phone: string;
+    pass: string;
+  } | null>(null);
 
   // Manager login form state
   const [managerUsername, setManagerUsername] = useState('');
@@ -226,7 +234,10 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
       .replace(/[^a-zA-Z0-9\u0621-\u064A-]/g, '')
       .slice(0, 20) || `rest-${Date.now().toString().slice(-4)}`;
 
-    const newRest = createRestaurant({
+    const finalPass = userPassword.trim() || '123456';
+    const finalIdentifier = userIdentifier.trim() || userPhone.trim();
+
+    createRestaurant({
       name_ar: restNameAr.trim(),
       name_en: restNameAr.trim(),
       slug: cleanSlug,
@@ -237,7 +248,13 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
       description_ar: 'أشهى المأكولات والمشروبات بنظام سفرة الذكي',
       theme_primary_color: '#9a3412',
       delivery_fee_base: 3000,
-      tax_percentage: 0
+      tax_percentage: 0,
+      status: 'inactive', // غير مفعل حتى يتم التفعيل من قبل السوبر آدمن
+      owner_name: `مالك ${restNameAr.trim()}`,
+      owner_username: finalIdentifier,
+      owner_phone: userPhone.trim(),
+      owner_email: finalIdentifier.includes('@') ? finalIdentifier : `info@${cleanSlug}.com`,
+      owner_password: finalPass
     });
 
     try {
@@ -249,12 +266,15 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
     } catch {}
 
     setIsRegistering(false);
-
-    setTimeout(() => {
-      setActiveRestaurant(newRest);
-      setCurrentRole('restaurant_owner');
-      if (onClose) onClose();
-    }, 1000);
+    setRegisteredPendingInfo({
+      name: restNameAr.trim(),
+      identifier: finalIdentifier,
+      phone: userPhone.trim(),
+      pass: finalPass
+    });
+    setManagerUsername(finalIdentifier);
+    setManagerPassword(finalPass);
+    setViewMode('registered_pending');
   };
 
   return (
@@ -696,6 +716,67 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
             >
               <span>العودة لاختيار طريقة التسجيل</span>
               <ArrowLeft className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* SCREEN: Registered Pending Activation */}
+      {viewMode === 'registered_pending' && registeredPendingInfo && (
+        <div className="w-full max-w-sm sm:max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-[#e8e2d5] text-center animate-fade-in space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 mx-auto flex items-center justify-center text-3xl shadow-sm">
+            ⏳
+          </div>
+
+          <div className="space-y-1">
+            <span className="inline-block px-3 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold">
+              • الحالة: غير مفعل (بانتظار موافقة السوبر آدمن)
+            </span>
+            <h2 className="text-2xl font-black text-stone-900 pt-1">
+              تم استلام طلب التسجيل بنجاح!
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-500 max-w-sm mx-auto leading-relaxed">
+              تم إنشاء حساب مطعم <strong className="text-stone-800">({registeredPendingInfo.name})</strong>، وهو الآن قيد المراجعة وبانتظار اعتماد التفعيل من قِبل إدارة المنصة.
+            </p>
+          </div>
+
+          <div className="bg-stone-50 border border-stone-200 rounded-2xl p-4 text-right space-y-2 text-xs">
+            <div className="font-bold text-stone-700 border-b border-stone-200 pb-1.5 flex justify-between">
+              <span>بيانات الدخول المسجلة:</span>
+              <span className="text-[10px] text-amber-700 font-mono">احفظ هذه البيانات</span>
+            </div>
+            <div className="flex justify-between py-1 border-b border-stone-200/60">
+              <span className="text-stone-500">اسم المستخدم / الهاتف:</span>
+              <span className="font-mono font-bold text-stone-800" dir="ltr">{registeredPendingInfo.identifier}</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="text-stone-500">كلمة المرور:</span>
+              <span className="font-mono font-bold text-stone-800" dir="ltr">{registeredPendingInfo.pass}</span>
+            </div>
+          </div>
+
+          <p className="text-[11px] text-amber-800 bg-amber-50 rounded-xl p-3 border border-amber-200 text-right leading-relaxed">
+            🛡️ <span className="font-semibold">ملاحظة:</span> لا يمكنك تسجيل الدخول كمالك مطعم إلا بعد أن يقوم السوبر آدمن بتفعيل المطعم من لوحة الإدارة.
+          </p>
+
+          <div className="space-y-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setViewMode('manager_login')}
+              className="w-full py-3.5 px-4 rounded-2xl bg-[#9a3412] hover:bg-[#852d0f] text-white font-bold text-sm transition-all shadow-sm cursor-pointer"
+            >
+              الانتقال لشاشة تسجيل الدخول
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setCurrentRole('super_admin');
+                if (onClose) onClose();
+              }}
+              className="w-full py-2.5 px-4 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs transition-all cursor-pointer"
+            >
+              دخول كمدير عام (Super Admin) لتفعيل المطعم الآن ➔
             </button>
           </div>
         </div>

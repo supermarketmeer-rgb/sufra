@@ -748,10 +748,12 @@ apiRouter.post('/restaurants', async (req, res) => {
     const data = req.body;
     const slug = (data.slug || `restaurant-${Date.now().toString().slice(-4)}`).toLowerCase().trim().replace(/[\s_]+/g, '-');
 
+    const status = data.status || 'inactive';
+
     const [restResult] = await conn.query(`
       INSERT INTO restaurants (
         name_ar, name_en, slug, logo_url, cover_url, description_ar, phone, email, address, currency, tax_percentage, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       data.name_ar || 'مطعم جديد',
       data.name_en || 'New Restaurant',
@@ -763,7 +765,8 @@ apiRouter.post('/restaurants', async (req, res) => {
       data.email || `contact@${slug}.com`,
       data.address || 'العراق',
       data.currency || 'IQD',
-      data.tax_percentage || 5.0
+      data.tax_percentage || 5.0,
+      status
     ]);
     const restaurantId = restResult.insertId;
 
@@ -803,6 +806,21 @@ apiRouter.post('/restaurants', async (req, res) => {
       VALUES (?, 'Register', ?)
     `, [restaurantId, `تم تسجيل مطعم جديد: ${data.name_ar}`]);
 
+    // Auto-create owner user in users table
+    const ownerName = data.owner_name || `مالك ${data.name_ar}`;
+    const ownerUsername = (data.owner_username || slug || data.phone || '').toLowerCase().trim();
+    const ownerEmail = data.owner_email || data.email || `contact@${slug}.com`;
+    const ownerPhone = data.owner_phone || data.phone || '';
+    const ownerPassword = data.owner_password || '123456';
+    const cleanDigits = ownerPhone.replace(/\D/g, '');
+    const pinCode = cleanDigits.length >= 4 ? cleanDigits.slice(-4) : '1234';
+
+    await conn.query(`
+      INSERT INTO users (
+        restaurant_id, branch_id, role_id, name, username, email, phone, password_hash, pin_code, status
+      ) VALUES (?, ?, 2, ?, ?, ?, ?, ?, ?, 'active')
+    `, [restaurantId, branchId, ownerName, ownerUsername, ownerEmail, ownerPhone, ownerPassword, pinCode]);
+
     await conn.commit();
 
     const createdRestaurant = {
@@ -818,10 +836,10 @@ apiRouter.post('/restaurants', async (req, res) => {
       address: data.address || '',
       currency: 'IQD',
       tax_percentage: data.tax_percentage || 5,
-      status: 'active',
+      status,
       created_at: new Date().toISOString().slice(0, 10),
       theme_primary_color: data.theme_primary_color || '#f59e0b',
-      plan_name: 'الباقة الاحترافية (Pro)',
+      plan_name: 'الباقة المجانية (Starter)',
       delivery_fee_base: 3000,
       whatsapp_number: data.whatsapp_number || data.phone || ''
     };
@@ -843,13 +861,13 @@ apiRouter.patch('/restaurants/:id/status', async (req, res) => {
   try {
     const id = Number(req.params.id);
     const { status } = req.body; // 'active' | 'suspended' | 'inactive'
-    const cleanStatus = status === 'active' ? 'active' : 'suspended';
+    const cleanStatus = status === 'active' ? 'active' : (status === 'inactive' ? 'inactive' : 'suspended');
 
     await dbPool.query(`UPDATE restaurants SET status = ? WHERE id = ?`, [cleanStatus, id]);
     await dbPool.query(`
       INSERT INTO activity_logs (restaurant_id, action, description)
       VALUES (?, 'Status Change', ?)
-    `, [id, `تم تغيير حالة المطعم إلى: ${cleanStatus === 'active' ? 'نشط' : 'موقوف مؤقتاً'}`]);
+    `, [id, `تم تغيير حالة المطعم إلى: ${cleanStatus === 'active' ? 'نشط' : cleanStatus === 'inactive' ? 'غير مفعل' : 'موقوف مؤقتاً'}`]);
 
     broadcastEvent('restaurant_status_updated', { id, status: cleanStatus });
     res.json({ success: true, id, status: cleanStatus });

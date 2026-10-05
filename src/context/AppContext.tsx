@@ -99,8 +99,13 @@ interface AppContextType {
   deleteBranch: (branchId: number) => { success: boolean; message: string };
   addReservation: (res: Partial<Reservation>) => void;
   updateReservationStatus: (resId: number, status: 'pending' | 'confirmed' | 'cancelled') => void;
-  addReview: (review: Partial<Review>) => void;
-  createRestaurant: (data: Partial<Restaurant>) => Restaurant;
+  createRestaurant: (data: Partial<Restaurant> & {
+    owner_name?: string;
+    owner_username?: string;
+    owner_email?: string;
+    owner_password?: string;
+    owner_phone?: string;
+  }) => Restaurant;
   applyCoupon: (code: string, currentTotal: number) => { success: boolean; discount: number; message: string };
   playNotificationSound: () => void;
   theme: 'dark' | 'light';
@@ -491,14 +496,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('sufrah_v2_users', JSON.stringify(users));
   }, [users]);
 
-  // Session guard: kick out any logged-in staff whose account or restaurant was deleted/suspended
+  // Auto-heal: Ensure every restaurant has a dedicated restaurant_owner user account so the owner can always log in
+  useEffect(() => {
+    let changed = false;
+    const nextUsers = [...users];
+    restaurants.forEach(r => {
+      const hasOwner = nextUsers.some(u => Number(u.restaurant_id) === Number(r.id) && u.role === 'restaurant_owner');
+      if (!hasOwner) {
+        changed = true;
+        const nextId = nextUsers.length > 0 ? Math.max(...nextUsers.map(u => u.id)) + 1 : 1;
+        const phoneClean = (r.phone || '').replace(/\D/g, '');
+        const autoOwner: User = {
+          id: nextId,
+          restaurant_id: r.id,
+          role: 'restaurant_owner',
+          name: `مالك ${r.name_ar}`,
+          username: (r.slug || `owner_${r.id}`).toLowerCase().trim(),
+          email: r.email || `owner@${r.slug || r.id}.com`,
+          phone: r.phone || '',
+          password: '123456',
+          pin_code: phoneClean.length >= 4 ? phoneClean.slice(-4) : '1234',
+          is_active: true,
+          created_at: r.created_at || new Date().toISOString().slice(0, 10)
+        };
+        nextUsers.push(autoOwner);
+      }
+    });
+    if (changed) {
+      setUsers(nextUsers);
+    }
+  }, [restaurants]);
+
+  // Session guard: kick out any logged-in staff whose account or restaurant was deleted/suspended/inactive
   useEffect(() => {
     if (!currentUser || currentUser.role === 'super_admin') return;
     const userStillExists = users.some(u => String(u.id) === String(currentUser.id) && u.is_active);
     const rest = currentUser.restaurant_id
       ? restaurants.find(r => Number(r.id) === Number(currentUser.restaurant_id))
       : undefined;
-    if (!userStillExists || !rest || rest.status === 'suspended') {
+    if (!userStillExists || !rest || rest.status === 'suspended' || rest.status === 'inactive') {
       setCurrentUser(null);
       setCurrentRole('customer');
       setActiveRestaurant(null);
@@ -591,11 +627,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const foundRest = found.restaurant_id ? restaurants.find(r => Number(r.id) === Number(found.restaurant_id)) : undefined;
-    if (found.role !== 'super_admin' && foundRest && foundRest.status === 'suspended') {
-      return {
-        success: false,
-        message: 'تم إيقاف هذا المطعم مؤقتاً من قبل إدارة المنصة. يرجى التواصل مع الدعم.'
-      };
+    if (found.role !== 'super_admin' && foundRest) {
+      if (foundRest.status === 'inactive') {
+        return {
+          success: false,
+          message: 'حساب المطعم قيد المراجعة وغير مفعل حالياً. يرجى الانتظار لحين اعتماد وتفعيل الحساب من قِبل إدارة المنصة (السوبر آدمن).'
+        };
+      }
+      if (foundRest.status === 'suspended') {
+        return {
+          success: false,
+          message: 'تم إيقاف هذا المطعم مؤقتاً من قبل إدارة المنصة. يرجى التواصل مع الدعم الفني.'
+        };
+      }
     }
 
     // Success! Lock session to authenticated user
@@ -1214,9 +1258,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setReviews(prev => [newRev, ...prev]);
   };
 
-  const createRestaurant = (data: Partial<Restaurant>): Restaurant => {
+  const createRestaurant = (data: Partial<Restaurant> & {
+    owner_name?: string;
+    owner_username?: string;
+    owner_email?: string;
+    owner_password?: string;
+    owner_phone?: string;
+  }): Restaurant => {
     const nextId = restaurants.length > 0 ? Math.max(...restaurants.map(r => r.id)) + 1 : 1;
     const slug = (data.slug || `restaurant-${nextId}`).toLowerCase().trim().replace(/[\s_]+/g, '-');
+    const newStatus: 'active' | 'inactive' | 'suspended' = data.status || 'inactive';
+
     const newRest: Restaurant = {
       id: nextId,
       name_ar: data.name_ar || 'مطعم جديد',
@@ -1230,11 +1282,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       email: data.email || `info@${slug}.com`,
       address: data.address || 'العراق',
       currency: 'IQD',
-      tax_percentage: data.tax_percentage || 5,
-      status: 'active',
+      tax_percentage: data.tax_percentage || 0,
+      status: newStatus,
       created_at: new Date().toISOString().slice(0, 10),
       theme_primary_color: data.theme_primary_color || '#f59e0b',
-      plan_name: data.plan_name || 'الباقة الاحترافية (Pro)',
+      plan_name: data.plan_name || 'الباقة المجانية (Starter)',
       delivery_fee_base: data.delivery_fee_base || 3000,
       whatsapp_number: data.whatsapp_number || data.phone || '07700000000'
     };
@@ -1252,7 +1304,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       longitude: 44.3661,
       opening_time: '11:00',
       closing_time: '01:00',
-      manager_name: 'المدير العام',
+      manager_name: data.owner_name || 'المدير العام',
       is_active: true
     };
 
@@ -1274,10 +1326,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       { id: baseCatId + 3, restaurant_id: newRest.id, name_ar: 'المشروبات المنعشة', name_en: 'Drinks', slug: 'drinks', icon_name: 'Coffee', sort_order: 3 },
     ];
 
+    // Auto-create owner user for this restaurant so they can log in
+    const nextUserId = users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1;
+    const phoneClean = (data.owner_phone || newRest.phone || '').replace(/\D/g, '');
+    const ownerUser: User = {
+      id: nextUserId,
+      restaurant_id: newRest.id,
+      branch_id: branchId,
+      role: 'restaurant_owner',
+      name: data.owner_name || `مالك ${newRest.name_ar}`,
+      username: (data.owner_username || slug || newRest.phone).toLowerCase().trim(),
+      email: data.owner_email || newRest.email,
+      phone: data.owner_phone || newRest.phone,
+      password: data.owner_password || '123456',
+      pin_code: phoneClean.length >= 4 ? phoneClean.slice(-4) : '1234',
+      is_active: true,
+      created_at: new Date().toISOString().slice(0, 10)
+    };
+
     setRestaurants(prev => [...prev, newRest]);
     setBranches(prev => [...prev, mainBranch]);
     setTables(prev => [...prev, ...newTables]);
     setCategories(prev => [...prev, ...starterCategories]);
+    setUsers(prev => [...prev, ownerUser]);
     setActiveRestaurant(newRest);
     setActiveBranch(mainBranch);
 
@@ -1285,13 +1356,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: Date.now(),
       user_name: newRest.name_ar,
       role: 'restaurant_owner',
-      action: 'Restaurant Created',
-      description: `تم إنشاء مطعم جديد: ${newRest.name_ar} مع الفرع الرئيسي وقوائم الأصناف`,
+      action: 'Restaurant Registered',
+      description: `تم تسجيل مطعم جديد: ${newRest.name_ar} (الحالة: ${newStatus === 'active' ? 'نشط وفعال' : 'غير مفعل - بانتظار التفعيل'})`,
       timestamp: 'الآن'
     };
     setActivityLogs(prev => [log, ...prev]);
 
-    api.createRestaurant(newRest).catch(console.error);
+    api.createRestaurant({ ...newRest, ...data }).catch(console.error);
 
     return newRest;
   };
@@ -1409,7 +1480,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const toggleRestaurantStatus = (restaurantId: number) => {
     const target = restaurants.find(r => r.id === restaurantId);
     if (!target) return;
-    const newStatus: 'active' | 'suspended' = target.status === 'active' ? 'suspended' : 'active';
+    const newStatus: 'active' | 'suspended' = (target.status === 'inactive' || target.status === 'suspended') ? 'active' : 'suspended';
 
     setRestaurants(prev => prev.map(r => (r.id === restaurantId ? { ...r, status: newStatus } : r)));
     if (activeRestaurant && activeRestaurant.id === restaurantId) {
@@ -1421,7 +1492,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       user_name: 'مدير المنصة العام',
       role: 'super_admin',
       action: newStatus === 'active' ? 'Restaurant Activated' : 'Restaurant Suspended',
-      description: `تم ${newStatus === 'active' ? 'تنشيط واستئناف عمل' : 'إيقاف مؤقت لنشاط'} مطعم (${target.name_ar})`,
+      description: `تم ${newStatus === 'active' ? (target.status === 'inactive' ? 'تفعيل واعتماد' : 'استئناف تشغيل') : 'إيقاف مؤقت لنشاط'} مطعم (${target.name_ar})`,
       timestamp: 'الآن'
     };
     setActivityLogs(prev => [log, ...prev]);
