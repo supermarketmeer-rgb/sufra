@@ -56,7 +56,8 @@ export const CustomerMenu: React.FC = () => {
     reviews,
     coupons,
     applyCoupon,
-    setCurrentRole
+    setCurrentRole,
+    isBootstrapLoading
   } = useApp();
 
   // Navigation mode
@@ -403,9 +404,13 @@ export const CustomerMenu: React.FC = () => {
     setRevComment('');
   };
 
-  const filteredProducts = products.filter(p => {
-    const matchesCat = selectedCategory === 'all' || p.category_id === selectedCategory;
-    const matchesSearch = p.name_ar.includes(searchQuery) ||
+  const restaurantProducts = products.filter(p => !activeRestaurant || Number(p.restaurant_id) === Number(activeRestaurant.id));
+  const restaurantCategories = categories.filter(c => !activeRestaurant || Number(c.restaurant_id) === Number(activeRestaurant.id));
+
+  const filteredProducts = restaurantProducts.filter(p => {
+    const matchesCat = selectedCategory === 'all' || Number(p.category_id) === Number(selectedCategory);
+    const matchesSearch = !searchQuery.trim() ||
+                          p.name_ar.includes(searchQuery) ||
                           p.name_en.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           p.description_ar.includes(searchQuery);
     return matchesCat && matchesSearch;
@@ -687,23 +692,23 @@ export const CustomerMenu: React.FC = () => {
             </div>
 
             {/* Category horizontal scroll (only when categories exist) */}
-            {categories.length > 0 && (
+            {restaurantCategories.length > 0 && (
               <div className="flex items-center gap-2 overflow-x-auto pb-1">
                 <button
                   onClick={() => setSelectedCategory('all')}
-                  className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                     selectedCategory === 'all'
                       ? 'bg-amber-500 text-slate-950 font-bold'
                       : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
                   }`}
                 >
-                  جميع الأقسام ({products.length})
+                  جميع الأقسام ({restaurantProducts.length})
                 </button>
-                {categories.map(cat => (
+                {restaurantCategories.map(cat => (
                   <button
                     key={cat.id}
                     onClick={() => setSelectedCategory(cat.id)}
-                    className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+                    className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                       selectedCategory === cat.id
                         ? 'bg-amber-500 text-slate-950 font-bold'
                         : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
@@ -718,8 +723,23 @@ export const CustomerMenu: React.FC = () => {
 
           {/* Product Items List */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {filteredProducts.length === 0 && (
-              <div className="col-span-full bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center">
+            {isBootstrapLoading && restaurantProducts.length === 0 && (
+              <>
+                {[1, 2, 3, 4].map(n => (
+                  <div key={n} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex gap-3 animate-pulse">
+                    <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-xl bg-slate-800 shrink-0"></div>
+                    <div className="flex-1 space-y-2 py-2">
+                      <div className="h-4 bg-slate-800 rounded w-3/4"></div>
+                      <div className="h-3 bg-slate-800/60 rounded w-1/2"></div>
+                      <div className="h-4 bg-amber-500/20 rounded w-1/3 mt-4"></div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {!isBootstrapLoading && filteredProducts.length === 0 && (
+              <div className="col-span-full bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center animate-in fade-in duration-300">
                 <UtensilsCrossed className="w-12 h-12 text-slate-600 mx-auto mb-3" />
                 <h3 className="text-white font-bold text-sm mb-1">لا توجد وجبات في المنيو حالياً</h3>
                 <p className="text-slate-400 text-xs max-w-md mx-auto">
@@ -727,7 +747,7 @@ export const CustomerMenu: React.FC = () => {
                 </p>
                 <button
                   onClick={() => setCurrentRole('restaurant_owner')}
-                  className="mt-4 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-semibold rounded-xl border border-amber-500/30 transition-colors"
+                  className="mt-4 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-semibold rounded-xl border border-amber-500/30 transition-colors cursor-pointer"
                 >
                   الانتقال للوحة المالك لإضافة الأصناف
                 </button>

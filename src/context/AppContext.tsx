@@ -73,6 +73,7 @@ interface AppContextType {
   users: User[];
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
+  isBootstrapLoading: boolean;
   
   // User Authentication & Management
   loginUser: (identifier: string, passwordOrPin: string, restaurantId?: number) => { success: boolean; message: string; user?: User };
@@ -240,6 +241,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() =>
     loadFromStorage('sufrah_v2_activity_logs', INITIAL_ACTIVITY_LOGS)
   );
+  const [isBootstrapLoading, setIsBootstrapLoading] = useState(true);
   const normalizeDigits = (str: string): string => {
     if (!str) return '';
     return str
@@ -383,6 +385,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return cleaned;
         });
       }
+    }).finally(() => {
+      if (isMounted) setIsBootstrapLoading(false);
     });
 
     // 2. Real-Time SSE Listener across all devices
@@ -1116,14 +1120,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       calories: productData.calories || 450,
       prep_time_minutes: productData.prep_time_minutes || 15,
       ingredients_ar: productData.ingredients_ar || '',
-      is_available: true,
-      is_featured: false,
+      is_available: productData.is_available !== false,
+      is_featured: Boolean(productData.is_featured),
       sizes: productData.sizes || [],
       addons: productData.addons || []
     };
     setProducts(prev => [newProd, ...prev]);
 
-    api.addProduct(newProd).catch(console.error);
+    api.addProduct(newProd).then(saved => {
+      if (saved && saved.id) {
+        setProducts(prev => prev.map(p => p.id === nextId ? { ...newProd, ...saved } : p));
+      }
+    }).catch(console.error);
   };
 
   const updateProduct = (productId: number, updates: Partial<Product>) => {
@@ -1660,6 +1668,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         users,
         currentUser,
         setCurrentUser,
+        isBootstrapLoading,
         loginUser,
         logoutUser,
         updateUser,

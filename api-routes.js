@@ -61,7 +61,8 @@ if (sseKeepAlive.unref) sseKeepAlive.unref();
 
 export const apiRouter = express.Router();
 
-apiRouter.use(express.json({ limit: '10mb' }));
+apiRouter.use(express.json({ limit: '50mb' }));
+apiRouter.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // CORS
 apiRouter.use((req, res, next) => {
@@ -192,7 +193,7 @@ apiRouter.get(['/data', '/bootstrap'], async (req, res) => {
     }));
 
     // 5. Products
-    const [prodRows] = await dbPool.query(`SELECT * FROM products WHERE is_available = 1 ORDER BY sort_order ASC, id ASC;`);
+    const [prodRows] = await dbPool.query(`SELECT * FROM products ORDER BY sort_order ASC, id ASC;`);
     const products = prodRows.map(p => ({
       id: p.id,
       restaurant_id: p.restaurant_id,
