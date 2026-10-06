@@ -57,7 +57,8 @@ export const CustomerMenu: React.FC = () => {
     coupons,
     applyCoupon,
     setCurrentRole,
-    isBootstrapLoading
+    isBootstrapLoading,
+    currentUser
   } = useApp();
 
   // Navigation mode
@@ -427,13 +428,15 @@ export const CustomerMenu: React.FC = () => {
           التطبيق مهيأ حالياً ونظيف لاستقبال المطاعم الجديدة بدون أي بيانات افتراضية.
           قم بتسجيل أول مطعم لتفعيل منيو الـ QR الإلكتروني والبدء في تلقي الطلبات.
         </p>
-        <button
-          onClick={() => setCurrentRole('super_admin')}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold rounded-xl text-sm shadow-lg shadow-amber-500/20 cursor-pointer transition-all"
-        >
-          <Store className="w-4 h-4" />
-          <span>تسجيل مطعم جديد (لوحة الإدارة)</span>
-        </button>
+        {currentUser?.role === 'super_admin' && (
+          <button
+            onClick={() => setCurrentRole('super_admin')}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold rounded-xl text-sm shadow-lg shadow-amber-500/20 cursor-pointer transition-all"
+          >
+            <Store className="w-4 h-4" />
+            <span>تسجيل مطعم جديد (لوحة الإدارة)</span>
+          </button>
+        )}
       </div>
     );
   }
@@ -448,12 +451,14 @@ export const CustomerMenu: React.FC = () => {
         <p className="text-slate-400 text-sm leading-relaxed">
           نعتذر لكم، مطعم ({activeRestaurant.name_ar}) متوقف مؤقتاً عن استقبال الطلبات في الوقت الحالي بقرار إداري. يرجى المحاولة لاحقاً.
         </p>
-        <button
-          onClick={() => setCurrentRole('super_admin')}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs transition-all cursor-pointer"
-        >
-          <span>لوحة التحكم الرئيسية</span>
-        </button>
+        {currentUser?.role === 'super_admin' && (
+          <button
+            onClick={() => setCurrentRole('super_admin')}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs transition-all cursor-pointer"
+          >
+            <span>لوحة التحكم الرئيسية</span>
+          </button>
+        )}
       </div>
     );
   }
@@ -743,14 +748,8 @@ export const CustomerMenu: React.FC = () => {
                 <UtensilsCrossed className="w-12 h-12 text-slate-600 mx-auto mb-3" />
                 <h3 className="text-white font-bold text-sm mb-1">لا توجد وجبات في المنيو حالياً</h3>
                 <p className="text-slate-400 text-xs max-w-md mx-auto">
-                  لم يقم المطعم بإضافة وجبات بعد. يمكنك إضافة الأقسام والأصناف والأسعار بالدينار العراقي من لوحة المالك.
+                  قائمة الطعام قيد التحديث من قبل إدارة المطعم. يرجى معاودة الزيارة قريباً أو التواصل مع المطعم مباشرة عبر واتساب.
                 </p>
-                <button
-                  onClick={() => setCurrentRole('restaurant_owner')}
-                  className="mt-4 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-semibold rounded-xl border border-amber-500/30 transition-colors cursor-pointer"
-                >
-                  الانتقال للوحة المالك لإضافة الأصناف
-                </button>
               </div>
             )}
             {filteredProducts.map(prod => {
@@ -1464,16 +1463,6 @@ export const CustomerMenu: React.FC = () => {
           </div>
         </div>
       )}
-      {/* Discreet floating return button for manager/owner preview */}
-      <div className="fixed bottom-4 left-4 z-40">
-        <button
-          onClick={() => setCurrentRole('restaurant_owner')}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-amber-400 text-xs font-semibold rounded-full border border-amber-500/30 shadow-xl backdrop-blur transition-all cursor-pointer"
-        >
-          <span>العودة للوحة التحكم</span>
-          <ArrowLeft className="w-3.5 h-3.5" />
-        </button>
-      </div>
     </div>
   );
 };
