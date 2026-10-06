@@ -170,6 +170,21 @@ export const api = {
     return null;
   },
 
+  async updateCategory(catId: number, updates: Partial<Category>): Promise<Category | null> {
+    try {
+      const res = await fetch(`/api/categories/${catId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      const json = await res.json();
+      if (json.success && json.category) return json.category;
+    } catch (err) {
+      console.error('Failed to update category via API:', err);
+    }
+    return null;
+  },
+
   async deleteCategory(catId: number): Promise<boolean> {
     try {
       const res = await fetch(`/api/categories/${catId}`, {
@@ -343,6 +358,13 @@ export const api = {
           try {
             const data = JSON.parse(e.data);
             onEvent('category_created', data);
+          } catch {}
+        });
+
+        es.addEventListener('category_updated', (e: MessageEvent) => {
+          try {
+            const data = JSON.parse(e.data);
+            onEvent('category_updated', data);
           } catch {}
         });
 

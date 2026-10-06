@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import QRCode from 'qrcode';
 import { useApp } from '../../context/AppContext';
 import { Product, ProductSize, ProductAddon, Category, DiningTable, User, UserRole, Branch } from '../../types';
@@ -172,12 +172,27 @@ export const OwnerDashboard: React.FC = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [newCatNameAr, setNewCatNameAr] = useState('');
   const [newCatNameEn, setNewCatNameEn] = useState('');
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [categoryFeedbackMsg, setCategoryFeedbackMsg] = useState<string | null>(null);
   const [showAddBranchModal, setShowAddBranchModal] = useState(false);
+
+  // Filter categories for the current active restaurant
+  const restaurantCategories = useMemo(() => {
+    const list = categories.filter(c => !activeRestaurant || Number(c.restaurant_id) === Number(activeRestaurant.id));
+    return list.length > 0 ? list : categories;
+  }, [categories, activeRestaurant]);
 
   // New product form
   const [prodNameAr, setProdNameAr] = useState('');
   const [prodNameEn, setProdNameEn] = useState('');
   const [prodCategory, setProdCategory] = useState<number>(categories[0]?.id || 1);
+
+  // Keep prodCategory aligned with available categories
+  useEffect(() => {
+    if (restaurantCategories.length > 0 && (!prodCategory || !restaurantCategories.some(c => c.id === prodCategory))) {
+      setProdCategory(restaurantCategories[0].id);
+    }
+  }, [restaurantCategories, prodCategory]);
   const [prodPrice, setProdPrice] = useState<number>(12000);
   const [prodDiscount, setProdDiscount] = useState<number | undefined>(undefined);
   const [prodPrepTime, setProdPrepTime] = useState<number>(15);
@@ -781,6 +796,13 @@ export const OwnerDashboard: React.FC = () => {
       {/* Tab 1: Menu & Catalog Management */}
       {activeTab === 'menu' && (
         <div className="space-y-6">
+          {categoryFeedbackMsg && (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between">
+              <span>{categoryFeedbackMsg}</span>
+              <button onClick={() => setCategoryFeedbackMsg(null)} className="text-emerald-400/60 hover:text-emerald-400">✕</button>
+            </div>
+          )}
+
           {/* Categories bar & Add dish button */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
@@ -794,7 +816,7 @@ export const OwnerDashboard: React.FC = () => {
               >
                 جميع الأصناف ({products.length})
               </button>
-              {categories.map(cat => (
+              {restaurantCategories.map(cat => (
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCatId(cat.id)}
@@ -814,7 +836,7 @@ export const OwnerDashboard: React.FC = () => {
                   setNewCatNameEn('');
                   setShowAddCategoryModal(true);
                 }}
-                className="px-3 py-1.5 rounded-xl text-xs font-medium border border-dashed border-slate-700 hover:border-amber-400 text-slate-400 hover:text-amber-400 flex items-center gap-1 transition-colors whitespace-nowrap"
+                className="px-3 py-1.5 rounded-xl text-xs font-medium border border-dashed border-amber-500/40 hover:border-amber-400 text-amber-400/80 hover:text-amber-400 flex items-center gap-1 transition-colors whitespace-nowrap bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer"
                 title="إضافة قسم أو تصنيف جديد"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -2361,24 +2383,40 @@ export const OwnerDashboard: React.FC = () => {
             </div>
 
             <form
-              onSubmit={e => {
+              onSubmit={async e => {
                 e.preventDefault();
-                if (!newCatNameAr.trim()) return;
-                if (editingCategory) {
-                  updateCategory(editingCategory.id, {
-                    name_ar: newCatNameAr.trim(),
-                    name_en: newCatNameEn.trim() || newCatNameAr.trim()
-                  });
-                } else {
-                  addCategory({
-                    name_ar: newCatNameAr.trim(),
-                    name_en: newCatNameEn.trim() || newCatNameAr.trim()
-                  });
+                if (!newCatNameAr.trim() || isSavingCategory) return;
+                setIsSavingCategory(true);
+                try {
+                  const nameAr = newCatNameAr.trim();
+                  const nameEn = newCatNameEn.trim() || nameAr;
+                  if (editingCategory) {
+                    updateCategory(editingCategory.id, {
+                      name_ar: nameAr,
+                      name_en: nameEn
+                    });
+                    setCategoryFeedbackMsg(`تم تعديل قسم "${nameAr}" بنجاح`);
+                  } else {
+                    const created = await addCategory({
+                      name_ar: nameAr,
+                      name_en: nameEn
+                    });
+                    if (created) {
+                      setSelectedCatId(created.id);
+                      setProdCategory(created.id);
+                      setCategoryFeedbackMsg(`تمت إضافة قسم "${nameAr}" بنجاح! 🎉`);
+                    }
+                  }
+                  setTimeout(() => setCategoryFeedbackMsg(null), 3500);
+                  setNewCatNameAr('');
+                  setNewCatNameEn('');
+                  setEditingCategory(null);
+                  setShowAddCategoryModal(false);
+                } catch (err: any) {
+                  alert(err?.message || 'حدث خطأ أثناء حفظ القسم');
+                } finally {
+                  setIsSavingCategory(false);
                 }
-                setNewCatNameAr('');
-                setNewCatNameEn('');
-                setEditingCategory(null);
-                setShowAddCategoryModal(false);
               }}
               className="space-y-3 text-xs"
             >
@@ -2408,19 +2446,28 @@ export const OwnerDashboard: React.FC = () => {
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
                 <button
                   type="button"
+                  disabled={isSavingCategory}
                   onClick={() => {
                     setShowAddCategoryModal(false);
                     setEditingCategory(null);
                   }}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700"
+                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700 disabled:opacity-50"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl shadow-md transition-colors"
+                  disabled={isSavingCategory}
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 font-bold rounded-xl shadow-md transition-colors flex items-center gap-1.5"
                 >
-                  {editingCategory ? 'حفظ التعديلات' : 'حفظ القسم'}
+                  {isSavingCategory ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
+                      <span>جاري الحفظ...</span>
+                    </>
+                  ) : (
+                    <span>{editingCategory ? 'حفظ التعديلات' : 'حفظ القسم'}</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -2541,13 +2588,27 @@ export const OwnerDashboard: React.FC = () => {
 
                     <div className="grid grid-cols-2 gap-2.5">
                       <div>
-                        <label className="block text-slate-400 mb-1 font-medium">القسم / التصنيف *</label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-slate-400 font-medium">القسم / التصنيف *</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingCategory(null);
+                              setNewCatNameAr('');
+                              setNewCatNameEn('');
+                              setShowAddCategoryModal(true);
+                            }}
+                            className="text-[11px] text-amber-400 hover:underline"
+                          >
+                            + قسم جديد
+                          </button>
+                        </div>
                         <select
                           value={prodCategory}
                           onChange={e => setProdCategory(Number(e.target.value))}
                           className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-amber-500/50"
                         >
-                          {categories.map(c => (
+                          {restaurantCategories.map(c => (
                             <option key={c.id} value={c.id}>{c.name_ar}</option>
                           ))}
                         </select>

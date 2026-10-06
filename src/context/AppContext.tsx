@@ -91,7 +91,7 @@ interface AppContextType {
   addProduct: (productData: Partial<Product>) => void;
   updateProduct: (productId: number, updates: Partial<Product>) => void;
   deleteProduct: (productId: number) => void;
-  addCategory: (categoryData: Partial<Category>) => void;
+  addCategory: (categoryData: Partial<Category>) => Promise<Category | null>;
   updateCategory: (categoryId: number, updates: Partial<Category>) => void;
   deleteCategory: (categoryId: number) => void;
   addBranch: (branchData: Partial<Branch>) => void;
@@ -99,6 +99,7 @@ interface AppContextType {
   deleteBranch: (branchId: number) => { success: boolean; message: string };
   addReservation: (res: Partial<Reservation>) => void;
   updateReservationStatus: (resId: number, status: 'pending' | 'confirmed' | 'cancelled') => void;
+  addReview: (reviewData: Partial<Review>) => void;
   createRestaurant: (data: Partial<Restaurant> & {
     owner_name?: string;
     owner_username?: string;
@@ -247,7 +248,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const [users, setUsers] = useState<User[]>(() => {
-    const saved = loadFromStorage<User[]>('sufrah_v2_users', null);
+    const saved = loadFromStorage<User[]>('sufrah_v2_users', []);
     // If nothing is saved yet (first run), use INITIAL_USERS
     if (!saved || saved.length === 0) return INITIAL_USERS;
     // IMPORTANT: Do NOT re-add missing INITIAL_USERS.
@@ -255,7 +256,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Re-merging INITIAL_USERS here was the bug that allowed deleted staff to log in again.
 
     // OFFLINE SAFETY NET: remove users belonging to restaurants not in local storage
-    const savedRestaurants = loadFromStorage<Restaurant[]>('sufrah_v2_restaurants', null);
+    const savedRestaurants = loadFromStorage<Restaurant[]>('sufrah_v2_restaurants', []);
     if (savedRestaurants && savedRestaurants.length > 0) {
       const validRestIds = new Set(savedRestaurants.map(r => Number(r.id)));
       const cleaned = saved.filter(u => u.role === 'super_admin' || !u.restaurant_id || validRestIds.has(Number(u.restaurant_id)));
@@ -415,7 +416,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else if (type === 'product_deleted') {
         setProducts(prev => prev.filter(p => p.id !== payload.id));
       } else if (type === 'category_created') {
-        setCategories(prev => prev.some(c => c.id === payload.id) ? prev : [...prev, payload]);
+        setCategories(prev => {
+          if (prev.some(c => c.id === payload.id)) return prev;
+          // Match any optimistic category with the same name and restaurant
+          const tempIdx = prev.findIndex(c => c.id > 1000000 && c.restaurant_id === payload.restaurant_id && c.name_ar === payload.name_ar);
+          if (tempIdx !== -1) {
+            const next = [...prev];
+            next[tempIdx] = payload;
+            return next;
+          }
+          return [...prev, payload];
+        });
+      } else if (type === 'category_updated') {
+        setCategories(prev => prev.map(c => c.id === payload.id ? { ...c, ...payload } : c));
       } else if (type === 'category_deleted') {
         setCategories(prev => prev.filter(c => c.id !== payload.id));
       } else if (type === 'restaurant_created') {
@@ -1123,24 +1136,69 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     api.deleteProduct(productId).catch(console.error);
   };
 
-  const addCategory = (categoryData: Partial<Category>) => {
-    if (!activeRestaurant) return;
-    const nextId = categories.length > 0 ? Math.max(...categories.map(c => c.id)) + 1 : 1;
+  const addCategory = async (categoryData: Partial<Category>): Promise<Category | null> => {
+    // Resolve restaurant: activeRestaurant OR currentUser's restaurant OR first loaded restaurant
+    let targetRest = activeRestaurant;
+    if (!targetRest && currentUser?.restaurant_id) {
+      targetRest = restaurants.find(r => r.id === currentUser.restaurant_id) || null;
+    }
+    if (!targetRest && restaurants.length > 0) {
+      targetRest = restaurants[0];
+    }
+    if (targetRest && !activeRestaurant) {
+      setActiveRestaurant(targetRest);
+    }
+
+    if (!targetRest) {
+      alert('يرجى تحديد أو اختيار مطعم أولاً لإضافة القسم.');
+      return null;
+    }
+
+    const tempId = Date.now();
+    const cleanNameAr = (categoryData.name_ar || 'قسم جديد').trim();
+    const cleanNameEn = (categoryData.name_en || cleanNameAr).trim();
+    const slug = (categoryData.slug || cleanNameEn || cleanNameAr)
+      .toLowerCase()
+      .trim()
+      .replace(/[\s_]+/g, '-')
+      .replace(/[^\w\u0621-\u064A\-]/g, '');
+
     const newCat: Category = {
-      id: nextId,
-      restaurant_id: activeRestaurant.id,
-      name_ar: categoryData.name_ar || 'قسم جديد',
-      name_en: categoryData.name_en || 'New Category',
-      slug: (categoryData.slug || categoryData.name_ar || 'category').toLowerCase().trim().replace(/[\s_]+/g, '-'),
+      id: tempId,
+      restaurant_id: targetRest.id,
+      name_ar: cleanNameAr,
+      name_en: cleanNameEn,
+      slug: slug || `cat-${tempId}`,
       icon_name: categoryData.icon_name || 'utensils',
       sort_order: categories.length + 1
     };
+
+    // Optimistic local update
     setCategories(prev => [...prev, newCat]);
-    api.addCategory(newCat).catch(console.error);
+
+    try {
+      const saved = await api.addCategory({
+        restaurant_id: targetRest.id,
+        name_ar: cleanNameAr,
+        name_en: cleanNameEn,
+        slug: slug || `cat-${tempId}`,
+        icon_name: newCat.icon_name,
+        sort_order: newCat.sort_order
+      });
+
+      if (saved) {
+        setCategories(prev => prev.map(c => c.id === tempId ? saved : c));
+        return saved;
+      }
+    } catch (err) {
+      console.error('Failed to add category via API:', err);
+    }
+    return newCat;
   };
 
   const updateCategory = (categoryId: number, updates: Partial<Category>) => {
     setCategories(prev => prev.map(c => c.id === categoryId ? { ...c, ...updates } : c));
+    api.updateCategory(categoryId, updates).catch(console.error);
   };
 
   const deleteCategory = (categoryId: number) => {

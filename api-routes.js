@@ -597,6 +597,50 @@ apiRouter.post('/products', async (req, res) => {
 
   try {
     const p = req.body;
+
+    // Resolve valid restaurant_id in MySQL
+    let targetRestId = p.restaurant_id ? Number(p.restaurant_id) : null;
+    if (targetRestId) {
+      const [rCheck] = await dbPool.query('SELECT id FROM restaurants WHERE id = ?', [targetRestId]);
+      if (!rCheck.length) targetRestId = null;
+    }
+    if (!targetRestId) {
+      const [firstRest] = await dbPool.query('SELECT id FROM restaurants ORDER BY id ASC LIMIT 1');
+      if (firstRest.length) targetRestId = firstRest[0].id;
+    }
+    if (!targetRestId) {
+      return res.status(400).json({ success: false, message: 'لا يوجد مطعم مسجل في النظام' });
+    }
+
+    // Resolve valid category_id in MySQL
+    let targetCatId = p.category_id ? Number(p.category_id) : null;
+    if (targetCatId) {
+      const [cCheck] = await dbPool.query('SELECT id FROM categories WHERE id = ?', [targetCatId]);
+      if (!cCheck.length) targetCatId = null;
+    }
+    if (!targetCatId) {
+      // Find any category for this restaurant or create default
+      const [existingCats] = await dbPool.query('SELECT id FROM categories WHERE restaurant_id = ? ORDER BY id ASC LIMIT 1', [targetRestId]);
+      if (existingCats.length) {
+        targetCatId = existingCats[0].id;
+      } else {
+        const [newCatRes] = await dbPool.query(`
+          INSERT INTO categories (restaurant_id, name_ar, name_en, slug, icon_name, sort_order, is_active)
+          VALUES (?, 'الأطباق الرئيسية', 'Main Dishes', 'main-dishes', 'Utensils', 1, 1)
+        `, [targetRestId]);
+        targetCatId = newCatRes.insertId;
+        broadcastEvent('category_created', {
+          id: targetCatId,
+          restaurant_id: targetRestId,
+          name_ar: 'الأطباق الرئيسية',
+          name_en: 'Main Dishes',
+          slug: 'main-dishes',
+          icon_name: 'Utensils',
+          sort_order: 1
+        });
+      }
+    }
+
     const [result] = await dbPool.query(`
       INSERT INTO products (
         restaurant_id, category_id, name_ar, name_en, description_ar,
@@ -604,8 +648,8 @@ apiRouter.post('/products', async (req, res) => {
         is_available, is_featured, sort_order
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      p.restaurant_id || 1,
-      p.category_id || 1,
+      targetRestId,
+      targetCatId,
       p.name_ar,
       p.name_en || p.name_ar,
       p.description_ar || '',
@@ -622,6 +666,8 @@ apiRouter.post('/products', async (req, res) => {
     const createdProduct = {
       ...p,
       id: result.insertId,
+      restaurant_id: targetRestId,
+      category_id: targetCatId,
       sizes: [],
       addons: []
     };
@@ -629,6 +675,7 @@ apiRouter.post('/products', async (req, res) => {
     broadcastEvent('product_created', createdProduct);
     res.status(201).json({ success: true, product: createdProduct });
   } catch (err) {
+    console.error('Error inserting product:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -694,25 +741,52 @@ apiRouter.post('/categories', async (req, res) => {
 
   try {
     const c = req.body;
-    const slug = (c.slug || c.name_ar).toLowerCase().replace(/[\s_]+/g, '-');
+    if (!c.name_ar || !c.name_ar.trim()) {
+      return res.status(400).json({ success: false, message: 'اسم القسم مطلوب' });
+    }
+
+    // Resolve valid restaurant_id in MySQL
+    let targetRestId = c.restaurant_id ? Number(c.restaurant_id) : null;
+    if (targetRestId) {
+      const [rCheck] = await dbPool.query('SELECT id FROM restaurants WHERE id = ?', [targetRestId]);
+      if (!rCheck.length) targetRestId = null;
+    }
+    if (!targetRestId) {
+      const [firstRest] = await dbPool.query('SELECT id FROM restaurants ORDER BY id ASC LIMIT 1');
+      if (firstRest.length) {
+        targetRestId = firstRest[0].id;
+      }
+    }
+    if (!targetRestId) {
+      return res.status(400).json({ success: false, message: 'لا يوجد مطعم مسجل في النظام لربط القسم به' });
+    }
+
+    const cleanNameAr = c.name_ar.trim();
+    const cleanNameEn = (c.name_en && c.name_en.trim()) ? c.name_en.trim() : cleanNameAr;
+    const slug = (c.slug || cleanNameEn || cleanNameAr)
+      .toLowerCase()
+      .trim()
+      .replace(/[\s_]+/g, '-')
+      .replace(/[^\w\u0621-\u064A\-]/g, '');
+
     const [result] = await dbPool.query(`
       INSERT INTO categories (restaurant_id, name_ar, name_en, slug, icon_name, sort_order, is_active)
       VALUES (?, ?, ?, ?, ?, ?, 1)
     `, [
-      c.restaurant_id || 1,
-      c.name_ar,
-      c.name_en || c.name_ar,
-      slug,
+      targetRestId,
+      cleanNameAr,
+      cleanNameEn,
+      slug || `cat-${Date.now()}`,
       c.icon_name || 'Utensils',
       c.sort_order || 99
     ]);
 
     const newCategory = {
       id: result.insertId,
-      restaurant_id: c.restaurant_id || 1,
-      name_ar: c.name_ar,
-      name_en: c.name_en || c.name_ar,
-      slug,
+      restaurant_id: targetRestId,
+      name_ar: cleanNameAr,
+      name_en: cleanNameEn,
+      slug: slug || `cat-${result.insertId}`,
       icon_name: c.icon_name || 'Utensils',
       sort_order: c.sort_order || 99
     };
@@ -720,6 +794,53 @@ apiRouter.post('/categories', async (req, res) => {
     broadcastEvent('category_created', newCategory);
     res.status(201).json({ success: true, category: newCategory });
   } catch (err) {
+    console.error('Error inserting category:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+apiRouter.put('/categories/:id', async (req, res) => {
+  if (!dbPool) return res.status(503).json({ error: 'DB not available' });
+
+  try {
+    const id = Number(req.params.id);
+    const c = req.body;
+    const cleanNameAr = c.name_ar ? c.name_ar.trim() : null;
+    const cleanNameEn = c.name_en ? c.name_en.trim() : cleanNameAr;
+
+    await dbPool.query(`
+      UPDATE categories
+      SET 
+        name_ar = COALESCE(?, name_ar),
+        name_en = COALESCE(?, name_en),
+        slug = COALESCE(?, slug),
+        icon_name = COALESCE(?, icon_name),
+        sort_order = COALESCE(?, sort_order)
+      WHERE id = ?
+    `, [
+      cleanNameAr,
+      cleanNameEn,
+      c.slug || null,
+      c.icon_name || null,
+      c.sort_order || null,
+      id
+    ]);
+
+    const [rows] = await dbPool.query('SELECT * FROM categories WHERE id = ?', [id]);
+    const updated = rows[0] ? {
+      id: rows[0].id,
+      restaurant_id: rows[0].restaurant_id,
+      name_ar: rows[0].name_ar,
+      name_en: rows[0].name_en,
+      slug: rows[0].slug,
+      icon_name: rows[0].icon_name || 'Utensils',
+      sort_order: Number(rows[0].sort_order) || 1
+    } : { id, ...c };
+
+    broadcastEvent('category_updated', updated);
+    res.json({ success: true, category: updated });
+  } catch (err) {
+    console.error('Error updating category:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });

@@ -28,6 +28,7 @@ import {
   Bike,
   Eye,
   Store,
+  UtensilsCrossed,
   ChevronDown,
   TrendingUp
 } from 'lucide-react';
