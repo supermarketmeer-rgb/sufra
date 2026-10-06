@@ -173,9 +173,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const decoded = decodeURIComponent(rawParam).trim().toLowerCase();
         const found = list.find(r => 
           String(r.id) === decoded || 
-          r.slug.toLowerCase() === decoded ||
-          r.name_ar.toLowerCase().includes(decoded) ||
-          r.name_en.toLowerCase().includes(decoded)
+          (r.slug && r.slug.toLowerCase() === decoded) ||
+          (r.name_ar && r.name_ar.toLowerCase().includes(decoded)) ||
+          (r.name_en && r.name_en.toLowerCase().includes(decoded))
         );
         if (found) return found;
       }
@@ -323,9 +323,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               const decoded = decodeURIComponent(rawParam).trim().toLowerCase();
               const matchedParam = data.restaurants.find(
                 r => String(r.id) === decoded || 
-                     r.slug.toLowerCase() === decoded || 
-                     r.name_ar.toLowerCase().includes(decoded) ||
-                     r.name_en.toLowerCase().includes(decoded)
+                     (r.slug && r.slug.toLowerCase() === decoded) || 
+                     (r.name_ar && r.name_ar.toLowerCase().includes(decoded)) || 
+                     (r.name_en && r.name_en.toLowerCase().includes(decoded))
               );
               if (matchedParam) return matchedParam;
             }

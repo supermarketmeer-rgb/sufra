@@ -410,12 +410,24 @@ export const CustomerMenu: React.FC = () => {
 
   const filteredProducts = restaurantProducts.filter(p => {
     const matchesCat = selectedCategory === 'all' || Number(p.category_id) === Number(selectedCategory);
-    const matchesSearch = !searchQuery.trim() ||
-                          p.name_ar.includes(searchQuery) ||
-                          p.name_en.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          p.description_ar.includes(searchQuery);
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return matchesCat;
+    const matchesSearch = Boolean(
+      (p.name_ar && p.name_ar.toLowerCase().includes(q)) ||
+      (p.name_en && p.name_en.toLowerCase().includes(q)) ||
+      (p.description_ar && p.description_ar.toLowerCase().includes(q))
+    );
     return matchesCat && matchesSearch;
   });
+
+  if (!activeRestaurant && isBootstrapLoading) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center text-center p-6 space-y-4">
+        <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-slate-400 text-sm font-medium animate-pulse">جاري تحميل قائمة المطعم والوجبات...</p>
+      </div>
+    );
+  }
 
   if (!activeRestaurant) {
     return (

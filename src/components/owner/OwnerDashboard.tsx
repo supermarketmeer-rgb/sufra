@@ -287,6 +287,15 @@ export const OwnerDashboard: React.FC = () => {
   const [qrColor, setQrColor] = useState<string>('#1e293b');
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
+  useEffect(() => {
+    if (activeRestaurant && branches.length > 0) {
+      const restBranch = branches.find(b => Number(b.restaurant_id) === Number(activeRestaurant.id));
+      if (restBranch) {
+        setSelectedBranchId(restBranch.id);
+      }
+    }
+  }, [activeRestaurant?.id, branches]);
+
   const [customQrBase, setCustomQrBase] = useState<string>(() => {
     if (typeof window !== 'undefined' && window.location.origin) {
       // If running on local machine, mobile phone cannot access localhost, so default to live cloud domain!
