@@ -203,9 +203,7 @@ export const PosDashboard: React.FC = () => {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
-  const taxRate = activeRestaurant?.tax_percentage || 0;
-  const taxAmount = (subtotal * taxRate) / 100;
-  const totalAmount = Math.max(0, subtotal + taxAmount - discountAmount);
+  const totalAmount = Math.max(0, subtotal - discountAmount);
 
   const handleApplyCoupon = () => {
     const res = applyCoupon(couponCode, subtotal);
@@ -594,12 +592,6 @@ export const PosDashboard: React.FC = () => {
             <span>المجموع الفرعي:</span>
             <span className="font-mono text-slate-200">{subtotal.toLocaleString()} د.ع</span>
           </div>
-          {taxAmount > 0 && (
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>ضريبة القيمة المضافة ({taxRate}%):</span>
-              <span className="font-mono text-slate-200">{taxAmount.toLocaleString()} د.ع</span>
-            </div>
-          )}
           {discountAmount > 0 && (
             <div className="flex items-center justify-between text-xs text-emerald-400 font-semibold">
               <span>الخصم المطبق:</span>
@@ -1073,13 +1065,6 @@ export const PosDashboard: React.FC = () => {
                     <span className="font-mono">{completedOrderReceipt.order.delivery_fee.toLocaleString()} د.ع</span>
                   </div>
                 ) : null}
-
-                {completedOrderReceipt.order.tax_amount > 0 && (
-                  <div className="flex justify-between">
-                    <span>الضريبة:</span>
-                    <span className="font-mono">{completedOrderReceipt.order.tax_amount.toLocaleString()} د.ع</span>
-                  </div>
-                )}
 
                 {completedOrderReceipt.order.discount_amount > 0 && (
                   <div className="flex justify-between">

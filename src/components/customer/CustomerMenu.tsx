@@ -216,10 +216,8 @@ export const CustomerMenu: React.FC = () => {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
-  const taxRate = activeRestaurant?.tax_percentage || 0;
-  const taxAmount = (subtotal * taxRate) / 100;
   const deliveryFee = orderType === 'delivery' ? (activeRestaurant?.delivery_fee_base ?? 3000) : 0;
-  const totalAmount = Math.max(0, subtotal + taxAmount + deliveryFee - discountVal);
+  const totalAmount = Math.max(0, subtotal + deliveryFee - discountVal);
 
   const handleApplyCouponCode = () => {
     const res = applyCoupon(couponInput, subtotal);
@@ -315,9 +313,6 @@ export const CustomerMenu: React.FC = () => {
     msg += `💵 *ملخص الحساب والفاتورة:*\n`;
     msg += `-----------------------------------------\n`;
     msg += `• المجموع الفرعي:   ${subtotal.toLocaleString()} د.ع\n`;
-    if (taxAmount > 0) {
-      msg += `• الضريبة (${taxRate}%):    ${taxAmount.toLocaleString()} د.ع\n`;
-    }
     if (deliveryFee > 0) {
       msg += `• أجور التوصيل:     ${deliveryFee.toLocaleString()} د.ع\n`;
     }
@@ -1485,12 +1480,6 @@ export const CustomerMenu: React.FC = () => {
                   <span>المجموع الفرعي:</span>
                   <span className="font-mono text-white">{subtotal.toLocaleString()} د.ع</span>
                 </div>
-                {taxAmount > 0 && (
-                  <div className="flex justify-between">
-                    <span>الضريبة ({taxRate}%):</span>
-                    <span className="font-mono text-white">{taxAmount.toLocaleString()} د.ع</span>
-                  </div>
-                )}
                 {deliveryFee > 0 && (
                   <div className="flex justify-between">
                     <span>أجور التوصيل:</span>

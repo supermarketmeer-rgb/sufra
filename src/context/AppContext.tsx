@@ -898,11 +898,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const orderNum = `ORD-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}-${Math.floor(100 + Math.random() * 900)}`;
 
     const subtotal = orderData.items.reduce((sum, item) => sum + item.subtotal, 0);
-    const taxRate = activeRestaurant?.tax_percentage || 0;
-    const taxAmount = (subtotal * taxRate) / 100;
     const deliveryFee = orderData.order_type === 'delivery' ? (orderData.delivery_fee || activeRestaurant?.delivery_fee_base || 0) : 0;
     const discountAmount = orderData.discount_amount || 0;
-    const totalAmount = Math.max(0, subtotal + taxAmount + deliveryFee - discountAmount);
+    const totalAmount = Math.max(0, subtotal + deliveryFee - discountAmount);
 
     const newOrder: Order = {
       id: nextId,
@@ -915,7 +913,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       order_type: orderData.order_type || 'dine_in',
       status: orderData.status || 'new',
       subtotal,
-      tax_amount: taxAmount,
+      tax_amount: 0,
       discount_amount: discountAmount,
       delivery_fee: deliveryFee,
       total_amount: totalAmount,
