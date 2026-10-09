@@ -502,51 +502,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Sync state to localStorage for offline cache
   useEffect(() => {
-    localStorage.setItem('sufrah_v2_plans', JSON.stringify(plans));
+    saveToStorage('sufrah_v2_plans', plans);
   }, [plans]);
 
   useEffect(() => {
-    localStorage.setItem('sufrah_v2_restaurants', JSON.stringify(restaurants));
+    saveToStorage('sufrah_v2_restaurants', restaurants);
   }, [restaurants]);
 
   useEffect(() => {
-    localStorage.setItem('sufrah_v2_branches', JSON.stringify(branches));
+    saveToStorage('sufrah_v2_branches', branches);
   }, [branches]);
 
   useEffect(() => {
-    localStorage.setItem('sufrah_v2_tables', JSON.stringify(tables));
+    saveToStorage('sufrah_v2_tables', tables);
   }, [tables]);
 
   useEffect(() => {
-    localStorage.setItem('sufrah_v2_categories', JSON.stringify(categories));
+    saveToStorage('sufrah_v2_categories', categories);
   }, [categories]);
 
   useEffect(() => {
-    localStorage.setItem('sufrah_v2_products', JSON.stringify(products));
+    saveToStorage('sufrah_v2_products', products);
   }, [products]);
 
   useEffect(() => {
-    localStorage.setItem('sufrah_v2_orders', JSON.stringify(orders));
+    saveToStorage('sufrah_v2_orders', orders);
   }, [orders]);
 
   useEffect(() => {
-    localStorage.setItem('sufrah_v2_reservations', JSON.stringify(reservations));
+    saveToStorage('sufrah_v2_reservations', reservations);
   }, [reservations]);
 
   useEffect(() => {
-    localStorage.setItem('sufrah_v2_reviews', JSON.stringify(reviews));
+    saveToStorage('sufrah_v2_reviews', reviews);
   }, [reviews]);
 
   useEffect(() => {
-    localStorage.setItem('sufrah_v2_coupons', JSON.stringify(coupons));
+    saveToStorage('sufrah_v2_coupons', coupons);
   }, [coupons]);
 
   useEffect(() => {
-    localStorage.setItem('sufrah_v2_activity_logs', JSON.stringify(activityLogs));
+    saveToStorage('sufrah_v2_activity_logs', activityLogs);
   }, [activityLogs]);
 
   useEffect(() => {
-    localStorage.setItem('sufrah_v2_users', JSON.stringify(users));
+    saveToStorage('sufrah_v2_users', users);
   }, [users]);
 
   // Link or ensure every restaurant has a dedicated restaurant_owner user account
@@ -609,20 +609,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!userStillExists || !rest || rest.status === 'suspended' || rest.status === 'inactive') {
       setCurrentUser(null);
       setCurrentRole('customer');
-      setActiveRestaurant(null);
-      localStorage.removeItem('sufrah_v2_current_user');
-      localStorage.removeItem('sufrah_v2_active_restaurant_id');
+      setActiveRestaurant(restaurants[0] || null);
+      try {
+        localStorage.removeItem('sufrah_v2_current_user');
+        localStorage.removeItem('sufrah_v2_active_restaurant_id');
+      } catch {}
     }
   }, [currentUser, users, restaurants]);
 
   useEffect(() => {
     if (currentUser) {
-      localStorage.setItem('sufrah_v2_current_user', JSON.stringify(currentUser));
+      saveToStorage('sufrah_v2_current_user', currentUser);
       if (currentUser.restaurant_id) {
         const rest = restaurants.find(r => Number(r.id) === Number(currentUser.restaurant_id));
         if (rest && activeRestaurant?.id !== rest.id) {
           setActiveRestaurant(rest);
-          localStorage.setItem('sufrah_v2_active_restaurant_id', String(rest.id));
+          saveToStorage('sufrah_v2_active_restaurant_id', rest.id);
         }
       }
       if (currentUser.branch_id) {
@@ -632,7 +634,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
     } else {
-      localStorage.removeItem('sufrah_v2_current_user');
+      try {
+        localStorage.removeItem('sufrah_v2_current_user');
+      } catch {}
     }
   }, [currentUser, restaurants, branches]);
 

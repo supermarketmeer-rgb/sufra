@@ -591,7 +591,7 @@ export const CustomerMenu: React.FC = () => {
         </div>
         <h2 className="text-xl font-bold text-white">المطعم موقوف مؤقتاً</h2>
         <p className="text-slate-400 text-sm leading-relaxed">
-          نعتذر لكم، مطعم ({activeRestaurant.name_ar}) متوقف مؤقتاً عن استقبال الطلبات في الوقت الحالي بقرار إداري. يرجى المحاولة لاحقاً.
+          نعتذر لكم، مطعم ({activeRestaurant?.name_ar || 'المطعم'}) متوقف مؤقتاً عن استقبال الطلبات في الوقت الحالي بقرار إداري. يرجى المحاولة لاحقاً.
         </p>
         {isPreviewMode && (
           <button
@@ -707,7 +707,7 @@ export const CustomerMenu: React.FC = () => {
       <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl relative">
         <div className="h-44 sm:h-56 relative">
           <img
-            src={activeRestaurant.cover_url}
+            src={activeRestaurant?.cover_url || ''}
             alt=""
             className="w-full h-full object-cover brightness-60"
           />
@@ -717,13 +717,13 @@ export const CustomerMenu: React.FC = () => {
         <div className="p-5 sm:p-6 -mt-16 sm:-mt-20 relative flex flex-col sm:flex-row items-center sm:items-end justify-between gap-4 text-center sm:text-right">
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <img
-              src={activeRestaurant.logo_url}
+              src={activeRestaurant?.logo_url || ''}
               alt=""
               className="w-24 h-24 rounded-2xl object-cover border-4 border-slate-900 shadow-2xl bg-slate-800"
             />
             <div>
-              <h1 className="text-xl sm:text-2xl font-black text-white">{activeRestaurant.name_ar}</h1>
-              <p className="text-xs text-slate-300 mt-0.5">{activeRestaurant.name_en}</p>
+              <h1 className="text-xl sm:text-2xl font-black text-white">{activeRestaurant?.name_ar || 'المطعم'}</h1>
+              <p className="text-xs text-slate-300 mt-0.5">{activeRestaurant?.name_en || ''}</p>
               <div className="flex items-center justify-center sm:justify-start gap-3 text-xs text-slate-400 mt-2 font-mono">
                 <span className="flex items-center gap-1 text-amber-400 font-bold">
                   <Star className="w-3.5 h-3.5 fill-amber-400" />
@@ -746,7 +746,7 @@ export const CustomerMenu: React.FC = () => {
               </button>
             )}
             <a
-              href={formatWhatsAppUrl(activeRestaurant.whatsapp_number || activeRestaurant.phone)}
+              href={formatWhatsAppUrl(activeRestaurant?.whatsapp_number || activeRestaurant?.phone)}
               target="_blank"
               rel="noreferrer"
               className="px-3.5 py-2 bg-emerald-600/90 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors"
