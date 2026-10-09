@@ -14,7 +14,6 @@ import {
   Download,
   Flame,
   CheckCircle2,
-  Clock,
   DollarSign,
   Share2,
   FileSpreadsheet,
@@ -960,10 +959,6 @@ export const OwnerDashboard: React.FC = () => {
                         خصم خاص
                       </span>
                     )}
-                    <div className="absolute bottom-2 left-2.5 bg-slate-950/80 backdrop-blur-sm text-slate-300 text-[11px] px-2 py-0.5 rounded-md font-mono flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-amber-400" />
-                      <span>{prod.prep_time_minutes} دقيقة</span>
-                    </div>
                   </div>
 
                   <div className="flex items-start justify-between gap-2">
@@ -1006,7 +1001,6 @@ export const OwnerDashboard: React.FC = () => {
                       <PlusCircle className="w-3 h-3 text-amber-400/80" />
                       <span>{prod.addons?.length || 0} إضافات</span>
                     </button>
-                    {prod.calories && <span>{prod.calories} سعرة</span>}
                   </div>
                 </div>
 
@@ -2680,35 +2674,15 @@ export const OwnerDashboard: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <label className="block text-slate-400 mb-1 font-medium">سعر الخصم (د.ع)</label>
-                        <input
-                          type="number"
-                          value={prodDiscount || ''}
-                          onChange={e => setProdDiscount(e.target.value ? Number(e.target.value) : undefined)}
-                          placeholder="اختياري"
-                          className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2 text-white font-mono outline-none focus:border-amber-500/50"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-slate-400 mb-1 font-medium">التحضير (دقيقة)</label>
-                        <input
-                          type="number"
-                          value={prodPrepTime}
-                          onChange={e => setProdPrepTime(Number(e.target.value))}
-                          className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2 text-white font-mono outline-none focus:border-amber-500/50"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-slate-400 mb-1 font-medium">السعرات (Cal)</label>
-                        <input
-                          type="number"
-                          value={prodCalories}
-                          onChange={e => setProdCalories(Number(e.target.value))}
-                          className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2 text-white font-mono outline-none focus:border-amber-500/50"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1 font-medium">سعر الخصم (د.ع) - اختياري</label>
+                      <input
+                        type="number"
+                        value={prodDiscount || ''}
+                        onChange={e => setProdDiscount(e.target.value ? Number(e.target.value) : undefined)}
+                        placeholder="اتركه فارغاً إذا لم يكن هناك خصم"
+                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-white font-mono outline-none focus:border-amber-500/50"
+                      />
                     </div>
 
                     <div>
