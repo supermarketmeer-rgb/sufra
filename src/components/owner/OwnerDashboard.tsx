@@ -866,10 +866,10 @@ export const OwnerDashboard: React.FC = () => {
                   setNewCatNameEn('');
                   setShowAddCategoryModal(true);
                 }}
-                className="px-3 py-1.5 rounded-xl text-xs font-medium border border-dashed border-amber-500/40 hover:border-amber-400 text-amber-400/80 hover:text-amber-400 flex items-center gap-1 transition-colors whitespace-nowrap bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer"
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-1 shadow-sm transition-colors whitespace-nowrap cursor-pointer"
                 title="إضافة قسم أو تصنيف جديد"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>قسم جديد</span>
               </button>
             </div>
