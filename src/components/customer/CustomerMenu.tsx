@@ -228,56 +228,112 @@ export const CustomerMenu: React.FC = () => {
     }
   };
 
-  // Build formatted WhatsApp message for direct ordering
+  // Build formatted WhatsApp message as an organized thermal printer receipt
   const buildWhatsAppOrderMessage = (orderNum: string, currentCart: OrderItem[], currentTotal: number) => {
     const restName = activeRestaurant?.name_ar || 'المطعم';
     const branchName = activeBranch?.name_ar || 'الفرع الرئيسي';
-    let msg = `*طلب جديد عبر واتساب - ${restName}* 🍽️\n`;
-    msg += `*الفرع:* ${branchName}\n`;
-    
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('ar-IQ', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    const timeStr = now.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    let orderTypeLabel = 'داخل الصالة';
     if (orderType === 'dine_in') {
-      msg += `*نوع الطلب:* 🪑 داخل الصالة (طاولة رقم: ${selectedTableNum})\n`;
+      orderTypeLabel = `🪑 داخل الصالة · (طاولة: ${selectedTableNum})`;
     } else if (orderType === 'delivery') {
-      msg += `*نوع الطلب:* 🛵 توصيل دليفري\n`;
-      msg += `*عنوان التوصيل:* ${deliveryAddress || 'العنوان المسجل'}\n`;
+      orderTypeLabel = '🛵 توصيل سفري (Delivery)';
     } else if (orderType === 'takeaway') {
-      msg += `*نوع الطلب:* 🛍️ استلام سفري من الفرع\n`;
+      orderTypeLabel = '🛍️ استلام سفري (Takeaway)';
     } else {
-      msg += `*نوع الطلب:* ⏱️ طلب مسبق\n`;
+      orderTypeLabel = '⏱️ طلب مسبق (Pre-Order)';
     }
 
-    if (customerName) msg += `*اسم الزبون:* ${customerName}\n`;
-    if (customerPhone) msg += `*رقم الهاتف:* ${customerPhone}\n`;
+    const paymentMap: { [key: string]: string } = {
+      cash: 'نقدي عند الاستلام 💵',
+      zaincash: 'زين كاش (ZainCash) 📱',
+      asia_hawala: 'آسيا حوالة 📱',
+      qicard: 'كي كارد (QiCard) 💳',
+      visa: 'فيزا كارد (Visa) 💳',
+      mastercard: 'ماستركارد (MasterCard) 💳'
+    };
+    const paymentLabel = paymentMap[paymentMethod] || 'نقدي عند الاستلام 💵';
 
-    msg += `\n📋 *قائمة المأكولات والمشروبات:*\n`;
+    const line = '━━━━━━━━━━━━━━━━━━━━━━━━━';
+    const doubleLine = '═════════════════════════';
+
+    let msg = `🧾 ${doubleLine} 🧾\n`;
+    msg += `       *فاتورة طلب إلكتروني*\n`;
+    msg += `     *${restName.toUpperCase()}*\n`;
+    msg += `        ${branchName}\n`;
+    msg += `🧾 ${doubleLine} 🧾\n\n`;
+
+    msg += `🔖 *رقم الفاتورة:*  \`#${orderNum}\`\n`;
+    msg += `📅 *التاريخ والوقت:* ${dateStr} · ${timeStr}\n`;
+    msg += `📍 *نوع الطلب:*    ${orderTypeLabel}\n`;
+
+    if (customerName || customerPhone || (orderType === 'delivery' && deliveryAddress)) {
+      msg += `\n${line}\n`;
+      msg += `👤 *بيانات العميل:*\n`;
+      if (customerName) msg += `• الاسم:   ${customerName}\n`;
+      if (customerPhone) msg += `• الهاتف:  ${customerPhone}\n`;
+      if (orderType === 'delivery' && deliveryAddress) {
+        msg += `• العنوان: 📍 ${deliveryAddress}\n`;
+      }
+    }
+
+    msg += `\n${line}\n`;
+    msg += `📋 *تفاصيل الأصناف والكميات:*\n`;
+    msg += `-----------------------------------------\n`;
 
     currentCart.forEach((item, index) => {
-      msg += `${index + 1}️⃣ *${item.quantity}x ${item.product_name}*\n`;
+      const itemSubtotal = item.subtotal.toLocaleString();
+      const unitPrice = (item.unit_price || (item.subtotal / item.quantity)).toLocaleString();
+      msg += `*${index + 1}. [${item.quantity}x] ${item.product_name}*\n`;
+      if (item.quantity > 1) {
+        msg += `   ▫️ سعر المفرد: ${unitPrice} د.ع\n`;
+      }
       if (item.selected_size) {
         msg += `   ▫️ الحجم: ${item.selected_size.name_ar}\n`;
       }
       if (item.selected_addons && item.selected_addons.length > 0) {
-        msg += `   ▫️ الإضافات: ${item.selected_addons.map(a => a.name_ar).join('، ')}\n`;
+        msg += `   ▫️ الإضافات: ${item.selected_addons.map(a => a.name_ar).join(' + ')}\n`;
       }
       if (item.special_instructions) {
-        msg += `   ▫️ التوصية والملاحظات: ${item.special_instructions}\n`;
+        msg += `   ▫️ ملاحظات: _${item.special_instructions}_\n`;
       }
-      msg += `   ▫️ السعر: ${item.subtotal.toLocaleString()} د.ع\n\n`;
+      msg += `   💰 الإجمالي: *${itemSubtotal} د.ع*\n\n`;
     });
 
     if (orderNotes) {
-      msg += `📝 *ملاحظات وتوصيات خاصة:* ${orderNotes}\n\n`;
+      msg += `📝 *ملاحظات خاصة على الطلب:*\n`;
+      msg += `_${orderNotes}_\n\n`;
     }
 
-    msg += `💰 *ملخص الحساب:*\n`;
-    msg += `- المجموع الفرعي: ${subtotal.toLocaleString()} د.ع\n`;
-    if (taxAmount > 0) msg += `- الضريبة (${taxRate}%): ${taxAmount.toLocaleString()} د.ع\n`;
-    if (deliveryFee > 0) msg += `- أجور التوصيل: ${deliveryFee.toLocaleString()} د.ع\n`;
-    if (discountVal > 0) msg += `- الخصم: -${discountVal.toLocaleString()} د.ع\n`;
-    msg += `*المجموع الإجمالي: ${currentTotal.toLocaleString()} د.ع*\n`;
-    msg += `*طريقة الدفع:* ${paymentMethod === 'cash' ? 'نقدي عند الاستلام' : paymentMethod.toUpperCase()}\n`;
-    msg += `*رقم الطلب في النظام:* #${orderNum}\n\n`;
-    msg += `يرجى تأكيد استلام الطلب والبدء بالتحضير. شكراً لكم!`;
+    msg += `${line}\n`;
+    msg += `💵 *ملخص الحساب والفاتورة:*\n`;
+    msg += `-----------------------------------------\n`;
+    msg += `• المجموع الفرعي:   ${subtotal.toLocaleString()} د.ع\n`;
+    if (taxAmount > 0) {
+      msg += `• الضريبة (${taxRate}%):    ${taxAmount.toLocaleString()} د.ع\n`;
+    }
+    if (deliveryFee > 0) {
+      msg += `• أجور التوصيل:     ${deliveryFee.toLocaleString()} د.ع\n`;
+    }
+    if (discountVal > 0) {
+      msg += `• الخصم:           -${discountVal.toLocaleString()} د.ع\n`;
+    }
+
+    msg += `\n${doubleLine}\n`;
+    msg += `💰 *المجموع النهائي المطلوب:*\n`;
+    msg += `     *» ${currentTotal.toLocaleString()} د.ع «*\n`;
+    msg += `${doubleLine}\n\n`;
+
+    msg += `💳 *طريقة الدفع:*  ${paymentLabel}\n\n`;
+
+    msg += `${line}\n`;
+    msg += `   ✨ *شكراً لاختياركم ${restName}* ✨\n`;
+    msg += `    يرجى الرد لتأكيد واعتماد الطلب\n`;
+    msg += `  Powered by Sufrah Electronic Menu\n`;
+    msg += `${line}`;
 
     return msg;
   };
