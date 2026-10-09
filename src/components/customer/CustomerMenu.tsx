@@ -32,8 +32,9 @@ import {
 
 // Format WhatsApp URLs automatically without requiring user/restaurant to enter country codes (+964)
 const formatWhatsAppUrl = (phone?: string, text?: string) => {
-  const raw = phone || '07810909577';
+  const raw = phone || '';
   let clean = raw.replace(/[^0-9]/g, '');
+  if (!clean) return '#';
   if (clean.startsWith('07')) {
     clean = '964' + clean.slice(1);
   } else if (clean.startsWith('7') && clean.length === 10) {
@@ -60,6 +61,23 @@ export const CustomerMenu: React.FC = () => {
     isBootstrapLoading,
     currentUser
   } = useApp();
+
+  // Check if viewing menu from dashboard preview or logged-in staff/admin
+  const isPreviewMode = typeof window !== 'undefined' && (
+    localStorage.getItem('sufrah_v2_preview_mode') !== null ||
+    (currentUser !== null && currentUser.role !== 'customer')
+  );
+
+  const handleReturnToRestaurant = () => {
+    const previewRole = typeof window !== 'undefined' ? localStorage.getItem('sufrah_v2_preview_mode') : null;
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('sufrah_v2_preview_mode');
+    }
+    const targetRole = (previewRole && previewRole !== 'customer')
+      ? previewRole
+      : (currentUser?.role && currentUser.role !== 'customer' ? currentUser.role : 'restaurant_owner');
+    setCurrentRole(targetRole as any);
+  };
 
   // Navigation mode
   const [activeTab, setActiveTab] = useState<'menu' | 'reservation' | 'reviews' | 'loyalty'>('menu');
@@ -303,8 +321,14 @@ export const CustomerMenu: React.FC = () => {
       confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
     } catch {}
 
+    const restPhone = activeRestaurant?.whatsapp_number || activeRestaurant?.phone;
+    if (!restPhone) {
+      alert('يرجى تحديد وضبط رقم هاتف المطعم في الإعدادات لاستقبال طلبات واتساب.');
+      return;
+    }
+
     const message = buildWhatsAppOrderMessage(newOrder.order_number, cart, totalAmount);
-    const waUrl = formatWhatsAppUrl(activeRestaurant?.whatsapp_number || activeRestaurant?.phone, message);
+    const waUrl = formatWhatsAppUrl(restPhone, message);
 
     setPlacedOrderNumber(newOrder.order_number);
     setCart([]);
@@ -463,12 +487,13 @@ export const CustomerMenu: React.FC = () => {
         <p className="text-slate-400 text-sm leading-relaxed">
           نعتذر لكم، مطعم ({activeRestaurant.name_ar}) متوقف مؤقتاً عن استقبال الطلبات في الوقت الحالي بقرار إداري. يرجى المحاولة لاحقاً.
         </p>
-        {currentUser?.role === 'super_admin' && (
+        {isPreviewMode && (
           <button
-            onClick={() => setCurrentRole('super_admin')}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs transition-all cursor-pointer"
+            onClick={handleReturnToRestaurant}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs transition-all cursor-pointer shadow-lg"
           >
-            <span>لوحة التحكم الرئيسية</span>
+            <ArrowRight className="w-4 h-4" />
+            <span>العودة إلى لوحة المطعم</span>
           </button>
         )}
       </div>
@@ -477,6 +502,35 @@ export const CustomerMenu: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto pb-24 space-y-6">
+      {/* زر وشريط العودة إلى لوحة المطعم عند فتح مشاهدة المنيو */}
+      {isPreviewMode && (
+        <div className="bg-gradient-to-r from-amber-950/80 via-slate-900 to-slate-900 border-2 border-amber-500/50 rounded-2xl p-3.5 sm:p-4 shadow-2xl flex items-center justify-between gap-3 animate-fade-in sticky top-2 z-40 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xl border border-amber-500/30 shrink-0">
+              👁️
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs sm:text-sm font-bold text-white">أنت الآن في وضع «مشاهدة المنيو»</span>
+                <span className="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-500/40 font-mono">
+                  معاينة حية للزبائن
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 mt-0.5">
+                تتصفح منيو ({activeRestaurant?.name_ar || 'المطعم'}) كما يظهر على هواتف الزبائن تماماً.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleReturnToRestaurant}
+            className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs sm:text-sm rounded-xl flex items-center gap-2 shadow-lg shadow-amber-500/25 transition-all cursor-pointer shrink-0"
+          >
+            <ArrowRight className="w-4 h-4" />
+            <span>العودة إلى المطعم</span>
+          </button>
+        </div>
+      )}
+
       {/* Scanned QR Table, Takeaway & Delivery Notification Banner */}
       <div className={`border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl transition-all ${
         orderType === 'delivery'
@@ -521,7 +575,7 @@ export const CustomerMenu: React.FC = () => {
                 ? 'تم فتح المنيو مباشرة بنمط التوصيل. اختر وجباتك وأرسل طلبك مع عنوانك دون الحاجة لاختيار زر التوصيل!'
                 : orderType === 'takeaway'
                 ? 'تم فتح المنيو مباشرة بنمط الاستلام السفري. اختر وجباتك وأرسل طلبك ليتم تجهيزه واستلامه دون انتظار وبدون أجور توصيل!'
-                : 'اختر وجباتك ومشروباتك وسيتم إرسال الطلب فوراً إلى المطبخ مع رقم طاولتك المحدد.'}
+                : 'اختر وجباتك ومشروباتك وسيتم تجهيز طلبك فوراً مع رقم طاولتك المحدد.'}
             </p>
           </div>
         </div>
@@ -575,6 +629,16 @@ export const CustomerMenu: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            {isPreviewMode && (
+              <button
+                onClick={handleReturnToRestaurant}
+                className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+                title="العودة إلى لوحة تحكم المطعم"
+              >
+                <ArrowRight className="w-3.5 h-3.5" />
+                <span>العودة إلى المطعم</span>
+              </button>
+            )}
             <a
               href={formatWhatsAppUrl(activeRestaurant.whatsapp_number || activeRestaurant.phone)}
               target="_blank"
@@ -690,7 +754,7 @@ export const CustomerMenu: React.FC = () => {
             {orderType === 'takeaway' && (
               <div className="pt-2 border-t border-slate-800/80 text-[11px] text-blue-400 flex items-center gap-1.5 font-medium">
                 <span>🛍️</span>
-                <span>اختر وجباتك وأرسل طلبك ليتم تحضيره في المطبخ واستلامه مباشرة من فرع المطعم.</span>
+                <span>اختر وجباتك وأرسل طلبك ليتم تجهيزه واستلامه مباشرة من فرع المطعم.</span>
               </div>
             )}
           </div>
@@ -1417,17 +1481,17 @@ export const CustomerMenu: React.FC = () => {
                   </span>
                 </button>
 
-                {/* Secondary Internal / KDS Submission */}
+                {/* Secondary Direct Submission */}
                 <button
                   type="submit"
                   className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5"
                 >
                   <span>
                     {orderType === 'delivery'
-                      ? 'تأكيد وإرسال طلب التوصيل للمطبخ والكاشير 🛵'
+                      ? 'تأكيد طلب التوصيل 🛵'
                       : orderType === 'takeaway'
-                      ? 'تأكيد وإرسال طلب السفري للمطبخ والكاشير 🛍️'
-                      : 'تأكيد داخلي وإرسال لشاشة المطبخ (KDS) 🍽️'}
+                      ? 'تأكيد طلب الاستلام السفري 🛍️'
+                      : 'تأكيد وإرسال الطلب مباشرة 🍽️'}
                   </span>
                 </button>
               </div>
@@ -1446,7 +1510,7 @@ export const CustomerMenu: React.FC = () => {
 
             <div>
               <h3 className="text-base font-bold text-white">تم استلام طلبك بنجاح!</h3>
-              <p className="text-xs text-slate-400 mt-1">يتم الآن تجهيز وجبتك في المطبخ بأعلى معايير الجودة</p>
+              <p className="text-xs text-slate-400 mt-1">يتم الآن تجهيز وجبتك بأعلى معايير الجودة والسرعة</p>
             </div>
 
             <div className="p-3 bg-slate-950 rounded-2xl border border-slate-800 font-mono">

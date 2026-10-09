@@ -72,7 +72,7 @@ export const OwnerDashboard: React.FC = () => {
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'branches' | 'tables' | 'staff' | 'qr' | 'ai' | 'reports' | 'branding'>('menu');
-  const [ownerWhatsApp, setOwnerWhatsApp] = useState<string>((activeRestaurant?.whatsapp_number || '07810909577').replace(/^\+964/, '0').replace(/^00964/, '0'));
+  const [ownerWhatsApp, setOwnerWhatsApp] = useState<string>((activeRestaurant?.whatsapp_number || activeRestaurant?.phone || '').replace(/^\+964/, '0').replace(/^00964/, '0'));
   const [savedWhatsAppSuccess, setSavedWhatsAppSuccess] = useState(false);
 
   // Staff & User Management States
@@ -119,7 +119,7 @@ export const OwnerDashboard: React.FC = () => {
       setNewRestName(activeRestaurant.name_ar || '');
       setNewRestDesc(activeRestaurant.description_ar || '');
       setNewDeliveryFee(activeRestaurant.delivery_fee_base ?? 0);
-      setOwnerWhatsApp((activeRestaurant.whatsapp_number || '07810909577').replace(/^\+964/, '0').replace(/^00964/, '0'));
+      setOwnerWhatsApp((activeRestaurant.whatsapp_number || activeRestaurant.phone || '').replace(/^\+964/, '0').replace(/^00964/, '0'));
     }
   }, [activeRestaurant]);
 
@@ -152,12 +152,14 @@ export const OwnerDashboard: React.FC = () => {
   const handleSaveBranding = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!activeRestaurant) return;
+    const phoneVal = ownerWhatsApp.trim() || activeRestaurant.whatsapp_number || activeRestaurant.phone;
     updateRestaurantBranding(activeRestaurant.id, {
       logo_url: newLogoUrl || activeRestaurant.logo_url,
       cover_url: newCoverUrl || activeRestaurant.cover_url,
       name_ar: newRestName || activeRestaurant.name_ar,
       description_ar: newRestDesc || activeRestaurant.description_ar,
-      whatsapp_number: ownerWhatsApp || activeRestaurant.whatsapp_number,
+      whatsapp_number: phoneVal,
+      phone: phoneVal,
       delivery_fee_base: Number(newDeliveryFee) || 0
     });
     setSavedBrandingSuccess(true);
@@ -547,9 +549,13 @@ export const OwnerDashboard: React.FC = () => {
     );
   }
 
+  const restaurantProducts = useMemo(() => {
+    return products.filter(p => !activeRestaurant || Number(p.restaurant_id) === Number(activeRestaurant.id));
+  }, [products, activeRestaurant]);
+
   const filteredProducts = selectedCatId === 'all'
-    ? products
-    : products.filter(p => p.category_id === selectedCatId);
+    ? restaurantProducts
+    : restaurantProducts.filter(p => Number(p.category_id) === Number(selectedCatId));
 
   const restaurantOrders = orders.filter(o => o.restaurant_id === activeRestaurant.id);
   const totalSales = restaurantOrders.reduce((sum, o) => sum + o.total_amount, 0);
@@ -768,11 +774,15 @@ export const OwnerDashboard: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setCurrentRole('customer')}
-              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors"
+              onClick={() => {
+                localStorage.setItem('sufrah_v2_preview_mode', 'restaurant_owner');
+                setCurrentRole('customer');
+              }}
+              className="px-3.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              title="مشاهدة المنيو الإلكتروني كما يظهر للزبائن"
             >
-              <Eye className="w-3.5 h-3.5" />
-              <span>معاينة منيو العميل</span>
+              <Eye className="w-3.5 h-3.5 text-amber-400" />
+              <span>مشاهدة المنيو</span>
             </button>
             <button
               onClick={() => setActiveTab('qr')}
@@ -2984,6 +2994,22 @@ export const OwnerDashboard: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {editingProduct && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm(`هل أنت متأكد من حذف صنف "${editingProduct.name_ar}" نهائياً من المنيو؟`)) {
+                          deleteProduct(editingProduct.id);
+                          setShowAddProductModal(false);
+                          setEditingProduct(null);
+                        }
+                      }}
+                      className="px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>حذف الصنف</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => {

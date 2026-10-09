@@ -437,6 +437,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCategories(prev => prev.filter(c => c.id !== payload.id));
       } else if (type === 'restaurant_created') {
         setRestaurants(prev => prev.some(r => r.id === payload.id) ? prev : [...prev, payload]);
+      } else if (type === 'restaurant_updated') {
+        setRestaurants(prev => prev.map(r => r.id === payload.id ? { ...r, ...payload } : r));
+        setActiveRestaurant(prev => (prev && prev.id === payload.id ? { ...prev, ...payload } : prev));
       } else if (type === 'restaurant_status_updated') {
         setRestaurants(prev => prev.map(r => r.id === payload.id ? { ...r, status: payload.status } : r));
         setActiveRestaurant(prev => (prev && prev.id === payload.id ? { ...prev, status: payload.status } : prev));
@@ -1135,12 +1138,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateProduct = (productId: number, updates: Partial<Product>) => {
-    setProducts(prev => prev.map(p => p.id === productId ? { ...p, ...updates } : p));
+    setProducts(prev => {
+      const next = prev.map(p => Number(p.id) === Number(productId) ? { ...p, ...updates } : p);
+      localStorage.setItem('sufrah_v2_products', JSON.stringify(next));
+      return next;
+    });
     api.updateProduct(productId, updates).catch(console.error);
   };
 
   const deleteProduct = (productId: number) => {
-    setProducts(prev => prev.filter(p => p.id !== productId));
+    setProducts(prev => {
+      const next = prev.filter(p => Number(p.id) !== Number(productId));
+      localStorage.setItem('sufrah_v2_products', JSON.stringify(next));
+      return next;
+    });
     api.deleteProduct(productId).catch(console.error);
   };
 
@@ -1504,8 +1515,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateRestaurantWhatsApp = (whatsapp: string) => {
     if (!activeRestaurant) return;
-    setActiveRestaurant(prev => (prev ? { ...prev, whatsapp_number: whatsapp } : null));
-    setRestaurants(prev => prev.map(r => r.id === activeRestaurant.id ? { ...r, whatsapp_number: whatsapp } : r));
+    const cleanNumber = whatsapp.trim();
+    const updatedRest = {
+      ...activeRestaurant,
+      whatsapp_number: cleanNumber,
+      phone: cleanNumber
+    };
+    setActiveRestaurant(updatedRest);
+    setRestaurants(prev => {
+      const next = prev.map(r => r.id === activeRestaurant.id ? updatedRest : r);
+      saveToStorage('sufrah_v2_restaurants', next);
+      return next;
+    });
+    api.updateRestaurant(activeRestaurant.id, {
+      whatsapp_number: cleanNumber,
+      phone: cleanNumber
+    }).catch(console.error);
   };
 
   const updatePlan = (planId: number, updates: Partial<Plan>) => {
@@ -1561,21 +1586,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateRestaurantBranding = (restaurantId: number, updates: Partial<Restaurant>) => {
+    const finalUpdates: Partial<Restaurant> = {
+      ...updates
+    };
+    if (updates.whatsapp_number) {
+      finalUpdates.phone = updates.whatsapp_number;
+    }
     setRestaurants(prev => {
-      const next = prev.map(r => (r.id === restaurantId ? { ...r, ...updates } : r));
+      const next = prev.map(r => (r.id === restaurantId ? { ...r, ...finalUpdates } : r));
       saveToStorage('sufrah_v2_restaurants', next);
       return next;
     });
     if (activeRestaurant && activeRestaurant.id === restaurantId) {
-      setActiveRestaurant(prev => (prev ? { ...prev, ...updates } : null));
+      setActiveRestaurant(prev => (prev ? { ...prev, ...finalUpdates } : null));
     }
+    api.updateRestaurant(restaurantId, finalUpdates).catch(console.error);
 
     const log: ActivityLog = {
       id: Date.now(),
       user_name: activeRestaurant?.name_ar || 'مالك المطعم',
       role: 'restaurant_owner',
       action: 'Branding Updated',
-      description: 'تم تحديث هوية وصور المطعم (اللوجو وصورة الغلاف)',
+      description: 'تم تحديث هوية وصور وبيانات المطعم بنجاح',
       timestamp: 'الآن'
     };
     setActivityLogs(prev => [log, ...prev]);

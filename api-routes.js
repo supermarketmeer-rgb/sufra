@@ -684,10 +684,12 @@ apiRouter.post('/products', async (req, res) => {
 apiRouter.put('/products/:id', async (req, res) => {
   if (!dbPool) return res.status(503).json({ error: 'DB not available' });
 
+  const conn = await dbPool.getConnection();
   try {
+    await conn.beginTransaction();
     const id = Number(req.params.id);
     const p = req.body;
-    await dbPool.query(`
+    await conn.query(`
       UPDATE products SET
         category_id = COALESCE(?, category_id),
         name_ar = COALESCE(?, name_ar),
@@ -702,37 +704,79 @@ apiRouter.put('/products/:id', async (req, res) => {
         is_featured = COALESCE(?, is_featured)
       WHERE id = ?
     `, [
-      p.category_id,
-      p.name_ar,
-      p.name_en,
-      p.description_ar,
-      p.base_price,
-      p.discount_price || null,
-      p.image_url,
-      p.calories || null,
-      p.prep_time_minutes,
-      p.is_available !== undefined ? (p.is_available ? 1 : 0) : undefined,
-      p.is_featured !== undefined ? (p.is_featured ? 1 : 0) : undefined,
+      p.category_id !== undefined ? Number(p.category_id) : null,
+      p.name_ar ?? null,
+      p.name_en ?? null,
+      p.description_ar ?? null,
+      p.base_price !== undefined ? Number(p.base_price) : null,
+      p.discount_price !== undefined && p.discount_price !== null ? Number(p.discount_price) : null,
+      p.image_url ?? null,
+      p.calories !== undefined && p.calories !== null ? Number(p.calories) : null,
+      p.prep_time_minutes !== undefined ? Number(p.prep_time_minutes) : null,
+      p.is_available !== undefined ? (p.is_available ? 1 : 0) : null,
+      p.is_featured !== undefined ? (p.is_featured ? 1 : 0) : null,
       id
     ]);
 
+    // Update sizes if provided
+    if (Array.isArray(p.sizes)) {
+      await conn.query(`DELETE FROM product_sizes WHERE product_id = ?`, [id]);
+      for (const sz of p.sizes) {
+        if (sz.name_ar) {
+          await conn.query(`
+            INSERT INTO product_sizes (product_id, name_ar, name_en, extra_price, is_default)
+            VALUES (?, ?, ?, ?, ?)
+          `, [id, sz.name_ar, sz.name_en || sz.name_ar, Number(sz.extra_price) || 0, sz.is_default ? 1 : 0]);
+        }
+      }
+    }
+
+    // Update addons if provided
+    if (Array.isArray(p.addons)) {
+      await conn.query(`DELETE FROM product_addons WHERE product_id = ?`, [id]);
+      for (const ad of p.addons) {
+        if (ad.name_ar) {
+          await conn.query(`
+            INSERT INTO product_addons (product_id, name_ar, name_en, price, is_free, max_quantity)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `, [id, ad.name_ar, ad.name_en || ad.name_ar, Number(ad.price) || 0, ad.is_free ? 1 : 0, Number(ad.max_quantity) || 5]);
+        }
+      }
+    }
+
+    await conn.commit();
     broadcastEvent('product_updated', { id, ...p });
     res.json({ success: true, id, ...p });
   } catch (err) {
+    await conn.rollback();
     res.status(500).json({ success: false, message: err.message });
+  } finally {
+    conn.release();
   }
 });
 
 apiRouter.delete('/products/:id', async (req, res) => {
   if (!dbPool) return res.status(503).json({ error: 'DB not available' });
 
+  const conn = await dbPool.getConnection();
   try {
+    await conn.beginTransaction();
     const id = Number(req.params.id);
-    await dbPool.query(`DELETE FROM products WHERE id = ?`, [id]);
+    await conn.query(`SET FOREIGN_KEY_CHECKS = 0`);
+    await conn.query(`DELETE FROM product_sizes WHERE product_id = ?`, [id]);
+    await conn.query(`DELETE FROM product_addons WHERE product_id = ?`, [id]);
+    await conn.query(`DELETE FROM product_images WHERE product_id = ?`, [id]);
+    await conn.query(`DELETE FROM order_details WHERE product_id = ?`, [id]);
+    await conn.query(`DELETE FROM products WHERE id = ?`, [id]);
+    await conn.query(`SET FOREIGN_KEY_CHECKS = 1`);
+    await conn.commit();
     broadcastEvent('product_deleted', { id });
     res.json({ success: true, id });
   } catch (err) {
+    await conn.rollback();
     res.status(500).json({ success: false, message: err.message });
+  } finally {
+    conn.release();
   }
 });
 
@@ -980,6 +1024,66 @@ apiRouter.post('/restaurants', async (req, res) => {
       restaurant: createdRestaurant,
       user: createdOwner
     });
+  } catch (err) {
+    await conn.rollback();
+    res.status(500).json({ success: false, message: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// Update Restaurant Details & WhatsApp / Phone & Settings
+apiRouter.put('/restaurants/:id', async (req, res) => {
+  if (!dbPool) return res.status(503).json({ error: 'DB not available' });
+
+  const conn = await dbPool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const id = Number(req.params.id);
+    const data = req.body;
+    const phoneToSave = data.whatsapp_number || data.phone || null;
+
+    await conn.query(`
+      UPDATE restaurants SET
+        name_ar = COALESCE(?, name_ar),
+        name_en = COALESCE(?, name_en),
+        description_ar = COALESCE(?, description_ar),
+        phone = COALESCE(?, phone),
+        logo_url = COALESCE(?, logo_url),
+        cover_url = COALESCE(?, cover_url),
+        address = COALESCE(?, address),
+        tax_percentage = COALESCE(?, tax_percentage)
+      WHERE id = ?
+    `, [
+      data.name_ar ?? null,
+      data.name_en ?? null,
+      data.description_ar ?? null,
+      phoneToSave,
+      data.logo_url ?? null,
+      data.cover_url ?? null,
+      data.address ?? null,
+      data.tax_percentage !== undefined ? Number(data.tax_percentage) : null,
+      id
+    ]);
+
+    // Upsert into restaurant_settings
+    await conn.query(`
+      INSERT INTO restaurant_settings (restaurant_id, theme_primary_color, delivery_fee_base, whatsapp_number)
+      VALUES (?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        theme_primary_color = COALESCE(VALUES(theme_primary_color), theme_primary_color),
+        delivery_fee_base = COALESCE(VALUES(delivery_fee_base), delivery_fee_base),
+        whatsapp_number = COALESCE(VALUES(whatsapp_number), whatsapp_number)
+    `, [
+      id,
+      data.theme_primary_color || '#f59e0b',
+      data.delivery_fee_base !== undefined ? Number(data.delivery_fee_base) : 0,
+      phoneToSave
+    ]);
+
+    await conn.commit();
+    broadcastEvent('restaurant_updated', { id, ...data, phone: phoneToSave, whatsapp_number: phoneToSave });
+    res.json({ success: true, id, ...data, phone: phoneToSave, whatsapp_number: phoneToSave });
   } catch (err) {
     await conn.rollback();
     res.status(500).json({ success: false, message: err.message });

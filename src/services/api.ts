@@ -215,6 +215,20 @@ export const api = {
     return null;
   },
 
+  async updateRestaurant(restaurantId: number, data: any): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/restaurants/${restaurantId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      return res.ok;
+    } catch (err) {
+      console.error('Failed to update restaurant via API:', err);
+      return false;
+    }
+  },
+
   async updateRestaurantStatus(restaurantId: number, status: 'active' | 'suspended' | 'inactive'): Promise<boolean> {
     try {
       const res = await fetch(`/api/restaurants/${restaurantId}/status`, {

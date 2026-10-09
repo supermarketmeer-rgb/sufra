@@ -277,12 +277,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer, onOpenRegister, 
             <div className="hidden md:flex items-center gap-2">
               {/* Preview Customer QR Menu */}
               <button
-                onClick={() => setCurrentRole('customer')}
+                onClick={() => {
+                  localStorage.setItem('sufrah_v2_preview_mode', 'restaurant_owner');
+                  setCurrentRole('customer');
+                }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-xs font-semibold text-slate-200 border border-slate-700/60 transition-all hover:border-amber-500/40 cursor-pointer"
-                title="معاينة شكل منيو الزبائن للطلب من الطاولة"
+                title="مشاهدة المنيو الإلكتروني كما يظهر للزبائن"
               >
                 <Eye className="w-3.5 h-3.5 text-amber-400" />
-                <span>معاينة منيو الزبائن (QR)</span>
+                <span>مشاهدة المنيو (QR)</span>
               </button>
 
               {/* Staff Terminals Dropdown */}
