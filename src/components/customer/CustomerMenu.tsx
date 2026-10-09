@@ -30,12 +30,15 @@ import {
   UtensilsCrossed
 } from 'lucide-react';
 
-// Format WhatsApp URLs automatically without requiring user/restaurant to enter country codes (+964)
+// Format WhatsApp URLs automatically for WhatsApp direct ordering
 const formatWhatsAppUrl = (phone?: string, text?: string) => {
   const raw = phone || '';
   let clean = raw.replace(/[^0-9]/g, '');
   if (!clean) return '#';
-  if (clean.startsWith('07')) {
+  if (clean.startsWith('00')) {
+    clean = clean.slice(2);
+  }
+  if (clean.startsWith('07') && clean.length === 11) {
     clean = '964' + clean.slice(1);
   } else if (clean.startsWith('7') && clean.length === 10) {
     clean = '964' + clean;
@@ -1014,7 +1017,7 @@ export const CustomerMenu: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1">رقم الهاتف (بدون كود الدولة) *</label>
+                  <label className="block text-slate-400 mb-1">رقم الهاتف للتواصل *</label>
                   <input
                     type="tel"
                     required
@@ -1403,7 +1406,7 @@ export const CustomerMenu: React.FC = () => {
 
               <div>
                 <label className="block text-slate-400 mb-1">
-                  رقم الهاتف للتواصل (بدون كود الدولة) {(orderType === 'delivery' || orderType === 'takeaway') && '*'}
+                  رقم الهاتف للتواصل {(orderType === 'delivery' || orderType === 'takeaway') && '*'}
                 </label>
                 <input
                   type="tel"

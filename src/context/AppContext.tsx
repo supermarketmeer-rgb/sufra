@@ -1522,6 +1522,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       phone: cleanNumber
     };
     setActiveRestaurant(updatedRest);
+    saveToStorage('sufrah_v2_active_restaurant', updatedRest);
     setRestaurants(prev => {
       const next = prev.map(r => r.id === activeRestaurant.id ? updatedRest : r);
       saveToStorage('sufrah_v2_restaurants', next);
@@ -1589,8 +1590,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const finalUpdates: Partial<Restaurant> = {
       ...updates
     };
-    if (updates.whatsapp_number) {
+    if (updates.whatsapp_number && !updates.phone) {
       finalUpdates.phone = updates.whatsapp_number;
+    } else if (updates.phone && !updates.whatsapp_number) {
+      finalUpdates.whatsapp_number = updates.phone;
     }
     setRestaurants(prev => {
       const next = prev.map(r => (r.id === restaurantId ? { ...r, ...finalUpdates } : r));
@@ -1598,7 +1601,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return next;
     });
     if (activeRestaurant && activeRestaurant.id === restaurantId) {
-      setActiveRestaurant(prev => (prev ? { ...prev, ...finalUpdates } : null));
+      setActiveRestaurant(prev => {
+        const updated = prev ? { ...prev, ...finalUpdates } : null;
+        if (updated) {
+          saveToStorage('sufrah_v2_active_restaurant', updated);
+        }
+        return updated;
+      });
     }
     api.updateRestaurant(restaurantId, finalUpdates).catch(console.error);
 

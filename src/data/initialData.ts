@@ -39,7 +39,7 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
     theme_primary_color: '#f59e0b',
     plan_name: 'الباقة المجانية (Starter)',
     delivery_fee_base: 3000,
-    whatsapp_number: '078109095777'
+    whatsapp_number: '07810909577'
   }
 ];
 

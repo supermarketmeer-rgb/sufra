@@ -1080,7 +1080,7 @@ export const SuperAdminDashboard: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1">رقم الهاتف (بدون كود الدولة)</label>
+                  <label className="block text-slate-400 mb-1">رقم الهاتف للتواصل</label>
                   <input
                     type="text"
                     placeholder="07XXXXXXXXX (مثال: 07701234567)"

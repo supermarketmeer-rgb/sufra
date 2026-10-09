@@ -403,6 +403,13 @@ export const api = {
           } catch {}
         });
 
+        es.addEventListener('restaurant_updated', (e: MessageEvent) => {
+          try {
+            const data = JSON.parse(e.data);
+            onEvent('restaurant_updated', data);
+          } catch {}
+        });
+
         es.addEventListener('restaurant_status_updated', (e: MessageEvent) => {
           try {
             const data = JSON.parse(e.data);

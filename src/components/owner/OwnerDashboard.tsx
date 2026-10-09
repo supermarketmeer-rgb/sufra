@@ -38,7 +38,8 @@ import {
   Lock,
   ShieldCheck,
   Bike,
-  Receipt
+  Receipt,
+  Save
 } from 'lucide-react';
 
 export const OwnerDashboard: React.FC = () => {
@@ -72,7 +73,7 @@ export const OwnerDashboard: React.FC = () => {
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'branches' | 'tables' | 'staff' | 'qr' | 'ai' | 'reports' | 'branding'>('menu');
-  const [ownerWhatsApp, setOwnerWhatsApp] = useState<string>((activeRestaurant?.whatsapp_number || activeRestaurant?.phone || '').replace(/^\+964/, '0').replace(/^00964/, '0'));
+  const [ownerWhatsApp, setOwnerWhatsApp] = useState<string>(activeRestaurant?.whatsapp_number || activeRestaurant?.phone || '');
   const [savedWhatsAppSuccess, setSavedWhatsAppSuccess] = useState(false);
 
   // Staff & User Management States
@@ -119,7 +120,7 @@ export const OwnerDashboard: React.FC = () => {
       setNewRestName(activeRestaurant.name_ar || '');
       setNewRestDesc(activeRestaurant.description_ar || '');
       setNewDeliveryFee(activeRestaurant.delivery_fee_base ?? 0);
-      setOwnerWhatsApp((activeRestaurant.whatsapp_number || activeRestaurant.phone || '').replace(/^\+964/, '0').replace(/^00964/, '0'));
+      setOwnerWhatsApp(activeRestaurant.whatsapp_number || activeRestaurant.phone || '');
     }
   }, [activeRestaurant]);
 
@@ -2206,7 +2207,7 @@ export const OwnerDashboard: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">رقم واتساب الطلبات (بدون كود الدولة)</label>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">رقم واتساب / هاتف استقبال الطلبات</label>
                   <input
                     type="text"
                     dir="ltr"
@@ -2229,6 +2230,25 @@ export const OwnerDashboard: React.FC = () => {
                   />
                   <p className="text-[10px] text-slate-500 mt-1">إذا كان صفراً لن يظهر في فاتورة البيع</p>
                 </div>
+              </div>
+
+              {savedBrandingSuccess && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>تم حفظ وتحديث بيانات ورقم المطعم بنجاح! ✓</span>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={handleSaveBranding}
+                  disabled={savedBrandingSuccess}
+                  className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs rounded-xl transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2 cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{savedBrandingSuccess ? 'تم حفظ التعديلات بنجاح! ✓' : 'حفظ بيانات المطعم ورقم الهاتف'}</span>
+                </button>
               </div>
             </div>
           </div>
@@ -3111,7 +3131,7 @@ export const OwnerDashboard: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">هاتف الفرع للتواصل (بدون كود الدولة)</label>
+                  <label className="block text-slate-300 font-semibold mb-1">هاتف الفرع للتواصل</label>
                   <input
                     type="text"
                     value={branchPhone}

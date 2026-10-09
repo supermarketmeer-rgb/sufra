@@ -1081,6 +1081,10 @@ apiRouter.put('/restaurants/:id', async (req, res) => {
       phoneToSave
     ]);
 
+    if (phoneToSave) {
+      await conn.query(`UPDATE branches SET phone = ? WHERE restaurant_id = ?`, [phoneToSave, id]);
+    }
+
     await conn.commit();
     broadcastEvent('restaurant_updated', { id, ...data, phone: phoneToSave, whatsapp_number: phoneToSave });
     res.json({ success: true, id, ...data, phone: phoneToSave, whatsapp_number: phoneToSave });
