@@ -129,6 +129,7 @@ export const CustomerMenu: React.FC = () => {
   const [selectedSize, setSelectedSize] = useState<ProductSize | undefined>(undefined);
   const [selectedAddons, setSelectedAddons] = useState<ProductAddon[]>([]);
   const [specialInstructions, setSpecialInstructions] = useState('');
+  const [modalQuantity, setModalQuantity] = useState(1);
 
   // Cart
   const [cart, setCart] = useState<OrderItem[]>([]);
@@ -145,7 +146,7 @@ export const CustomerMenu: React.FC = () => {
   const [resName, setResName] = useState('');
   const [resPhone, setResPhone] = useState('');
   const [resDate, setResDate] = useState(new Date().toISOString().slice(0, 10));
-  const [resTime, setResTime] = useState('20:00');
+  const [resTime, setResTime] = useState('19:00');
   const [resGuests, setResGuests] = useState(2);
   const [resNotes, setResNotes] = useState('');
   const [reservationSubmitted, setReservationSubmitted] = useState(false);
@@ -192,6 +193,7 @@ export const CustomerMenu: React.FC = () => {
     setSelectedSize(prod.sizes?.[0]);
     setSelectedAddons([]);
     setSpecialInstructions('');
+    setModalQuantity(1);
   };
 
   const handleAddModalToCart = () => {
@@ -201,20 +203,52 @@ export const CustomerMenu: React.FC = () => {
     const sizeExtra = selectedSize ? selectedSize.extra_price : 0;
     const addonsTotal = selectedAddons.reduce((sum, a) => sum + a.price, 0);
     const unitPrice = basePrice + sizeExtra + addonsTotal;
+    const qtyToAdd = Math.max(1, modalQuantity);
 
-    const newItem: OrderItem = {
-      id: `cart-item-${Date.now()}-${Math.random()}`,
-      product_id: selectedProduct.id,
-      product_name: selectedProduct.name_ar,
-      unit_price: unitPrice,
-      quantity: 1,
-      selected_size: selectedSize,
-      selected_addons: selectedAddons,
-      special_instructions: specialInstructions,
-      subtotal: unitPrice
-    };
+    const getAddonsSignature = (addons?: ProductAddon[]) =>
+      (addons || []).map(a => a.id).sort((a, b) => a - b).join(',');
 
-    setCart(prev => [...prev, newItem]);
+    const targetSizeId = selectedSize?.id ?? null;
+    const targetAddonsSig = getAddonsSignature(selectedAddons);
+    const targetNotes = specialInstructions.trim();
+
+    setCart(prev => {
+      // Find if this exact product configuration is already in the cart
+      const existingIdx = prev.findIndex(item =>
+        item.product_id === selectedProduct.id &&
+        (item.selected_size?.id ?? null) === targetSizeId &&
+        getAddonsSignature(item.selected_addons) === targetAddonsSig &&
+        (item.special_instructions || '').trim() === targetNotes
+      );
+
+      if (existingIdx > -1) {
+        return prev.map((item, idx) => {
+          if (idx !== existingIdx) return item;
+          const updatedQty = item.quantity + qtyToAdd;
+          return {
+            ...item,
+            quantity: updatedQty,
+            subtotal: updatedQty * item.unit_price
+          };
+        });
+      }
+
+      // If new, append to cart
+      const newItem: OrderItem = {
+        id: `cart-item-${Date.now()}-${Math.random()}`,
+        product_id: selectedProduct.id,
+        product_name: selectedProduct.name_ar,
+        unit_price: unitPrice,
+        quantity: qtyToAdd,
+        selected_size: selectedSize,
+        selected_addons: selectedAddons,
+        special_instructions: specialInstructions,
+        subtotal: unitPrice * qtyToAdd
+      };
+
+      return [...prev, newItem];
+    });
+
     setSelectedProduct(null);
   };
 
@@ -966,16 +1000,25 @@ export const CustomerMenu: React.FC = () => {
                               <MessageCircle className="w-3.5 h-3.5 fill-emerald-400 text-slate-950" />
                               <span className="text-[10px] font-bold hidden xs:inline">توصية</span>
                             </button>
-                            <button
-                              onClick={e => {
-                                e.stopPropagation();
-                                handleOpenProduct(prod);
-                              }}
-                              className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-lg flex items-center gap-1 shadow-sm"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                              <span>اختيار</span>
-                            </button>
+                            {(() => {
+                              const inCartCount = cart.filter(c => c.product_id === prod.id).reduce((sum, c) => sum + c.quantity, 0);
+                              return (
+                                <button
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    handleOpenProduct(prod);
+                                  }}
+                                  className={`px-2.5 py-1.5 font-bold text-xs rounded-lg flex items-center gap-1 shadow-sm transition-all cursor-pointer ${
+                                    inCartCount > 0
+                                      ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-300/60 shadow-amber-400/20'
+                                      : 'bg-amber-500 hover:bg-amber-600 text-slate-950'
+                                  }`}
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                  <span>{inCartCount > 0 ? `في السلة (${inCartCount})` : 'اختيار'}</span>
+                                </button>
+                              );
+                            })()}
                           </>
                         ) : (
                           <span className="px-2.5 py-1 bg-slate-800 text-slate-500 text-xs font-semibold rounded-lg">
@@ -1279,18 +1322,45 @@ export const CustomerMenu: React.FC = () => {
               />
             </div>
 
+            {/* Quantity Selector inside Dish Modal */}
+            <div className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl">
+              <span className="text-xs font-semibold text-slate-300">الكمية المطلوبة:</span>
+              <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-lg p-1">
+                <button
+                  type="button"
+                  onClick={() => setModalQuantity(prev => Math.max(1, prev - 1))}
+                  className="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white rounded-md bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+                  title="إنقاص الكمية"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                <span className="w-8 text-center font-bold text-white font-mono text-sm">{modalQuantity}</span>
+                <button
+                  type="button"
+                  onClick={() => setModalQuantity(prev => prev + 1)}
+                  className="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white rounded-md bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+                  title="زيادة الكمية"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 onClick={handleAddModalToCart}
-                className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20"
+                className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                إضافة إلى السلة
+                <span>إضافة إلى السلة</span>
+                <span className="font-mono font-black">
+                  ({(( (selectedProduct.discount_price || selectedProduct.base_price) + (selectedSize ? selectedSize.extra_price : 0) + selectedAddons.reduce((sum, a) => sum + a.price, 0) ) * modalQuantity).toLocaleString()} د.ع)
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => selectedProduct && handleRecommendDishViaWhatsApp(selectedProduct)}
-                className="px-3.5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors shadow-md"
+                className="px-3.5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors shadow-md cursor-pointer"
                 title="توصية بالوجبة ومشاركتها عبر واتساب"
               >
                 <MessageCircle className="w-4 h-4 fill-white" />
@@ -1316,7 +1386,7 @@ export const CustomerMenu: React.FC = () => {
           >
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-slate-950 text-white flex items-center justify-center font-mono text-[11px] font-bold">
-                {cart.length}
+                {cart.reduce((sum, item) => sum + item.quantity, 0)}
               </div>
               <span>
                 {orderType === 'delivery'
@@ -1383,19 +1453,37 @@ export const CustomerMenu: React.FC = () => {
             {/* Items */}
             <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
               {cart.map(item => (
-                <div key={item.id} className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80 flex items-center justify-between text-xs">
-                  <div className="flex-1 truncate">
+                <div key={item.id} className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80 flex items-center justify-between text-xs gap-2">
+                  <div className="flex-1 min-w-0">
                     <div className="font-bold text-white truncate">{item.product_name}</div>
-                    <div className="text-[11px] font-mono text-amber-400">
-                      {item.unit_price.toLocaleString()} د.ع
+                    <div className="text-[11px] font-mono text-amber-400 font-bold">
+                      {item.subtotal.toLocaleString()} د.ع
+                      {item.quantity > 1 && (
+                        <span className="text-[10px] text-slate-400 font-normal mr-1.5">
+                          ({item.quantity} × {item.unit_price.toLocaleString()})
+                        </span>
+                      )}
                     </div>
+                    {item.selected_size && (
+                      <div className="text-[10px] text-slate-400 truncate">الحجم: {item.selected_size.name_ar}</div>
+                    )}
+                    {item.selected_addons && item.selected_addons.length > 0 && (
+                      <div className="text-[10px] text-slate-400 truncate">
+                        إضافات: {item.selected_addons.map(a => a.name_ar).join(' + ')}
+                      </div>
+                    )}
+                    {item.special_instructions && (
+                      <div className="text-[10px] text-slate-500 italic truncate">
+                        ملاحظة: {item.special_instructions}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1.5 bg-slate-900 rounded-lg p-1 border border-slate-800">
-                    <button onClick={() => updateCartQuantity(item.id, -1)} className="w-5 h-5 flex items-center justify-center text-slate-400">
+                  <div className="flex items-center gap-1.5 bg-slate-900 rounded-lg p-1 border border-slate-800 shrink-0">
+                    <button onClick={() => updateCartQuantity(item.id, -1)} className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer">
                       <Minus className="w-3 h-3" />
                     </button>
-                    <span className="w-5 text-center font-bold text-white font-mono">{item.quantity}</span>
-                    <button onClick={() => updateCartQuantity(item.id, 1)} className="w-5 h-5 flex items-center justify-center text-slate-400">
+                    <span className="w-6 text-center font-bold text-white font-mono text-xs">{item.quantity}</span>
+                    <button onClick={() => updateCartQuantity(item.id, 1)} className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer">
                       <Plus className="w-3 h-3" />
                     </button>
                   </div>
