@@ -38,11 +38,6 @@ const formatWhatsAppUrl = (phone?: string, text?: string) => {
   if (clean.startsWith('00')) {
     clean = clean.slice(2);
   }
-  if (clean.startsWith('07') && clean.length === 11) {
-    clean = '964' + clean.slice(1);
-  } else if (clean.startsWith('7') && clean.length === 10) {
-    clean = '964' + clean;
-  }
   return `https://wa.me/${clean}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
 };
 
@@ -216,7 +211,7 @@ export const CustomerMenu: React.FC = () => {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
-  const deliveryFee = orderType === 'delivery' ? (activeRestaurant?.delivery_fee_base ?? 3000) : 0;
+  const deliveryFee = orderType === 'delivery' ? (activeRestaurant?.delivery_fee_base ?? 0) : 0;
   const totalAmount = Math.max(0, subtotal + deliveryFee - discountVal);
 
   const handleApplyCouponCode = () => {

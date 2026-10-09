@@ -18,7 +18,7 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
     created_at: '2026-01-01',
     theme_primary_color: '#f59e0b',
     plan_name: 'الباقة الاحترافية (Pro)',
-    delivery_fee_base: 3000,
+    delivery_fee_base: 0,
     whatsapp_number: '07705554433'
   },
   {
@@ -29,7 +29,7 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
     logo_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&q=80',
     cover_url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80',
     description_ar: 'أشهى المأكولات والمشروبات بنظام سفرة الذكي',
-    phone: '07810909577',
+    phone: '07760009061',
     email: 'info@مطعم-جوان.com',
     address: 'الحلة، العراق',
     currency: 'IQD',
@@ -38,8 +38,8 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
     created_at: '2026-01-01',
     theme_primary_color: '#f59e0b',
     plan_name: 'الباقة المجانية (Starter)',
-    delivery_fee_base: 3000,
-    whatsapp_number: '07810909577'
+    delivery_fee_base: 0,
+    whatsapp_number: '07760009061'
   }
 ];
 

@@ -2217,8 +2217,8 @@ export const OwnerDashboard: React.FC = () => {
                     type="number"
                     min="0"
                     step="250"
-                    value={newDeliveryFee || ''}
-                    onChange={e => setNewDeliveryFee(Math.max(0, Number(e.target.value)))}
+                    value={newDeliveryFee === 0 ? '0' : (newDeliveryFee || '')}
+                    onChange={e => setNewDeliveryFee(e.target.value === '' ? 0 : Math.max(0, Number(e.target.value)))}
                     placeholder="0 (مجاني - لا يظهر بالفاتورة)"
                     className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-amber-400 font-mono font-bold focus:outline-none focus:border-amber-500 text-right"
                   />

@@ -143,7 +143,7 @@ apiRouter.get(['/data', '/bootstrap'], async (req, res) => {
       created_at: r.created_at ? new Date(r.created_at).toISOString().slice(0, 10) : '2026-01-01',
       theme_primary_color: r.theme_primary_color || '#f59e0b',
       plan_name: r.plan_name || 'الباقة الاحترافية (Pro)',
-      delivery_fee_base: Number(r.delivery_fee_base) || 3000,
+      delivery_fee_base: (r.delivery_fee_base !== null && r.delivery_fee_base !== undefined) ? Number(r.delivery_fee_base) : 0,
       whatsapp_number: r.whatsapp_number || r.phone || ''
     }));
 
@@ -1066,18 +1066,20 @@ apiRouter.put('/restaurants/:id', async (req, res) => {
       id
     ]);
 
+    const feeToSave = data.delivery_fee_base !== undefined ? Number(data.delivery_fee_base) : 0;
+
     // Upsert into restaurant_settings
     await conn.query(`
       INSERT INTO restaurant_settings (restaurant_id, theme_primary_color, delivery_fee_base, whatsapp_number)
       VALUES (?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         theme_primary_color = COALESCE(VALUES(theme_primary_color), theme_primary_color),
-        delivery_fee_base = COALESCE(VALUES(delivery_fee_base), delivery_fee_base),
-        whatsapp_number = COALESCE(VALUES(whatsapp_number), whatsapp_number)
+        delivery_fee_base = VALUES(delivery_fee_base),
+        whatsapp_number = VALUES(whatsapp_number)
     `, [
       id,
       data.theme_primary_color || '#f59e0b',
-      data.delivery_fee_base !== undefined ? Number(data.delivery_fee_base) : 0,
+      feeToSave,
       phoneToSave
     ]);
 
@@ -1086,8 +1088,21 @@ apiRouter.put('/restaurants/:id', async (req, res) => {
     }
 
     await conn.commit();
-    broadcastEvent('restaurant_updated', { id, ...data, phone: phoneToSave, whatsapp_number: phoneToSave });
-    res.json({ success: true, id, ...data, phone: phoneToSave, whatsapp_number: phoneToSave });
+    broadcastEvent('restaurant_updated', { 
+      id, 
+      ...data, 
+      phone: phoneToSave, 
+      whatsapp_number: phoneToSave,
+      delivery_fee_base: feeToSave 
+    });
+    res.json({ 
+      success: true, 
+      id, 
+      ...data, 
+      phone: phoneToSave, 
+      whatsapp_number: phoneToSave,
+      delivery_fee_base: feeToSave 
+    });
   } catch (err) {
     await conn.rollback();
     res.status(500).json({ success: false, message: err.message });

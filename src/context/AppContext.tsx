@@ -315,24 +315,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (data.restaurants.length > 0) {
         setRestaurants(data.restaurants);
+        saveToStorage('sufrah_v2_restaurants', data.restaurants);
         setActiveRestaurant(prev => {
+          let chosen: Restaurant | undefined = undefined;
           if (typeof window !== 'undefined') {
             const params = new URLSearchParams(window.location.search);
             const rawParam = params.get('restaurant') || params.get('r');
             if (rawParam) {
               const decoded = decodeURIComponent(rawParam).trim().toLowerCase();
-              const matchedParam = data.restaurants.find(
+              chosen = data.restaurants.find(
                 r => String(r.id) === decoded || 
                      (r.slug && r.slug.toLowerCase() === decoded) || 
                      (r.name_ar && r.name_ar.toLowerCase().includes(decoded)) || 
                      (r.name_en && r.name_en.toLowerCase().includes(decoded))
               );
-              if (matchedParam) return matchedParam;
             }
           }
-          if (!prev) return data.restaurants[0];
-          const matched = data.restaurants.find(r => r.id === prev.id);
-          return matched || data.restaurants[0];
+          if (!chosen && prev) {
+            chosen = data.restaurants.find(r => r.id === prev.id);
+          }
+          const finalActive = chosen || data.restaurants[0];
+          saveToStorage('sufrah_v2_active_restaurant', finalActive);
+          return finalActive;
         });
       }
       if (data.branches.length > 0) {
@@ -438,8 +442,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else if (type === 'restaurant_created') {
         setRestaurants(prev => prev.some(r => r.id === payload.id) ? prev : [...prev, payload]);
       } else if (type === 'restaurant_updated') {
-        setRestaurants(prev => prev.map(r => r.id === payload.id ? { ...r, ...payload } : r));
-        setActiveRestaurant(prev => (prev && prev.id === payload.id ? { ...prev, ...payload } : prev));
+        setRestaurants(prev => {
+          const next = prev.map(r => r.id === payload.id ? { ...r, ...payload } : r);
+          saveToStorage('sufrah_v2_restaurants', next);
+          return next;
+        });
+        setActiveRestaurant(prev => {
+          if (prev && prev.id === payload.id) {
+            const updated = { ...prev, ...payload };
+            saveToStorage('sufrah_v2_active_restaurant', updated);
+            return updated;
+          }
+          return prev;
+        });
       } else if (type === 'restaurant_status_updated') {
         setRestaurants(prev => prev.map(r => r.id === payload.id ? { ...r, status: payload.status } : r));
         setActiveRestaurant(prev => (prev && prev.id === payload.id ? { ...prev, status: payload.status } : prev));
