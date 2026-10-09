@@ -71,8 +71,16 @@ export const OwnerDashboard: React.FC = () => {
     deleteTable
   } = useApp();
 
+  const toLocalPhone = (p?: string) => {
+    if (!p) return '';
+    let clean = p.replace(/[^0-9]/g, '');
+    if (clean.startsWith('00964')) return '0' + clean.slice(5);
+    if (clean.startsWith('964')) return '0' + clean.slice(3);
+    return clean || p;
+  };
+
   const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'branches' | 'tables' | 'staff' | 'qr' | 'ai' | 'reports' | 'branding'>('menu');
-  const [ownerWhatsApp, setOwnerWhatsApp] = useState<string>(activeRestaurant?.whatsapp_number || activeRestaurant?.phone || '');
+  const [ownerWhatsApp, setOwnerWhatsApp] = useState<string>(toLocalPhone(activeRestaurant?.whatsapp_number || activeRestaurant?.phone));
   const [savedWhatsAppSuccess, setSavedWhatsAppSuccess] = useState(false);
 
   // Staff & User Management States
@@ -119,7 +127,7 @@ export const OwnerDashboard: React.FC = () => {
       setNewRestName(activeRestaurant.name_ar || '');
       setNewRestDesc(activeRestaurant.description_ar || '');
       setNewDeliveryFee(activeRestaurant.delivery_fee_base ?? 0);
-      setOwnerWhatsApp(activeRestaurant.whatsapp_number || activeRestaurant.phone || '');
+      setOwnerWhatsApp(toLocalPhone(activeRestaurant.whatsapp_number || activeRestaurant.phone));
     }
   }, [activeRestaurant]);
 
@@ -1260,6 +1268,10 @@ export const OwnerDashboard: React.FC = () => {
               </p>
 
               <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 shrink-0 font-mono" dir="ltr" title="كود دولة العراق">
+                  <span>🇮🇶</span>
+                  <span className="font-bold text-emerald-400">+964</span>
+                </div>
                 <input
                   type="text"
                   placeholder="07XXXXXXXXX (مثال: 07701234567)"
@@ -1279,6 +1291,9 @@ export const OwnerDashboard: React.FC = () => {
                   {savedWhatsAppSuccess ? 'تم الحفظ بنجاح!' : 'حفظ الرقم'}
                 </button>
               </div>
+              <p className="text-[10px] text-emerald-400/80">
+                ✓ يتم إدخال الرقم محلياً بدون كود الدولة (مثل 07760009061)، ويقوم النظام بإضافة كود دولة العراق (+964) تلقائياً عند إرسال الطلبات بالواتساب.
+              </p>
             </div>
           </div>
 
@@ -2201,15 +2216,24 @@ export const OwnerDashboard: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">رقم واتساب / هاتف استقبال الطلبات</label>
-                  <input
-                    type="text"
-                    dir="ltr"
-                    value={ownerWhatsApp}
-                    onChange={e => setOwnerWhatsApp(e.target.value)}
-                    placeholder="07XXXXXXXXX"
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 text-right"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-slate-400">رقم واتساب / هاتف استقبال الطلبات</label>
+                    <span className="text-[10px] text-amber-400 font-medium">كود العراق (+964) تلقائي</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-300 shrink-0 font-mono" dir="ltr" title="كود دولة العراق">
+                      <span>🇮🇶</span>
+                      <span className="font-bold text-amber-400">+964</span>
+                    </div>
+                    <input
+                      type="text"
+                      dir="ltr"
+                      value={ownerWhatsApp}
+                      onChange={e => setOwnerWhatsApp(e.target.value)}
+                      placeholder="07XXXXXXXXX"
+                      className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 text-right font-mono"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 mb-1">مبلغ التوصيل (د.ع) - اختياري</label>

@@ -30,14 +30,37 @@ import {
   UtensilsCrossed
 } from 'lucide-react';
 
-// Format WhatsApp URLs automatically for WhatsApp direct ordering
+// Format WhatsApp URLs automatically for WhatsApp direct ordering with Iraq country code (+964)
 const formatWhatsAppUrl = (phone?: string, text?: string) => {
   const raw = phone || '';
   let clean = raw.replace(/[^0-9]/g, '');
   if (!clean) return '#';
-  if (clean.startsWith('00')) {
+
+  // Handle leading international 00 prefixes
+  if (clean.startsWith('00964')) {
+    clean = '964' + clean.slice(5);
+  } else if (clean.startsWith('00')) {
     clean = clean.slice(2);
   }
+
+  // Automatically prepend Iraq country code (+964):
+  // 1. National format starting with 07 (11 digits, e.g. 07760009061 -> 9647760009061)
+  if (clean.startsWith('07')) {
+    clean = '964' + clean.slice(1);
+  }
+  // 2. Format starting with 7 without leading zero (10 digits, e.g. 7760009061 -> 9647760009061)
+  else if (clean.startsWith('7') && clean.length === 10) {
+    clean = '964' + clean;
+  }
+  // 3. Any other local Iraqi number not yet prefixed with 964
+  else if (!clean.startsWith('964')) {
+    if (clean.startsWith('0')) {
+      clean = '964' + clean.slice(1);
+    } else {
+      clean = '964' + clean;
+    }
+  }
+
   return `https://wa.me/${clean}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
 };
 
@@ -1395,18 +1418,27 @@ export const CustomerMenu: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">
-                  رقم الهاتف للتواصل {(orderType === 'delivery' || orderType === 'takeaway') && '*'}
-                </label>
-                <input
-                  type="tel"
-                  required={orderType === 'delivery' || orderType === 'takeaway'}
-                  placeholder="07XXXXXXXXX (مثال: 07701234567)"
-                  value={customerPhone}
-                  onChange={e => setCustomerPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white font-mono"
-                  dir="ltr"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-slate-400">
+                    رقم الهاتف للتواصل {(orderType === 'delivery' || orderType === 'takeaway') && '*'}
+                  </label>
+                  <span className="text-[10px] text-amber-400/90 font-medium">كود العراق (+964) تلقائي</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-2 text-xs text-slate-300 shrink-0 font-mono" dir="ltr" title="كود دولة العراق">
+                    <span>🇮🇶</span>
+                    <span className="font-bold text-amber-400">+964</span>
+                  </div>
+                  <input
+                    type="tel"
+                    required={orderType === 'delivery' || orderType === 'takeaway'}
+                    placeholder="07XXXXXXXXX (مثال: 07701234567)"
+                    value={customerPhone}
+                    onChange={e => setCustomerPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                    className="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-2 text-white font-mono text-right"
+                    dir="ltr"
+                  />
+                </div>
               </div>
 
               {orderType === 'delivery' && (
