@@ -212,28 +212,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadFromStorage('sufrah_v2_reviews', INITIAL_REVIEWS)
   );
   const [plans, setPlans] = useState<Plan[]>(() => {
-    const list = loadFromStorage<Plan[]>('sufrah_v2_plans', SAAS_PLANS);
-    return list.map(p => {
-      if (p.slug === 'free' || p.id === 1) {
-        return {
-          ...p,
-          name_ar: 'الباقة المجانية (تجريبية 14 يوم)',
-          name_en: 'Free 14-Day Trial',
-          has_pos: true,
-          has_kds: true,
-          trial_days: 14,
-          features: [
-            'فترة تجريبية مجانية لمدة 14 يوم',
-            'منيو إلكتروني QR تفاعلي',
-            'نظام الكاشير وتسجيل الطلبات (POS)',
-            'شاشة المطبخ KDS مع التنبيهات',
-            'إدارة الأصناف والصور',
-            'دعم فني مباشر'
-          ]
-        };
-      }
-      return p;
-    });
+    return loadFromStorage<Plan[]>('sufrah_v2_plans', SAAS_PLANS);
   });
   const [coupons, setCoupons] = useState<Coupon[]>(() =>
     loadFromStorage('sufrah_v2_coupons', INITIAL_COUPONS)
@@ -353,28 +332,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.orders.length > 0) setOrders(data.orders);
       if (data.reservations.length > 0) setReservations(data.reservations);
       if (data.reviews.length > 0) setReviews(data.reviews);
-      if (data.plans.length > 0) {
-        setPlans(data.plans.map(p => {
-          if (p.slug === 'free' || p.id === 1 || p.price_monthly === 0) {
-            return {
-              ...p,
-              name_ar: 'الباقة المجانية (تجريبية 14 يوم)',
-              name_en: 'Free 14-Day Trial',
-              has_pos: true,
-              has_kds: true,
-              trial_days: 14,
-              features: [
-                'فترة تجريبية مجانية لمدة 14 يوم',
-                'منيو إلكتروني QR تفاعلي',
-                'نظام الكاشير وتسجيل الطلبات (POS)',
-                'شاشة المطبخ KDS مع التنبيهات',
-                'إدارة الأصناف والصور',
-                'دعم فني مباشر'
-              ]
-            };
-          }
-          return p;
-        }));
+      if (data.plans && data.plans.length > 0) {
+        setPlans(data.plans);
+        saveToStorage('sufrah_v2_plans', data.plans);
       }
       if (data.users && data.users.length > 0) {
         setUsers(data.users);
@@ -490,6 +450,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const updated = prev.filter(u => String(u.id) !== String(payload.id));
           saveToStorage('sufrah_v2_users', updated);
           return updated;
+        });
+      } else if (type === 'plan_updated') {
+        setPlans(prev => {
+          const next = prev.map(p => p.id === payload.id ? { ...p, ...payload } : p);
+          saveToStorage('sufrah_v2_plans', next);
+          return next;
         });
       }
     });
@@ -1552,7 +1518,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updatePlan = (planId: number, updates: Partial<Plan>) => {
-    setPlans(prev => prev.map(p => p.id === planId ? { ...p, ...updates } : p));
+    setPlans(prev => {
+      const next = prev.map(p => p.id === planId ? { ...p, ...updates } : p);
+      saveToStorage('sufrah_v2_plans', next);
+      return next;
+    });
+    api.updatePlan(planId, updates).catch(err => {
+      console.error('Failed to update plan on server:', err);
+    });
   };
 
   const activateRestaurantPlan = (code: string, restaurantId?: number): { success: boolean; message: string; planName?: string } => {

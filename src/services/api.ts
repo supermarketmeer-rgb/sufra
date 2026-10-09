@@ -403,6 +403,13 @@ export const api = {
           } catch {}
         });
 
+        es.addEventListener('plan_updated', (e: MessageEvent) => {
+          try {
+            const data = JSON.parse(e.data);
+            onEvent('plan_updated', data);
+          } catch {}
+        });
+
         es.addEventListener('restaurant_updated', (e: MessageEvent) => {
           try {
             const data = JSON.parse(e.data);
@@ -466,6 +473,20 @@ export const api = {
       return res.ok;
     } catch (err) {
       console.error('Failed to update user via API:', err);
+      return false;
+    }
+  },
+
+  async updatePlan(planId: number, updates: Partial<Plan>): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/plans/${planId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: planId, ...updates })
+      });
+      return res.ok;
+    } catch (err) {
+      console.error('Failed to update plan via API:', err);
       return false;
     }
   }

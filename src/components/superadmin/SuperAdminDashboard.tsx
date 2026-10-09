@@ -24,6 +24,7 @@ import {
   Eye,
   EyeOff,
   Copy,
+  Edit3,
   User as UserIcon
 } from 'lucide-react';
 
@@ -166,6 +167,8 @@ export const SuperAdminDashboard: React.FC = () => {
 
   // Plan editing state
   const [editingPlan, setEditingPlan] = useState<any | null>(null);
+  const [planNameAr, setPlanNameAr] = useState<string>('');
+  const [planNameEn, setPlanNameEn] = useState<string>('');
   const [planPriceMonthly, setPlanPriceMonthly] = useState<number>(0);
   const [planPriceYearly, setPlanPriceYearly] = useState<number>(0);
   const [planMaxBranches, setPlanMaxBranches] = useState<number>(1);
@@ -176,9 +179,12 @@ export const SuperAdminDashboard: React.FC = () => {
   const [planHasDeliveryGps, setPlanHasDeliveryGps] = useState<boolean>(false);
   const [planHasAiAnalytics, setPlanHasAiAnalytics] = useState<boolean>(false);
   const [planTrialDays, setPlanTrialDays] = useState<number>(14);
+  const [planSavedNotice, setPlanSavedNotice] = useState<string | null>(null);
 
   const handleOpenEditPlan = (plan: any) => {
     setEditingPlan(plan);
+    setPlanNameAr(plan.name_ar || '');
+    setPlanNameEn(plan.name_en || '');
     setPlanPriceMonthly(plan.price_monthly);
     setPlanPriceYearly(plan.price_yearly);
     setPlanMaxBranches(plan.max_branches);
@@ -194,7 +200,11 @@ export const SuperAdminDashboard: React.FC = () => {
   const handleSavePlan = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPlan) return;
+    const finalNameAr = planNameAr.trim() || editingPlan.name_ar;
+    const finalNameEn = planNameEn.trim() || editingPlan.name_en;
     updatePlan(editingPlan.id, {
+      name_ar: finalNameAr,
+      name_en: finalNameEn,
       price_monthly: planPriceMonthly,
       price_yearly: planPriceYearly,
       max_branches: planMaxBranches,
@@ -207,6 +217,8 @@ export const SuperAdminDashboard: React.FC = () => {
       trial_days: planTrialDays > 0 ? planTrialDays : undefined
     });
     setEditingPlan(null);
+    setPlanSavedNotice(`تم حفظ وتحديث باقة "${finalNameAr}" بنجاح في قاعدة البيانات.`);
+    setTimeout(() => setPlanSavedNotice(null), 5000);
   };
 
   const totalRevenue = orders.reduce((sum, o) => sum + o.total_amount, 0);
@@ -619,106 +631,143 @@ export const SuperAdminDashboard: React.FC = () => {
 
       {/* Tab 2: SaaS Plans */}
       {activeTab === 'plans' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {plans.map(plan => (
-            <div
-              key={plan.id}
-              className={`bg-slate-900 border rounded-2xl p-6 flex flex-col justify-between transition-all ${
-                plan.slug === 'enterprise'
-                  ? 'border-amber-500/50 shadow-xl shadow-amber-500/5 ring-1 ring-amber-500/30'
-                  : 'border-slate-800'
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-white">{plan.name_ar}</h3>
-                  {plan.slug === 'enterprise' && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-slate-950">
-                      الأكثر طلباً
-                    </span>
-                  )}
-                  {(plan.trial_days || plan.slug === 'free') && (
-                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                      تجربة {plan.trial_days || 14} يوم
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-400 mt-1">{plan.name_en}</p>
-
-                <div className="mt-5 flex items-baseline gap-1">
-                  <span className="text-2xl font-black font-mono-numbers text-white">
-                    {plan.price_monthly === 0 ? 'مجاناً' : `${plan.price_monthly.toLocaleString()} د.ع`}
-                  </span>
-                  {plan.price_monthly === 0 && (
-                    <span className="text-xs text-emerald-400 font-semibold mr-1">
-                      (فترة تجريبية {plan.trial_days || 14} يوم)
-                    </span>
-                  )}
-                  {plan.price_monthly > 0 && (
-                    <span className="text-xs text-slate-400">
-                      / شهرياً ({plan.price_yearly.toLocaleString()} د.ع سنوياً)
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-6 pt-5 border-t border-slate-800/80 space-y-2.5 text-xs text-slate-300">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">عدد الفروع المسموحة:</span>
-                    <span className="font-semibold text-white">{plan.max_branches} فرع</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">عدد الطاولات:</span>
-                    <span className="font-semibold text-white">{plan.max_tables} طاولة</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">عدد الأصناف:</span>
-                    <span className="font-semibold text-white">{plan.max_products} صنف</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">نظام الكاشير (POS):</span>
-                    <span className={plan.has_pos ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
-                      {plan.has_pos ? 'مشمول' : 'غير مشمول'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">شاشة المطبخ (KDS):</span>
-                    <span className={plan.has_kds ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
-                      {plan.has_kds ? 'مشمول' : 'غير مشمول'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">تتبع السائقين GPS:</span>
-                    <span className={plan.has_delivery_gps ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
-                      {plan.has_delivery_gps ? 'مشمول' : 'غير مشمول'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">تحليلات الذكاء الاصطناعي:</span>
-                    <span className={plan.has_ai_analytics ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
-                      {plan.has_ai_analytics ? 'مشمول' : 'غير مشمول'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-5 space-y-1.5 pt-4 border-t border-slate-800">
-                  <div className="text-[11px] font-semibold text-slate-400 mb-1">المميزات الرئيسية:</div>
-                  {plan.features.map((feat, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-xs text-slate-300">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span>{feat}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                onClick={() => handleOpenEditPlan(plan)}
-                className="mt-6 w-full py-2.5 bg-slate-800 hover:bg-slate-700 hover:text-amber-400 text-white font-semibold text-xs rounded-xl transition-colors cursor-pointer border border-slate-700/60"
-              >
-                تعديل أسعار وخصائص الباقة
-              </button>
+        <div className="space-y-4">
+          {planSavedNotice && (
+            <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-2xl text-xs font-semibold flex items-center gap-2 shadow-lg animate-fade-in">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>{planSavedNotice}</span>
             </div>
-          ))}
+          )}
+
+          {/* Reassurance & Info Banner */}
+          <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs text-slate-300 shadow-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <p className="leading-relaxed">
+                <span className="font-bold text-white">ملاحظة أمان للمدير: </span>
+                تعديل أسعار وخصائص الباقات يتم حفظه مباشرة في السحابة لترقية الباقات والاشتراكات الجديدة، <span className="text-emerald-400 font-bold">ولا يؤثر إطلاقاً على عمل المطاعم النشطة حالياً</span> أو توقف حساباتها وصالاتها.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {plans.map(plan => (
+              <div
+                key={plan.id}
+                className={`bg-slate-900 border rounded-2xl p-6 flex flex-col justify-between transition-all ${
+                  plan.slug === 'enterprise'
+                    ? 'border-amber-500/50 shadow-xl shadow-amber-500/5 ring-1 ring-amber-500/30'
+                    : 'border-slate-800'
+                }`}
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h3 className="text-base font-bold text-white">{plan.name_ar}</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">{plan.name_en}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        {plan.slug === 'enterprise' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-slate-950">
+                            الأكثر طلباً
+                          </span>
+                        )}
+                        {(plan.trial_days || plan.slug === 'free') && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                            تجربة {plan.trial_days || 14} يوم
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleOpenEditPlan(plan)}
+                        className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500 hover:text-slate-950 text-amber-400 rounded-lg text-xs font-bold transition-all border border-amber-500/30 flex items-center gap-1 cursor-pointer shadow-sm"
+                        title="تعديل أسعار وخصائص الباقة"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>تعديل</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 flex items-baseline gap-1">
+                    <span className="text-2xl font-black font-mono-numbers text-white">
+                      {plan.price_monthly === 0 ? 'مجاناً' : `${plan.price_monthly.toLocaleString()} د.ع`}
+                    </span>
+                    {plan.price_monthly === 0 && (
+                      <span className="text-xs text-emerald-400 font-semibold mr-1">
+                        (فترة تجريبية {plan.trial_days || 14} يوم)
+                      </span>
+                    )}
+                    {plan.price_monthly > 0 && (
+                      <span className="text-xs text-slate-400">
+                        / شهرياً ({plan.price_yearly.toLocaleString()} د.ع سنوياً)
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-6 pt-5 border-t border-slate-800/80 space-y-2.5 text-xs text-slate-300">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">عدد الفروع المسموحة:</span>
+                      <span className="font-semibold text-white">{plan.max_branches} فرع</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">عدد الطاولات:</span>
+                      <span className="font-semibold text-white">{plan.max_tables} طاولة</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">عدد الأصناف:</span>
+                      <span className="font-semibold text-white">{plan.max_products} صنف</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">نظام الكاشير (POS):</span>
+                      <span className={plan.has_pos ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
+                        {plan.has_pos ? 'مشمول' : 'غير مشمول'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">شاشة المطبخ (KDS):</span>
+                      <span className={plan.has_kds ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
+                        {plan.has_kds ? 'مشمول' : 'غير مشمول'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">تتبع السائقين GPS:</span>
+                      <span className={plan.has_delivery_gps ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
+                        {plan.has_delivery_gps ? 'مشمول' : 'غير مشمول'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">تحليلات الذكاء الاصطناعي:</span>
+                      <span className={plan.has_ai_analytics ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
+                        {plan.has_ai_analytics ? 'مشمول' : 'غير مشمول'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 space-y-1.5 pt-4 border-t border-slate-800">
+                    <div className="text-[11px] font-semibold text-slate-400 mb-1">المميزات الرئيسية:</div>
+                    {plan.features.map((feat, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-xs text-slate-300">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span>{feat}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleOpenEditPlan(plan)}
+                  className="mt-6 w-full py-2.5 bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-white font-bold text-xs rounded-xl transition-all cursor-pointer border border-slate-700/60 flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  <span>تعديل أسعار وخصائص الباقة</span>
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -1152,6 +1201,28 @@ export const SuperAdminDashboard: React.FC = () => {
             </div>
 
             <form onSubmit={handleSavePlan} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1">اسم الباقة (بالعربية):</label>
+                  <input
+                    type="text"
+                    required
+                    value={planNameAr}
+                    onChange={e => setPlanNameAr(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500 font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 mb-1">اسم الباقة (بالإنجليزية):</label>
+                  <input
+                    type="text"
+                    value={planNameEn}
+                    onChange={e => setPlanNameEn(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-400 mb-1">السعر الشهري (د.ع):</label>

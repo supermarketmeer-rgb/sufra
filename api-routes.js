@@ -322,8 +322,8 @@ apiRouter.get(['/data', '/bootstrap'], async (req, res) => {
       const isFree = pl.slug === 'free' || pl.id === 1 || Number(pl.price_monthly) === 0;
       return {
         id: pl.id,
-        name_ar: isFree ? 'الباقة المجانية (تجريبية 14 يوم)' : pl.name_ar,
-        name_en: isFree ? 'Free 14-Day Trial' : pl.name_en,
+        name_ar: pl.name_ar || (isFree ? 'الباقة المجانية (تجريبية 14 يوم)' : 'باقة سُفرة'),
+        name_en: pl.name_en || (isFree ? 'Free 14-Day Trial' : 'Sufrah Plan'),
         slug: pl.slug,
         price_monthly: Number(pl.price_monthly),
         price_yearly: Number(pl.price_yearly),
@@ -331,20 +331,20 @@ apiRouter.get(['/data', '/bootstrap'], async (req, res) => {
         max_branches: Number(pl.max_branches),
         max_tables: Number(pl.max_tables),
         max_products: Number(pl.max_products),
-        has_pos: isFree ? true : Boolean(pl.has_pos),
-        has_kds: isFree ? true : Boolean(pl.has_kds),
+        has_pos: Boolean(pl.has_pos),
+        has_kds: Boolean(pl.has_kds),
         has_delivery_gps: Boolean(pl.has_delivery_gps),
         has_ai_analytics: Boolean(pl.has_ai_analytics),
         has_custom_domain: Boolean(pl.has_custom_domain),
-        trial_days: isFree ? 14 : Number(pl.trial_days || 0),
-        features: isFree ? [
+        trial_days: pl.trial_days !== undefined && pl.trial_days !== null ? Number(pl.trial_days) : (isFree ? 14 : 0),
+        features: features.length > 0 ? features : (isFree ? [
           'فترة تجريبية مجانية لمدة 14 يوم',
           'منيو إلكتروني QR تفاعلي',
           'نظام الكاشير وتسجيل الطلبات (POS)',
           'شاشة المطبخ KDS مع التنبيهات',
           'إدارة الأصناف والصور',
           'دعم فني مباشر'
-        ] : (features.length > 0 ? features : ['منيو إلكتروني تفاعلي', 'إدارة الأصناف والصور', 'دعم فني مباشر'])
+        ] : ['منيو إلكتروني تفاعلي', 'إدارة الأصناف والصور', 'دعم فني مباشر'])
       };
     });
 
@@ -1384,4 +1384,85 @@ apiRouter.patch('/orders/:id/status', async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
+// Update SaaS Subscription Plan endpoint (persist to MySQL & broadcast real-time SSE)
+const handlePlanUpdate = async (req, res) => {
+  if (!dbPool) return res.status(503).json({ error: 'DB not available' });
+
+  try {
+    const planId = req.params.id || req.body.id;
+    if (!planId) return res.status(400).json({ success: false, message: 'Missing plan id' });
+
+    const {
+      price_monthly,
+      price_yearly,
+      max_branches,
+      max_tables,
+      max_products,
+      has_pos,
+      has_kds,
+      has_delivery_gps,
+      has_ai_analytics,
+      has_custom_domain,
+      name_ar,
+      name_en,
+      features,
+      trial_days
+    } = req.body;
+
+    const updates = [];
+    const values = [];
+
+    if (price_monthly !== undefined) { updates.push('price_monthly = ?'); values.push(Number(price_monthly)); }
+    if (price_yearly !== undefined) { updates.push('price_yearly = ?'); values.push(Number(price_yearly)); }
+    if (max_branches !== undefined) { updates.push('max_branches = ?'); values.push(Number(max_branches)); }
+    if (max_tables !== undefined) { updates.push('max_tables = ?'); values.push(Number(max_tables)); }
+    if (max_products !== undefined) { updates.push('max_products = ?'); values.push(Number(max_products)); }
+    if (has_pos !== undefined) { updates.push('has_pos = ?'); values.push(has_pos ? 1 : 0); }
+    if (has_kds !== undefined) { updates.push('has_kds = ?'); values.push(has_kds ? 1 : 0); }
+    if (has_delivery_gps !== undefined) { updates.push('has_delivery_gps = ?'); values.push(has_delivery_gps ? 1 : 0); }
+    if (has_ai_analytics !== undefined) { updates.push('has_ai_analytics = ?'); values.push(has_ai_analytics ? 1 : 0); }
+    if (has_custom_domain !== undefined) { updates.push('has_custom_domain = ?'); values.push(has_custom_domain ? 1 : 0); }
+    if (name_ar !== undefined) { updates.push('name_ar = ?'); values.push(name_ar); }
+    if (name_en !== undefined) { updates.push('name_en = ?'); values.push(name_en); }
+    if (features !== undefined) { updates.push('features = ?'); values.push(typeof features === 'string' ? features : JSON.stringify(features)); }
+
+    if (updates.length > 0) {
+      values.push(Number(planId));
+      await dbPool.query(`UPDATE plans SET ${updates.join(', ')} WHERE id = ?`, values);
+    }
+
+    const payload = {
+      id: Number(planId),
+      price_monthly: price_monthly !== undefined ? Number(price_monthly) : undefined,
+      price_yearly: price_yearly !== undefined ? Number(price_yearly) : undefined,
+      max_branches: max_branches !== undefined ? Number(max_branches) : undefined,
+      max_tables: max_tables !== undefined ? Number(max_tables) : undefined,
+      max_products: max_products !== undefined ? Number(max_products) : undefined,
+      has_pos: has_pos !== undefined ? Boolean(has_pos) : undefined,
+      has_kds: has_kds !== undefined ? Boolean(has_kds) : undefined,
+      has_delivery_gps: has_delivery_gps !== undefined ? Boolean(has_delivery_gps) : undefined,
+      has_ai_analytics: has_ai_analytics !== undefined ? Boolean(has_ai_analytics) : undefined,
+      has_custom_domain: has_custom_domain !== undefined ? Boolean(has_custom_domain) : undefined,
+      name_ar,
+      name_en,
+      features,
+      trial_days: trial_days !== undefined ? Number(trial_days) : undefined
+    };
+
+    // Clean undefined keys
+    Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+
+    broadcastEvent('plan_updated', payload);
+    console.log(`✅ Plan ${planId} updated successfully in MySQL & broadcasted.`);
+    res.json({ success: true, message: 'تم تحديث الباقة بنجاح', plan: payload });
+  } catch (err) {
+    console.error('Error updating plan in MySQL:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+apiRouter.post('/plans/update', handlePlanUpdate);
+apiRouter.post('/plans/:id', handlePlanUpdate);
+apiRouter.patch('/plans/:id', handlePlanUpdate);
 
