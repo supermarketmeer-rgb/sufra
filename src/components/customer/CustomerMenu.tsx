@@ -100,8 +100,12 @@ export const CustomerMenu: React.FC = () => {
     setCurrentRole(targetRole as any);
   };
 
-  // خاص للتوصيل فقط: إخفاء أزرار السفري والطاولة دون إلغائها من الكود
+  // خاص للتوصيل فقط وخيارات تخصيص الواجهة (إخفاء العناصر دون إلغائها من الكود)
   const HIDE_DINE_IN_AND_TAKEAWAY = true;
+  const HIDE_TOP_PREVIEW_BANNER = true;     // إخفاء شريط المعاينة وزر العودة العلوي
+  const HIDE_DELIVERY_NOTIF_BANNER = true;  // إخفاء نافذة التنبيه العلوية للتوصيل
+  const HIDE_RETURN_TO_RESTAURANT = true;   // إخفاء زر العودة للمطعم
+  const HIDE_ORDER_TYPE_SELECTOR = true;    // إخفاء نافذة طريقة توصيل/استلام وجبتك
 
   // Navigation mode
   const [activeTab, setActiveTab] = useState<'menu' | 'reservation' | 'reviews' | 'loyalty'>('menu');
@@ -619,7 +623,7 @@ export const CustomerMenu: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto pb-24 space-y-6">
       {/* زر وشريط العودة إلى لوحة المطعم عند فتح مشاهدة المنيو */}
-      {isPreviewMode && (
+      {isPreviewMode && !HIDE_TOP_PREVIEW_BANNER && (
         <div className="bg-gradient-to-r from-amber-950/80 via-slate-900 to-slate-900 border-2 border-amber-500/50 rounded-2xl p-3.5 sm:p-4 shadow-2xl flex items-center justify-between gap-3 animate-fade-in sticky top-2 z-40 backdrop-blur-md">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xl border border-amber-500/30 shrink-0">
@@ -648,47 +652,48 @@ export const CustomerMenu: React.FC = () => {
       )}
 
       {/* Scanned QR Table, Takeaway & Delivery Notification Banner */}
-      <div className={`border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl transition-all ${
-        orderType === 'delivery'
-          ? 'bg-gradient-to-r from-emerald-950/80 via-slate-900 to-slate-900 border-emerald-500/50'
-          : orderType === 'takeaway'
-          ? 'bg-gradient-to-r from-blue-950/80 via-slate-900 to-slate-900 border-blue-500/50'
-          : 'bg-gradient-to-r from-amber-950/60 via-slate-900 to-slate-900 border-amber-500/40'
-      }`}>
-        <div className="flex items-center gap-3">
-          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-2xl ${
-            orderType === 'delivery'
-              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-              : orderType === 'takeaway'
-              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-              : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-          }`}>
-            {orderType === 'delivery' ? '🛵' : orderType === 'takeaway' ? '🛍️' : '🪑'}
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-white text-xs sm:text-sm">
-                {orderType === 'delivery'
-                  ? 'طلب التوصيل المنزلي السريع مفعل تلقائياً 🛵'
-                  : orderType === 'takeaway'
-                  ? 'طلب الاستلام السفري من الفرع مفعل تلقائياً 🛍️'
-                  : scannedTableDetected
-                  ? `تم مسح كود الطاولة بنجاح (طاولة: ${scannedTableDetected})`
-                  : 'منيو المطعم والطلب السريع عبر واتساب مفعل 🟢'}
-              </span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                orderType === 'delivery'
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                  : orderType === 'takeaway'
-                  ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
-                  : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-              }`}>
-                {orderType === 'delivery' ? 'توصيل لموقعك · بدون طاولة' : orderType === 'takeaway' ? 'استلام سفري جاهز' : 'طلب طاولة'}
-              </span>
+      {!HIDE_DELIVERY_NOTIF_BANNER && (
+        <div className={`border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl transition-all ${
+          orderType === 'delivery'
+            ? 'bg-gradient-to-r from-emerald-950/80 via-slate-900 to-slate-900 border-emerald-500/50'
+            : orderType === 'takeaway'
+            ? 'bg-gradient-to-r from-blue-950/80 via-slate-900 to-slate-900 border-blue-500/50'
+            : 'bg-gradient-to-r from-amber-950/60 via-slate-900 to-slate-900 border-amber-500/40'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-2xl ${
+              orderType === 'delivery'
+                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                : orderType === 'takeaway'
+                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+            }`}>
+              {orderType === 'delivery' ? '🛵' : orderType === 'takeaway' ? '🛍️' : '🪑'}
             </div>
-            <p className="text-[11px] text-slate-300 mt-1">
-              {orderType === 'delivery'
-                ? 'تم فتح المنيو مباشرة بنمط التوصيل. اختر وجباتك وأرسل طلبك مع عنوانك دون الحاجة لاختيار زر التوصيل!'
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-white text-xs sm:text-sm">
+                  {orderType === 'delivery'
+                    ? 'طلب التوصيل المنزلي السريع مفعل تلقائياً 🛵'
+                    : orderType === 'takeaway'
+                    ? 'طلب الاستلام السفري من الفرع مفعل تلقائياً 🛍️'
+                    : scannedTableDetected
+                    ? `تم مسح كود الطاولة بنجاح (طاولة: ${scannedTableDetected})`
+                    : 'منيو المطعم والطلب السريع عبر واتساب مفعل 🟢'}
+                </span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  orderType === 'delivery'
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                    : orderType === 'takeaway'
+                    ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                    : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                }`}>
+                  {orderType === 'delivery' ? 'توصيل لموقعك · بدون طاولة' : orderType === 'takeaway' ? 'استلام سفري جاهز' : 'طلب طاولة'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 mt-1">
+                {orderType === 'delivery'
+                  ? 'تم فتح المنيو مباشرة بنمط التوصيل. اختر وجباتك وأرسل طلبك مع عنوانك دون الحاجة لاختيار زر التوصيل!'
                 : orderType === 'takeaway'
                 ? 'تم فتح المنيو مباشرة بنمط الاستلام السفري. اختر وجباتك وأرسل طلبك ليتم تجهيزه واستلامه دون انتظار وبدون أجور توصيل!'
                 : 'اختر وجباتك ومشروباتك وسيتم تجهيز طلبك فوراً مع رقم طاولتك المحدد.'}
@@ -712,6 +717,7 @@ export const CustomerMenu: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* Brand Hero & Information Header */}
       <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl relative">
@@ -745,7 +751,7 @@ export const CustomerMenu: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            {isPreviewMode && (
+            {isPreviewMode && !HIDE_RETURN_TO_RESTAURANT && (
               <button
                 onClick={handleReturnToRestaurant}
                 className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
@@ -795,87 +801,89 @@ export const CustomerMenu: React.FC = () => {
       {activeTab === 'menu' && (
         <div className="space-y-6">
           {/* Order Type Selector (Dine-in, Takeaway, Delivery, Pre-order) */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="text-xs font-semibold text-slate-300">طريقة استلام وجبتك:</div>
-              {orderType === 'delivery' && (
-                <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
-                  <span>✓</span>
-                  <span>تم التحديد تلقائياً: توصيل لموقعك 🛵</span>
-                </span>
-              )}
-              {orderType === 'takeaway' && (
-                <span className="text-[10px] text-blue-400 font-bold bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/30 flex items-center gap-1">
-                  <span>✓</span>
-                  <span>تم التحديد تلقائياً: استلام سفري 🛍️</span>
-                </span>
-              )}
+          {!HIDE_ORDER_TYPE_SELECTOR && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="text-xs font-semibold text-slate-300">طريقة استلام وجبتك:</div>
+                {orderType === 'delivery' && (
+                  <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                    <span>✓</span>
+                    <span>تم التحديد تلقائياً: توصيل لموقعك 🛵</span>
+                  </span>
+                )}
+                {orderType === 'takeaway' && (
+                  <span className="text-[10px] text-blue-400 font-bold bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/30 flex items-center gap-1">
+                    <span>✓</span>
+                    <span>تم التحديد تلقائياً: استلام سفري 🛍️</span>
+                  </span>
+                )}
+                {orderType === 'dine_in' && (
+                  <span className="text-[10px] text-amber-400 font-bold bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1">
+                    <span>✓</span>
+                    <span>داخل المطعم ({selectedTableNum}) 🪑</span>
+                  </span>
+                )}
+              </div>
+
+              <div className={`grid gap-2 ${
+                HIDE_DINE_IN_AND_TAKEAWAY ? 'grid-cols-1 sm:grid-cols-2 max-w-sm' : 'grid-cols-2 sm:grid-cols-4'
+              }`}>
+                {[
+                  { id: 'dine_in', label: 'داخل المطعم (طاولة)', icon: '🍽️', hidden: HIDE_DINE_IN_AND_TAKEAWAY },
+                  { id: 'takeaway', label: 'استلام سفري', icon: '🛍️', hidden: HIDE_DINE_IN_AND_TAKEAWAY },
+                  { id: 'delivery', label: 'توصيل لموقعك', icon: '🛵', hidden: false },
+                  { id: 'pre_order', label: 'طلب مسبق للاستلام', icon: '⏱️', hidden: HIDE_DINE_IN_AND_TAKEAWAY },
+                ].filter(opt => !opt.hidden).map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setOrderType(opt.id as any)}
+                    className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      orderType === opt.id
+                        ? opt.id === 'delivery'
+                          ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400 ring-1 ring-emerald-500/40 shadow-sm'
+                          : opt.id === 'takeaway'
+                          ? 'bg-blue-500/15 border-blue-500 text-blue-400 ring-1 ring-blue-500/40 shadow-sm'
+                          : 'bg-amber-500/15 border-amber-500 text-amber-400 ring-1 ring-amber-500/40 shadow-sm'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <span>{opt.icon}</span>
+                    <span>{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+
               {orderType === 'dine_in' && (
-                <span className="text-[10px] text-amber-400 font-bold bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1">
-                  <span>✓</span>
-                  <span>داخل المطعم ({selectedTableNum}) 🪑</span>
-                </span>
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80 text-xs">
+                  <span className="text-slate-400">رقم الطاولة الحالية:</span>
+                  <select
+                    value={selectedTableNum}
+                    onChange={e => setSelectedTableNum(e.target.value)}
+                    className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-white font-mono font-bold"
+                  >
+                    {tables.map(t => (
+                      <option key={t.id} value={t.table_number}>طاولة {t.table_number}</option>
+                    ))}
+                  </select>
+                  <span className="text-[11px] text-emerald-400">تم تحديد الطاولة من مسح QR Code</span>
+                </div>
+              )}
+
+              {orderType === 'delivery' && (
+                <div className="pt-2 border-t border-slate-800/80 text-[11px] text-emerald-400 flex items-center gap-1.5 font-medium">
+                  <span>🛵</span>
+                  <span>لا حاجة لتحديد طاولة! اختر وجباتك ثم ادخل عنوانك عند التأكيد لتصلك الوجبة فوراً.</span>
+                </div>
+              )}
+
+              {orderType === 'takeaway' && (
+                <div className="pt-2 border-t border-slate-800/80 text-[11px] text-blue-400 flex items-center gap-1.5 font-medium">
+                  <span>🛍️</span>
+                  <span>اختر وجباتك وأرسل طلبك ليتم تجهيزه واستلامه مباشرة من فرع المطعم.</span>
+                </div>
               )}
             </div>
-
-            <div className={`grid gap-2 ${
-              HIDE_DINE_IN_AND_TAKEAWAY ? 'grid-cols-1 sm:grid-cols-2 max-w-sm' : 'grid-cols-2 sm:grid-cols-4'
-            }`}>
-              {[
-                { id: 'dine_in', label: 'داخل المطعم (طاولة)', icon: '🍽️', hidden: HIDE_DINE_IN_AND_TAKEAWAY },
-                { id: 'takeaway', label: 'استلام سفري', icon: '🛍️', hidden: HIDE_DINE_IN_AND_TAKEAWAY },
-                { id: 'delivery', label: 'توصيل لموقعك', icon: '🛵', hidden: false },
-                { id: 'pre_order', label: 'طلب مسبق للاستلام', icon: '⏱️', hidden: HIDE_DINE_IN_AND_TAKEAWAY },
-              ].filter(opt => !opt.hidden).map(opt => (
-                <button
-                  key={opt.id}
-                  onClick={() => setOrderType(opt.id as any)}
-                  className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                    orderType === opt.id
-                      ? opt.id === 'delivery'
-                        ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400 ring-1 ring-emerald-500/40 shadow-sm'
-                        : opt.id === 'takeaway'
-                        ? 'bg-blue-500/15 border-blue-500 text-blue-400 ring-1 ring-blue-500/40 shadow-sm'
-                        : 'bg-amber-500/15 border-amber-500 text-amber-400 ring-1 ring-amber-500/40 shadow-sm'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
-                  }`}
-                >
-                  <span>{opt.icon}</span>
-                  <span>{opt.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {orderType === 'dine_in' && (
-              <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80 text-xs">
-                <span className="text-slate-400">رقم الطاولة الحالية:</span>
-                <select
-                  value={selectedTableNum}
-                  onChange={e => setSelectedTableNum(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-white font-mono font-bold"
-                >
-                  {tables.map(t => (
-                    <option key={t.id} value={t.table_number}>طاولة {t.table_number}</option>
-                  ))}
-                </select>
-                <span className="text-[11px] text-emerald-400">تم تحديد الطاولة من مسح QR Code</span>
-              </div>
-            )}
-
-            {orderType === 'delivery' && (
-              <div className="pt-2 border-t border-slate-800/80 text-[11px] text-emerald-400 flex items-center gap-1.5 font-medium">
-                <span>🛵</span>
-                <span>لا حاجة لتحديد طاولة! اختر وجباتك ثم ادخل عنوانك عند التأكيد لتصلك الوجبة فوراً.</span>
-              </div>
-            )}
-
-            {orderType === 'takeaway' && (
-              <div className="pt-2 border-t border-slate-800/80 text-[11px] text-blue-400 flex items-center gap-1.5 font-medium">
-                <span>🛍️</span>
-                <span>اختر وجباتك وأرسل طلبك ليتم تجهيزه واستلامه مباشرة من فرع المطعم.</span>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Search & Categories */}
           <div className="space-y-3">
