@@ -100,6 +100,9 @@ export const CustomerMenu: React.FC = () => {
     setCurrentRole(targetRole as any);
   };
 
+  // خاص للتوصيل فقط: إخفاء أزرار السفري والطاولة دون إلغائها من الكود
+  const HIDE_DINE_IN_AND_TAKEAWAY = true;
+
   // Navigation mode
   const [activeTab, setActiveTab] = useState<'menu' | 'reservation' | 'reviews' | 'loyalty'>('menu');
   const [orderType, setOrderType] = useState<OrderType>(() => {
@@ -107,9 +110,9 @@ export const CustomerMenu: React.FC = () => {
       const params = new URLSearchParams(window.location.search);
       const typeParam = params.get('type') || params.get('mode') || params.get('orderType');
       if (typeParam === 'delivery') return 'delivery';
-      if (typeParam === 'takeaway') return 'takeaway';
+      if (typeParam === 'takeaway' && !HIDE_DINE_IN_AND_TAKEAWAY) return 'takeaway';
     }
-    return 'dine_in';
+    return HIDE_DINE_IN_AND_TAKEAWAY ? 'delivery' : 'dine_in';
   });
   const [selectedTableNum, setSelectedTableNum] = useState<string>(() => {
     if (typeof window !== 'undefined') {
@@ -171,11 +174,18 @@ export const CustomerMenu: React.FC = () => {
       if (typeParam === 'delivery') {
         setOrderType('delivery');
       } else if (typeParam === 'takeaway') {
-        setOrderType('takeaway');
+        if (!HIDE_DINE_IN_AND_TAKEAWAY) setOrderType('takeaway');
+        else setOrderType('delivery');
       } else if (tableParam) {
-        setSelectedTableNum(tableParam);
-        setOrderType('dine_in');
-        setScannedTableDetected(tableParam);
+        if (!HIDE_DINE_IN_AND_TAKEAWAY) {
+          setSelectedTableNum(tableParam);
+          setOrderType('dine_in');
+          setScannedTableDetected(tableParam);
+        } else {
+          setOrderType('delivery');
+        }
+      } else if (HIDE_DINE_IN_AND_TAKEAWAY) {
+        setOrderType('delivery');
       }
       const dishParam = params.get('dish');
       if (dishParam) {
@@ -761,10 +771,10 @@ export const CustomerMenu: React.FC = () => {
         <div className="border-t border-slate-800/80 px-4 flex items-center justify-around sm:justify-start gap-2 overflow-x-auto text-xs font-semibold">
           {[
             { id: 'menu', label: 'قائمة الطعام (المنيو)', icon: <Flame className="w-4 h-4" /> },
-            { id: 'reservation', label: 'حجز طاولة', icon: <Calendar className="w-4 h-4" /> },
+            { id: 'reservation', label: 'حجز طاولة', icon: <Calendar className="w-4 h-4" />, hidden: HIDE_DINE_IN_AND_TAKEAWAY },
             { id: 'reviews', label: 'تقييمات الزبائن', icon: <MessageSquare className="w-4 h-4" /> },
             { id: 'loyalty', label: 'نقاط المكافآت', icon: <Gift className="w-4 h-4" /> },
-          ].map(t => (
+          ].filter(t => !t.hidden).map(t => (
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id as any)}
@@ -808,13 +818,15 @@ export const CustomerMenu: React.FC = () => {
               )}
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className={`grid gap-2 ${
+              HIDE_DINE_IN_AND_TAKEAWAY ? 'grid-cols-1 sm:grid-cols-2 max-w-sm' : 'grid-cols-2 sm:grid-cols-4'
+            }`}>
               {[
-                { id: 'dine_in', label: 'داخل المطعم (طاولة)', icon: '🍽️' },
-                { id: 'takeaway', label: 'استلام سفري', icon: '🛍️' },
-                { id: 'delivery', label: 'توصيل لموقعك', icon: '🛵' },
-                { id: 'pre_order', label: 'طلب مسبق للاستلام', icon: '⏱️' },
-              ].map(opt => (
+                { id: 'dine_in', label: 'داخل المطعم (طاولة)', icon: '🍽️', hidden: HIDE_DINE_IN_AND_TAKEAWAY },
+                { id: 'takeaway', label: 'استلام سفري', icon: '🛍️', hidden: HIDE_DINE_IN_AND_TAKEAWAY },
+                { id: 'delivery', label: 'توصيل لموقعك', icon: '🛵', hidden: false },
+                { id: 'pre_order', label: 'طلب مسبق للاستلام', icon: '⏱️', hidden: HIDE_DINE_IN_AND_TAKEAWAY },
+              ].filter(opt => !opt.hidden).map(opt => (
                 <button
                   key={opt.id}
                   onClick={() => setOrderType(opt.id as any)}
