@@ -95,6 +95,7 @@ interface AppContextType {
   addCategory: (categoryData: Partial<Category>) => Promise<Category | null>;
   updateCategory: (categoryId: number, updates: Partial<Category>) => void;
   deleteCategory: (categoryId: number) => void;
+  reorderCategories: (orderedCategories: Category[]) => void;
   addBranch: (branchData: Partial<Branch>) => void;
   updateBranch: (branchId: number, updates: Partial<Branch>) => { success: boolean; message: string };
   deleteBranch: (branchId: number) => { success: boolean; message: string };
@@ -320,18 +321,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       if (data.branches.length > 0) {
         setBranches(data.branches);
+        saveToStorage('sufrah_v2_branches', data.branches);
         setActiveBranch(prev => {
           if (!prev) return data.branches[0];
           const matched = data.branches.find(b => b.id === prev.id);
           return matched || data.branches[0];
         });
       }
-      if (data.tables.length > 0) setTables(data.tables);
-      if (data.categories.length > 0) setCategories(data.categories);
-      if (data.products.length > 0) setProducts(data.products);
-      if (data.orders.length > 0) setOrders(data.orders);
-      if (data.reservations.length > 0) setReservations(data.reservations);
-      if (data.reviews.length > 0) setReviews(data.reviews);
+      if (data.tables.length > 0) {
+        setTables(data.tables);
+        saveToStorage('sufrah_v2_tables', data.tables);
+      }
+      if (data.categories.length > 0) {
+        setCategories(data.categories);
+        saveToStorage('sufrah_v2_categories', data.categories);
+      }
+      if (data.products.length > 0) {
+        setProducts(data.products);
+        saveToStorage('sufrah_v2_products', data.products);
+      }
+      if (data.orders.length > 0) {
+        setOrders(data.orders);
+        saveToStorage('sufrah_v2_orders', data.orders);
+      }
+      if (data.reservations.length > 0) {
+        setReservations(data.reservations);
+        saveToStorage('sufrah_v2_reservations', data.reservations);
+      }
+      if (data.reviews.length > 0) {
+        setReviews(data.reviews);
+        saveToStorage('sufrah_v2_reviews', data.reviews);
+      }
       if (data.plans && data.plans.length > 0) {
         setPlans(data.plans);
         saveToStorage('sufrah_v2_plans', data.plans);
@@ -1208,6 +1228,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     api.deleteCategory(categoryId).catch(console.error);
   };
 
+  const reorderCategories = (orderedCategories: Category[]) => {
+    const orderMap = new Map<number, number>();
+    orderedCategories.forEach((cat, index) => {
+      orderMap.set(cat.id, index + 1);
+    });
+
+    setCategories(prev => {
+      const next = prev.map(c => {
+        if (orderMap.has(c.id)) {
+          return { ...c, sort_order: orderMap.get(c.id)! };
+        }
+        return c;
+      });
+      return [...next].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    });
+
+    orderedCategories.forEach((cat, index) => {
+      api.updateCategory(cat.id, { sort_order: index + 1 }).catch(console.error);
+    });
+  };
+
   const addBranch = (branchData: Partial<Branch>) => {
     if (!activeRestaurant) return;
     const nextId = branches.length > 0 ? Math.max(...branches.map(b => b.id)) + 1 : 1;
@@ -1717,6 +1758,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addCategory,
         updateCategory,
         deleteCategory,
+        reorderCategories,
         addBranch,
         updateBranch,
         deleteBranch,

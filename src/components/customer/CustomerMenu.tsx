@@ -104,7 +104,7 @@ export const CustomerMenu: React.FC = () => {
   const HIDE_DINE_IN_AND_TAKEAWAY = true;
   const HIDE_TOP_PREVIEW_BANNER = true;     // إخفاء شريط المعاينة وزر العودة العلوي
   const HIDE_DELIVERY_NOTIF_BANNER = true;  // إخفاء نافذة التنبيه العلوية للتوصيل
-  const HIDE_RETURN_TO_RESTAURANT = true;   // إخفاء زر العودة للمطعم
+  const HIDE_RETURN_TO_RESTAURANT = false;  // إظهار زر العودة لصفحة المطعم
   const HIDE_ORDER_TYPE_SELECTOR = true;    // إخفاء نافذة طريقة توصيل/استلام وجبتك
 
   // Navigation mode
@@ -550,7 +550,7 @@ export const CustomerMenu: React.FC = () => {
   };
 
   const restaurantProducts = products.filter(p => !activeRestaurant || Number(p.restaurant_id) === Number(activeRestaurant.id));
-  const restaurantCategories = categories.filter(c => !activeRestaurant || Number(c.restaurant_id) === Number(activeRestaurant.id));
+  const restaurantCategories = [...categories.filter(c => !activeRestaurant || Number(c.restaurant_id) === Number(activeRestaurant.id))].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
   const filteredProducts = restaurantProducts.filter(p => {
     const matchesCat = selectedCategory === 'all' || Number(p.category_id) === Number(selectedCategory);
@@ -728,6 +728,18 @@ export const CustomerMenu: React.FC = () => {
             className="w-full h-full object-cover brightness-60"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+
+          {/* آيقونة الرجوع إلى صفحة المطعم الرئيسية فوق صورة الغلاف */}
+          <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-2">
+            <button
+              onClick={handleReturnToRestaurant}
+              className="flex items-center gap-2 px-3.5 py-2 bg-slate-950/80 hover:bg-slate-900 text-amber-400 hover:text-amber-300 rounded-xl backdrop-blur-md border border-amber-500/40 hover:border-amber-400 shadow-xl transition-all hover:scale-105 active:scale-95 cursor-pointer group"
+              title="الرجوع إلى صفحة المطعم الرئيسية"
+            >
+              <ArrowRight className="w-4 h-4 text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+              <span className="text-xs sm:text-sm font-bold text-white">العودة لصفحة المطعم الرئيسية</span>
+            </button>
+          </div>
         </div>
 
         <div className="p-5 sm:p-6 -mt-16 sm:-mt-20 relative flex flex-col sm:flex-row items-center sm:items-end justify-between gap-4 text-center sm:text-right">
@@ -751,14 +763,14 @@ export const CustomerMenu: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            {isPreviewMode && !HIDE_RETURN_TO_RESTAURANT && (
+            {(!HIDE_RETURN_TO_RESTAURANT) && (
               <button
                 onClick={handleReturnToRestaurant}
                 className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
-                title="العودة إلى لوحة تحكم المطعم"
+                title="الرجوع إلى صفحة المطعم الرئيسية"
               >
                 <ArrowRight className="w-3.5 h-3.5" />
-                <span>العودة إلى المطعم</span>
+                <span>العودة لصفحة المطعم</span>
               </button>
             )}
             <a

@@ -32,9 +32,9 @@ export class ErrorBoundary extends Component<Props, State> {
   private handleClearAndReload = () => {
     try {
       if (typeof window !== 'undefined') {
-        localStorage.clear();
+        localStorage.removeItem('sufrah_v2_preview_mode');
         sessionStorage.clear();
-        window.location.href = '/';
+        window.location.reload();
       }
     } catch {
       window.location.reload();

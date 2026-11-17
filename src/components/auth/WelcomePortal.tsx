@@ -1010,8 +1010,8 @@ export const WelcomePortal: React.FC<WelcomePortalProps> = ({ onClose }) => {
               </button>
             </form>
 
-            {/* Quick direct access buttons for restaurants (hidden, not removed) */}
-            {false && restaurants.length > 0 && (
+            {/* Quick direct access buttons for restaurants */}
+            {restaurants.length > 0 && (
               <div className="pt-2 border-t border-stone-100">
                 <span className="text-[11px] font-bold text-stone-600 block mb-2">⚡ أو دخول مباشر سريع إلى أحد المطاعم:</span>
                 <div className="grid grid-cols-2 gap-2">

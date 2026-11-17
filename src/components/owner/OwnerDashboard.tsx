@@ -38,12 +38,21 @@ import {
   ShieldCheck,
   Bike,
   Receipt,
-  Save
+  Save,
+  Phone,
+  Search,
+  GripVertical,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  X
 } from 'lucide-react';
 
 export const OwnerDashboard: React.FC = () => {
   const {
     activeRestaurant,
+    setActiveRestaurant,
+    restaurants,
     branches,
     addBranch,
     updateBranch,
@@ -52,6 +61,7 @@ export const OwnerDashboard: React.FC = () => {
     addCategory,
     updateCategory,
     deleteCategory,
+    reorderCategories,
     products,
     addProduct,
     updateProduct,
@@ -189,11 +199,74 @@ export const OwnerDashboard: React.FC = () => {
   const [categoryFeedbackMsg, setCategoryFeedbackMsg] = useState<string | null>(null);
   const [showAddBranchModal, setShowAddBranchModal] = useState(false);
 
-  // Filter categories for the current active restaurant
+  // Filter categories for the current active restaurant sorted by sort_order
   const restaurantCategories = useMemo(() => {
     const list = categories.filter(c => !activeRestaurant || Number(c.restaurant_id) === Number(activeRestaurant.id));
-    return list.length > 0 ? list : categories;
+    const result = list.length > 0 ? list : categories;
+    return [...result].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   }, [categories, activeRestaurant]);
+
+  // Drag and drop categories reordering state
+  const [draggedCatIndex, setDraggedCatIndex] = useState<number | null>(null);
+  const [dragOverCatIndex, setDragOverCatIndex] = useState<number | null>(null);
+  const [showReorderCategoriesModal, setShowReorderCategoriesModal] = useState(false);
+
+  const handleCategoryDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedCatIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
+  };
+
+  const handleCategoryDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverCatIndex !== index) {
+      setDragOverCatIndex(index);
+    }
+  };
+
+  const handleCategoryDragEnd = () => {
+    setDraggedCatIndex(null);
+    setDragOverCatIndex(null);
+  };
+
+  const handleCategoryDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedCatIndex === null || draggedCatIndex === dropIndex) {
+      setDraggedCatIndex(null);
+      setDragOverCatIndex(null);
+      return;
+    }
+
+    const reordered = [...restaurantCategories];
+    const [moved] = reordered.splice(draggedCatIndex, 1);
+    reordered.splice(dropIndex, 0, moved);
+
+    reorderCategories(reordered);
+    setCategoryFeedbackMsg('تم حفظ ترتيب الفئات الجديد بنجاح ✓');
+    setTimeout(() => setCategoryFeedbackMsg(null), 3000);
+
+    setDraggedCatIndex(null);
+    setDragOverCatIndex(null);
+  };
+
+  const handleMoveCategoryOrder = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= restaurantCategories.length) return;
+
+    const reordered = [...restaurantCategories];
+    const temp = reordered[index];
+    reordered[index] = reordered[targetIndex];
+    reordered[targetIndex] = temp;
+
+    reorderCategories(reordered);
+    setCategoryFeedbackMsg('تم تحديث ترتيب الفئات بنجاح ✓');
+    setTimeout(() => setCategoryFeedbackMsg(null), 3000);
+  };
+
+  // Search & popup for Orders by phone
+  const [orderPhoneSearch, setOrderPhoneSearch] = useState('');
+  const [selectedCustomerPhone, setSelectedCustomerPhone] = useState<string | null>(null);
 
   // New product form
   const [prodNameAr, setProdNameAr] = useState('');
@@ -536,6 +609,54 @@ export const OwnerDashboard: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    if (!activeRestaurant && restaurants.length > 0) {
+      setActiveRestaurant(restaurants[0]);
+    }
+  }, [activeRestaurant, restaurants, setActiveRestaurant]);
+
+  const restaurantProducts = useMemo(() => {
+    return products.filter(p => !activeRestaurant || Number(p.restaurant_id) === Number(activeRestaurant.id));
+  }, [products, activeRestaurant]);
+
+  const filteredProducts = selectedCatId === 'all'
+    ? restaurantProducts
+    : restaurantProducts.filter(p => Number(p.category_id) === Number(selectedCatId));
+
+  const restaurantOrders = useMemo(() => {
+    return orders.filter(o => !activeRestaurant || Number(o.restaurant_id) === Number(activeRestaurant.id));
+  }, [orders, activeRestaurant]);
+
+  const totalSales = useMemo(() => {
+    return restaurantOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
+  }, [restaurantOrders]);
+
+  const filteredRestaurantOrders = useMemo(() => {
+    const q = orderPhoneSearch.trim().toLowerCase();
+    if (!q) return restaurantOrders;
+    return restaurantOrders.filter(o => {
+      const matchPhone = String(o.customer_phone || '').toLowerCase().includes(q);
+      const matchName = String(o.customer_name || '').toLowerCase().includes(q);
+      const matchNum = String(o.order_number || '').toLowerCase().includes(q);
+      return matchPhone || matchName || matchNum;
+    });
+  }, [restaurantOrders, orderPhoneSearch]);
+
+  const customerOrdersForSelectedPhone = useMemo(() => {
+    if (!selectedCustomerPhone) return [];
+    const cleanSelected = selectedCustomerPhone.replace(/[^0-9]/g, '');
+    return restaurantOrders.filter(o => {
+      if (!o.customer_phone) return false;
+      const cleanO = o.customer_phone.replace(/[^0-9]/g, '');
+      return (cleanSelected && cleanO === cleanSelected) || o.customer_phone === selectedCustomerPhone;
+    });
+  }, [restaurantOrders, selectedCustomerPhone]);
+
+  const restaurantBranches = branches.filter(b => !activeRestaurant || Number(b.restaurant_id) === Number(activeRestaurant.id));
+  const restaurantBranchIds = restaurantBranches.map(b => b.id);
+  const restaurantTables = tables.filter(t => restaurantBranchIds.includes(t.branch_id));
+  const restaurantUsers = users.filter(u => !activeRestaurant || Number(u.restaurant_id) === Number(activeRestaurant.id));
+
   if (!activeRestaurant) {
     return (
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-10 text-center max-w-xl mx-auto my-12 shadow-2xl">
@@ -556,22 +677,6 @@ export const OwnerDashboard: React.FC = () => {
       </div>
     );
   }
-
-  const restaurantProducts = useMemo(() => {
-    return products.filter(p => !activeRestaurant || Number(p.restaurant_id) === Number(activeRestaurant.id));
-  }, [products, activeRestaurant]);
-
-  const filteredProducts = selectedCatId === 'all'
-    ? restaurantProducts
-    : restaurantProducts.filter(p => Number(p.category_id) === Number(selectedCatId));
-
-  const restaurantOrders = orders.filter(o => o.restaurant_id === activeRestaurant.id);
-  const totalSales = restaurantOrders.reduce((sum, o) => sum + o.total_amount, 0);
-
-  const restaurantBranches = branches.filter(b => b.restaurant_id === activeRestaurant.id);
-  const restaurantBranchIds = restaurantBranches.map(b => b.id);
-  const restaurantTables = tables.filter(t => restaurantBranchIds.includes(t.branch_id));
-  const restaurantUsers = users.filter(u => u.restaurant_id === activeRestaurant.id);
 
   const handleOpenAddStaff = () => {
     setEditingStaffUser(null);
@@ -854,19 +959,47 @@ export const OwnerDashboard: React.FC = () => {
               >
                 جميع الأصناف ({products.length})
               </button>
-              {restaurantCategories.map(cat => (
-                <button
+              {restaurantCategories.map((cat, index) => (
+                <div
                   key={cat.id}
-                  onClick={() => setSelectedCatId(cat.id)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
-                    selectedCatId === cat.id
-                      ? 'bg-amber-500 text-slate-950 font-bold'
-                      : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                  draggable
+                  onDragStart={(e) => handleCategoryDragStart(e, index)}
+                  onDragOver={(e) => handleCategoryDragOver(e, index)}
+                  onDragEnd={handleCategoryDragEnd}
+                  onDrop={(e) => handleCategoryDrop(e, index)}
+                  className={`group relative flex items-center rounded-xl transition-all cursor-grab active:cursor-grabbing select-none ${
+                    draggedCatIndex === index
+                      ? 'opacity-40 scale-95 ring-2 ring-dashed ring-amber-500'
+                      : dragOverCatIndex === index
+                      ? 'ring-2 ring-amber-400 scale-105 bg-amber-500/20'
+                      : ''
                   }`}
+                  title={`اسحب "${cat.name_ar}" بالماوس لتغيير الترتيب`}
                 >
-                  {cat.name_ar}
-                </button>
+                  <button
+                    onClick={() => setSelectedCatId(cat.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                      selectedCatId === cat.id
+                        ? 'bg-amber-500 text-slate-950 font-bold shadow-md'
+                        : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <GripVertical className="w-3 h-3 text-slate-500 group-hover:text-amber-400 opacity-60 group-hover:opacity-100 transition-opacity" />
+                    <span>{cat.name_ar}</span>
+                  </button>
+                </div>
               ))}
+              
+              <button
+                type="button"
+                onClick={() => setShowReorderCategoriesModal(true)}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 border border-amber-500/30 hover:border-amber-500/60 text-amber-400 flex items-center gap-1.5 shadow-sm transition-colors whitespace-nowrap cursor-pointer"
+                title="فتح نافذة ترتيب الفئات بواسطة الماوس"
+              >
+                <ArrowUpDown className="w-3.5 h-3.5" />
+                <span>ترتيب الفئات بالماوس</span>
+              </button>
+
               <button
                 onClick={() => {
                   setEditingCategory(null);
@@ -1903,7 +2036,40 @@ export const OwnerDashboard: React.FC = () => {
           </div>
 
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <h3 className="text-sm font-bold text-white mb-4">سجل الطلبات الحالية بالمطعم</h3>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4">
+              <h3 className="text-sm font-bold text-white whitespace-nowrap">سجل الطلبات الحالية بالمطعم</h3>
+
+              <div className="flex items-center gap-3 flex-1 sm:flex-initial justify-end">
+                {/* حقل بحث برقم الهاتف */}
+                <div className="relative min-w-[200px] flex-1 sm:w-60">
+                  <Phone className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="بحث برقم الهاتف..."
+                    value={orderPhoneSearch}
+                    onChange={e => setOrderPhoneSearch(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pr-9 pl-7 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-mono transition-colors"
+                    dir="rtl"
+                  />
+                  {orderPhoneSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setOrderPhoneSearch('')}
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* حقل يظهر فيه عدد الطلبات */}
+                <div className="px-3 py-1.5 bg-amber-500/10 border border-amber-500/25 rounded-xl text-xs font-bold text-amber-400 flex items-center gap-1.5 whitespace-nowrap font-mono shadow-sm shrink-0">
+                  <span className="text-slate-400 font-sans">عدد الطلبات:</span>
+                  <span className="text-amber-300 font-black text-sm">{filteredRestaurantOrders.length}</span>
+                </div>
+              </div>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full text-right text-xs">
                 <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
@@ -1911,30 +2077,54 @@ export const OwnerDashboard: React.FC = () => {
                     <th className="py-3 px-3">رقم الطلب</th>
                     <th className="py-3 px-3">النوع</th>
                     <th className="py-3 px-3">الزبون</th>
+                    <th className="py-3 px-3">رقم الهاتف</th>
                     <th className="py-3 px-3">المبلغ الإجمالي</th>
                     <th className="py-3 px-3">طريقة الدفع</th>
                     <th className="py-3 px-3">الحالة</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
-                  {restaurantOrders.map(o => (
-                    <tr key={o.id} className="hover:bg-slate-800/30">
-                      <td className="py-3 px-3 font-mono text-amber-400">{o.order_number}</td>
-                      <td className="py-3 px-3">
-                        {o.order_type === 'dine_in' ? `داخل المطعم (${o.table_number})` : 'توصيل خارجي'}
-                      </td>
-                      <td className="py-3 px-3 text-white font-medium">{o.customer_name}</td>
-                      <td className="py-3 px-3 font-mono font-bold text-white">
-                        {o.total_amount.toLocaleString()} د.ع
-                      </td>
-                      <td className="py-3 px-3 uppercase text-slate-300 font-mono">{o.payment_method}</td>
-                      <td className="py-3 px-3">
-                        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-400">
-                          {o.status}
-                        </span>
+                  {filteredRestaurantOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-slate-500">
+                        {orderPhoneSearch ? `لا توجد طلبات مطابقة للرقم "${orderPhoneSearch}"` : 'لا توجد طلبات مسجلة حالياً بالمطعم'}
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredRestaurantOrders.map(o => (
+                      <tr key={o.id} className="hover:bg-slate-800/30 transition-colors">
+                        <td className="py-3 px-3 font-mono text-amber-400 font-bold">{o.order_number}</td>
+                        <td className="py-3 px-3">
+                          {o.order_type === 'dine_in' ? `داخل المطعم (${o.table_number || 'طاولة'})` : o.order_type === 'takeaway' ? 'استلام سفري' : 'توصيل خارجي'}
+                        </td>
+                        <td className="py-3 px-3 text-white font-medium">{o.customer_name || 'زبون عام'}</td>
+                        <td className="py-3 px-3 font-mono">
+                          {o.customer_phone ? (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedCustomerPhone(o.customer_phone!)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/50 transition-all cursor-pointer font-bold text-xs group"
+                              title="اضغط لعرض كافة طلبات هذا الرقم في نافذة منبثقة"
+                            >
+                              <Phone className="w-3 h-3 text-amber-500 group-hover:scale-110 transition-transform" />
+                              <span dir="ltr">{o.customer_phone}</span>
+                            </button>
+                          ) : (
+                            <span className="text-slate-600 text-xs">غير محدد</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 font-mono font-bold text-white">
+                          {o.total_amount.toLocaleString()} د.ع
+                        </td>
+                        <td className="py-3 px-3 uppercase text-slate-300 font-mono">{o.payment_method || 'CASH'}</td>
+                        <td className="py-3 px-3">
+                          <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            {o.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -3631,6 +3821,244 @@ export const OwnerDashboard: React.FC = () => {
               >
                 <Trash2 className="w-4 h-4" />
                 <span>{isDeletingStaff ? 'جاري الحذف...' : 'نعم، حذف الحساب نهائياً'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* نافذة منبثقة: جدول الطلبات التابعة لرقم الهاتف */}
+      {selectedCustomerPhone && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in font-cairo" dir="rtl">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center font-bold">
+                  <Phone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base flex items-center gap-2">
+                    <span>سجل طلبات الزبون</span>
+                    <span className="font-mono text-amber-400 text-sm bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/30" dir="ltr">
+                      {selectedCustomerPhone}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    الزبون: {customerOrdersForSelectedPhone[0]?.customer_name || 'عميل'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedCustomerPhone(null)}
+                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Quick Stats Banner inside modal */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3">
+              <div className="p-2">
+                <div className="text-[11px] text-slate-400 font-semibold">إجمالي عدد الطلبات</div>
+                <div className="text-lg font-bold font-mono text-white mt-0.5">
+                  {customerOrdersForSelectedPhone.length} طلبات
+                </div>
+              </div>
+              <div className="p-2">
+                <div className="text-[11px] text-slate-400 font-semibold">مجموع المشتريات</div>
+                <div className="text-lg font-bold font-mono text-emerald-400 mt-0.5">
+                  {customerOrdersForSelectedPhone.reduce((sum, o) => sum + (o.total_amount || 0), 0).toLocaleString()} د.ع
+                </div>
+              </div>
+              <div className="p-2 col-span-2 sm:col-span-1">
+                <div className="text-[11px] text-slate-400 font-semibold">آخر طلب مسجل</div>
+                <div className="text-xs font-mono text-amber-400 mt-1">
+                  {customerOrdersForSelectedPhone[0]?.created_at || 'مؤخراً'}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Body: Table of Orders */}
+            <div className="overflow-y-auto overflow-x-auto flex-1 rounded-2xl border border-slate-800">
+              <table className="w-full text-right text-xs">
+                <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 sticky top-0">
+                  <tr>
+                    <th className="py-3 px-3">رقم الطلب</th>
+                    <th className="py-3 px-3">التاريخ والوقت</th>
+                    <th className="py-3 px-3">النوع</th>
+                    <th className="py-3 px-3">الأصناف المطلوبة</th>
+                    <th className="py-3 px-3">المبلغ الإجمالي</th>
+                    <th className="py-3 px-3">طريقة الدفع</th>
+                    <th className="py-3 px-3">الحالة</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 bg-slate-900/50">
+                  {customerOrdersForSelectedPhone.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-slate-500">
+                        لا توجد طلبات مسجلة لهذا الرقم
+                      </td>
+                    </tr>
+                  ) : (
+                    customerOrdersForSelectedPhone.map(o => (
+                      <tr key={o.id} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="py-3 px-3 font-mono font-bold text-amber-400">
+                          #{o.order_number}
+                        </td>
+                        <td className="py-3 px-3 font-mono text-slate-400 text-[11px]">
+                          {o.created_at || '-'}
+                        </td>
+                        <td className="py-3 px-3">
+                          {o.order_type === 'dine_in' ? (
+                            <span className="text-amber-300">داخل المطعم ({o.table_number || 'طاولة'})</span>
+                          ) : o.order_type === 'takeaway' ? (
+                            <span className="text-blue-300">سفري</span>
+                          ) : (
+                            <span className="text-emerald-300">توصيل خارجي</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-slate-300 max-w-[220px] truncate" title={o.items?.map(it => `${it.product_name} ×${it.quantity}`).join('، ')}>
+                          {o.items && o.items.length > 0 
+                            ? o.items.map(it => `${it.product_name} (${it.quantity})`).join('، ')
+                            : 'طلب عادي'}
+                        </td>
+                        <td className="py-3 px-3 font-mono font-bold text-white">
+                          {o.total_amount?.toLocaleString()} د.ع
+                        </td>
+                        <td className="py-3 px-3 uppercase text-slate-400 font-mono text-[11px]">
+                          {o.payment_method || 'نقد'}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            {o.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+              <a
+                href={`https://wa.me/${selectedCustomerPhone.replace(/[^0-9]/g, '')}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-xl text-xs font-bold border border-emerald-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>محادثة واتساب 💬</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => setSelectedCustomerPhone(null)}
+                className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* نافذة ترتيب الفئات بواسطة الماوس */}
+      {showReorderCategoriesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in font-cairo" dir="rtl">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">
+                  <ArrowUpDown className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">ترتيب الفئات والأقسام بالماوس</h3>
+                  <p className="text-xs text-slate-400">اسحب بالماوس لتغيير ترتيب ظهور الأقسام في المنيو</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReorderCategoriesModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="text-xs bg-amber-500/10 border border-amber-500/20 text-amber-300 p-3 rounded-xl flex items-center gap-2">
+              <Sparkles className="w-4 h-4 shrink-0 text-amber-400" />
+              <span>اسحب وأفلت أي قسم بالماوس، أو انقر على أسهم الترتيب السريعة (لأعلى / لأسفل).</span>
+            </div>
+
+            <div className="overflow-y-auto space-y-2 flex-1 max-h-[50vh] pr-1">
+              {restaurantCategories.map((cat, index) => {
+                const catProductsCount = products.filter(p => Number(p.category_id) === Number(cat.id)).length;
+                return (
+                  <div
+                    key={cat.id}
+                    draggable
+                    onDragStart={e => handleCategoryDragStart(e, index)}
+                    onDragOver={e => handleCategoryDragOver(e, index)}
+                    onDragEnd={handleCategoryDragEnd}
+                    onDrop={e => handleCategoryDrop(e, index)}
+                    className={`flex items-center justify-between p-3 rounded-2xl border transition-all select-none cursor-grab active:cursor-grabbing ${
+                      draggedCatIndex === index
+                        ? 'opacity-40 border-dashed border-amber-500 bg-amber-500/5'
+                        : dragOverCatIndex === index
+                        ? 'border-amber-400 bg-amber-500/20 scale-[1.02]'
+                        : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="text-slate-500 hover:text-amber-400 transition-colors">
+                        <GripVertical className="w-5 h-5" />
+                      </div>
+                      <span className="w-6 h-6 rounded-lg bg-slate-800 text-amber-400 font-mono font-bold text-xs flex items-center justify-center border border-slate-700">
+                        {index + 1}
+                      </span>
+                      <div>
+                        <div className="font-bold text-white text-sm">{cat.name_ar}</div>
+                        <div className="text-[11px] text-slate-400 font-mono">
+                          {cat.name_en || ''} · {catProductsCount} صنف
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={index === 0}
+                        onClick={() => handleMoveCategoryOrder(index, 'up')}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                        title="تحريك لأعلى بالماوس"
+                      >
+                        <ArrowUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={index === restaurantCategories.length - 1}
+                        onClick={() => handleMoveCategoryOrder(index, 'down')}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                        title="تحريك لأسفل بالماوس"
+                      >
+                        <ArrowDown className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+              <span className="text-xs text-slate-400">إجمالي الفئات: {restaurantCategories.length}</span>
+              <button
+                type="button"
+                onClick={() => setShowReorderCategoriesModal(false)}
+                className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl transition-all cursor-pointer shadow-md"
+              >
+                حفظ وإنهاء
               </button>
             </div>
           </div>

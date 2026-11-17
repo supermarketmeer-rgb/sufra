@@ -19,6 +19,7 @@ import {
   Eye,
   KeyRound,
   ArrowLeft,
+  ArrowRight,
   User as UserIcon,
   Lock
 } from 'lucide-react';
@@ -334,6 +335,27 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenExplorer, onOpenRegister, 
                   <span>ترقية الباقة بكود</span>
                 </button>
               )}
+            </div>
+          ) : currentRole === 'customer' ? (
+            /* Customer View / Preview Mode - Return to Restaurant Button */
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  const previewRole = typeof window !== 'undefined' ? localStorage.getItem('sufrah_v2_preview_mode') : null;
+                  if (typeof window !== 'undefined') {
+                    localStorage.removeItem('sufrah_v2_preview_mode');
+                  }
+                  const targetRole = (previewRole && previewRole !== 'customer')
+                    ? previewRole
+                    : (currentUser?.role && currentUser.role !== 'customer' ? currentUser.role : 'restaurant_owner');
+                  setCurrentRole(targetRole as any);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs font-bold shadow-md transition-all cursor-pointer"
+                title="الرجوع إلى صفحة المطعم الرئيسية"
+              >
+                <ArrowRight className="w-3.5 h-3.5" />
+                <span>العودة لصفحة المطعم الرئيسية</span>
+              </button>
             </div>
           ) : (
             /* Staff Stations Indicator */
