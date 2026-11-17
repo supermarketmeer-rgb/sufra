@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import { useApp } from '../../context/AppContext';
 import { Product, ProductSize, ProductAddon, Category, DiningTable, User, UserRole, Branch } from '../../types';
 import { compressImage, normalizeImageUrl } from '../../utils/imageCompressor';
+import { sortCategories, sortProductsByCategory } from '../../utils/categoryRanking';
 import {
   UtensilsCrossed,
   QrCode,
@@ -199,11 +200,11 @@ export const OwnerDashboard: React.FC = () => {
   const [categoryFeedbackMsg, setCategoryFeedbackMsg] = useState<string | null>(null);
   const [showAddBranchModal, setShowAddBranchModal] = useState(false);
 
-  // Filter categories for the current active restaurant sorted by sort_order
+  // Filter categories for the current active restaurant sorted by fixed ranking and sort_order
   const restaurantCategories = useMemo(() => {
     const list = categories.filter(c => !activeRestaurant || Number(c.restaurant_id) === Number(activeRestaurant.id));
     const result = list.length > 0 ? list : categories;
-    return [...result].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    return sortCategories(result);
   }, [categories, activeRestaurant]);
 
   // Drag and drop categories reordering state
@@ -616,12 +617,16 @@ export const OwnerDashboard: React.FC = () => {
   }, [activeRestaurant, restaurants, setActiveRestaurant]);
 
   const restaurantProducts = useMemo(() => {
-    return products.filter(p => !activeRestaurant || Number(p.restaurant_id) === Number(activeRestaurant.id));
-  }, [products, activeRestaurant]);
+    const prods = products.filter(p => !activeRestaurant || Number(p.restaurant_id) === Number(activeRestaurant.id));
+    return sortProductsByCategory(prods, restaurantCategories);
+  }, [products, activeRestaurant, restaurantCategories]);
 
-  const filteredProducts = selectedCatId === 'all'
-    ? restaurantProducts
-    : restaurantProducts.filter(p => Number(p.category_id) === Number(selectedCatId));
+  const filteredProducts = useMemo(() => {
+    if (selectedCatId === 'all') {
+      return restaurantProducts;
+    }
+    return restaurantProducts.filter(p => Number(p.category_id) === Number(selectedCatId));
+  }, [selectedCatId, restaurantProducts]);
 
   const restaurantOrders = useMemo(() => {
     return orders.filter(o => !activeRestaurant || Number(o.restaurant_id) === Number(activeRestaurant.id));

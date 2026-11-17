@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { useApp } from '../../context/AppContext';
 import { Product, OrderItem, DiningTable, Order } from '../../types';
+import { sortCategories, sortProductsByCategory } from '../../utils/categoryRanking';
 import {
   Search,
   Barcode,
@@ -55,8 +56,13 @@ export const PosDashboard: React.FC = () => {
 
   const [showRestPicker, setShowRestPicker] = useState(false);
 
-  const restaurantProducts = products.filter(p => p.restaurant_id === activeRestaurant?.id);
-  const restaurantCategories = categories.filter(c => c.restaurant_id === activeRestaurant?.id);
+  const restaurantCategories = sortCategories(
+    categories.filter(c => c.restaurant_id === activeRestaurant?.id)
+  );
+  const restaurantProducts = sortProductsByCategory(
+    products.filter(p => p.restaurant_id === activeRestaurant?.id),
+    restaurantCategories
+  );
   const branchTables = tables.filter(t => !activeBranch?.id || t.branch_id === activeBranch.id);
 
   const [selectedCatId, setSelectedCatId] = useState<number | 'all'>('all');

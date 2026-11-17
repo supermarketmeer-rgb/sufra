@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { useApp } from '../../context/AppContext';
 import { Product, ProductSize, ProductAddon, OrderItem, OrderType } from '../../types';
+import { sortCategories, sortProductsByCategory } from '../../utils/categoryRanking';
 import {
   Search,
   ShoppingBag,
@@ -549,8 +550,13 @@ export const CustomerMenu: React.FC = () => {
     setRevComment('');
   };
 
-  const restaurantProducts = products.filter(p => !activeRestaurant || Number(p.restaurant_id) === Number(activeRestaurant.id));
-  const restaurantCategories = [...categories.filter(c => !activeRestaurant || Number(c.restaurant_id) === Number(activeRestaurant.id))].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  const restaurantCategories = sortCategories(
+    categories.filter(c => !activeRestaurant || Number(c.restaurant_id) === Number(activeRestaurant.id))
+  );
+  const restaurantProducts = sortProductsByCategory(
+    products.filter(p => !activeRestaurant || Number(p.restaurant_id) === Number(activeRestaurant.id)),
+    restaurantCategories
+  );
 
   const filteredProducts = restaurantProducts.filter(p => {
     const matchesCat = selectedCategory === 'all' || Number(p.category_id) === Number(selectedCategory);
